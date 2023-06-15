@@ -3,14 +3,15 @@ package dproc
 import cats.Applicative
 import cats.data.EitherT
 import cats.effect.Sync
-import cats.syntax.all._
+import cats.syntax.all.*
 import dproc.data.Block
-import weaver.Offence._
+import weaver.Offence.*
 import weaver.Weaver.ExeEngine
-import weaver.data.{ConflictResolution, LazoE, LazoF}
-import weaver.rules._
-import weaver.syntax.all._
-import weaver._
+import weaver.data.*
+import weaver.rules.*
+import weaver.syntax.all.*
+import weaver.*
+import weaver.Gard.GardM
 
 /** Logic of creating and validating messages. */
 object MessageLogic {
@@ -155,4 +156,37 @@ object MessageLogic {
       _ <- validateCsResolve(m, s)
       _ <- EitherT(exeEngine.replay(id).map(_.guard[Option].toRight(Offence.iexec)))
     } yield ()
+
+  final case class ReplayResult[M, S, T](
+    lazoME: LazoM.Extended[M, S],
+    meldMOpt: Option[MeldM[T]],
+    gardMOpt: Option[GardM[M, T]],
+    offenceOpt: Option[Offence],
+  )
+
+  def replay[F[_]: Sync, M, S, T: Ordering](
+    m: Block.WithId[M, S, T],
+    s: Weaver[M, S, T],
+    exeEngine: ExeEngine[F, M, S, T],
+  ): F[ReplayResult[M, S, T]] = Sync[F].defer {
+    lazy val conflictSet = Dag.between(m.m.minGenJs, m.m.finalFringe, s.lazo.seenMap).flatMap(s.meld.txsMap)
+    lazy val mkMeld      = MeldM.create[F, M, T](
+      s.meld,
+      m.m.txs,
+      conflictSet,
+      m.m.finalized.map(_.accepted).getOrElse(Set()),
+      m.m.finalized.map(_.rejected).getOrElse(Set()),
+      exeEngine.conflicts,
+      exeEngine.depends,
+    )
+    val lazoME           = Block.toLazoM(m.m).computeExtended(s.lazo)
+    val offOptT          = validateMessage(m.id, m.m, s, exeEngine).swap.toOption
+
+    // invalid messages do not participate in merge and are not accounted for double spend guard
+    val offCase   = offOptT.map(off => ReplayResult(lazoME, none[MeldM[T]], none[GardM[M, T]], off.some))
+    // if msg is valid - Meld state and Gard state should be updated
+    val validCase = mkMeld.map(_.some).map(ReplayResult(lazoME, _, Block.toGardM(m.m).some, none[Offence]))
+
+    offCase.getOrElseF(validCase)
+  }
 }
