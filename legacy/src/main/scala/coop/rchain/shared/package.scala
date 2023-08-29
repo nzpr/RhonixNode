@@ -1,4 +1,8 @@
-package coop.rchain.shared
+package coop.rchain
+
+import coop.rchain.fs2.Fs2StreamSyntax
+import coop.rchain.sdk.primitive.MapSyntax
+import coop.rchain.store.*
 
 package object shared {
   // Importing syntax object means using all extensions in the project
