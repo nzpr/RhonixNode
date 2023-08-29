@@ -93,7 +93,7 @@ object CertificateHelper {
     val publicKey   = keyPair.getPublic
     val address     = publicAddress(publicKey).map(Base16.encode).getOrElse("local")
     val algorythm   = "SHA256withECDSA"
-    val algorithmId = new AlgorithmId(AlgorithmId.sha256WithECDSA_oid)
+    val algorithmId = new AlgorithmId(AlgorithmId.SHA256withECDSA_oid)
 
     val info     = new X509CertInfo
     val from     = new java.util.Date()
