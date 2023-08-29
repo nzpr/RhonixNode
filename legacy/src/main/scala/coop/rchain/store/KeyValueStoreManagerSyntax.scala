@@ -2,6 +2,7 @@ package coop.rchain.store
 
 import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
+import coop.rchain.shared.syntax.sharedSyntaxKeyValueStore
 import scodec.Codec
 
 trait KeyValueStoreManagerSyntax {
