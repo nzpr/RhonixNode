@@ -38,7 +38,7 @@ lazy val settingsScala2 = commonSettings ++ Seq(
 
 lazy val rhonix = (project in file("."))
   .settings(commonSettings*)
-  .aggregate(sdk, weaver, dproc, db, node, rholang, legacy, sim, diag, execution, api)
+  .aggregate(sdk, macros, weaver, dproc, db, node, rholang, legacy, sim, diag, execution, api)
 
 lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
@@ -148,7 +148,7 @@ lazy val rholang = (project in file("rholang"))
   .settings(scalacOptions ++= Seq("-Xlint:-strict-unsealed-patmat", "-Xnon-strict-patmat-analysis"))
   .dependsOn(sdk % "compile->compile;test->test")
 
-// Rholang implementation
+// Legacy implementation (rholang + rspace)
 lazy val legacy = (project in file("legacy"))
   .settings(settingsScala2*)
   .settings(
@@ -163,6 +163,18 @@ lazy val legacy = (project in file("legacy"))
       _.filterNot(Seq(Wart.SeqApply, Wart.Throw, Wart.Var, Wart.SeqUpdated).contains)
     },
     libraryDependencies ++= common ++ tests ++ legacyLibs,
-    resolvers += "jitpack" at "https://jitpack.io",
+    resolvers += ("jitpack" at "https://jitpack.io"),
   )
-  .dependsOn(sdk, rholang) // depends on new rholang implementation
+  .dependsOn(sdk, rholang, macros) // depends on new rholang implementation
+
+// Macro implementation should be compiled before macro application
+// https://stackoverflow.com/questions/75847326/macro-implementation-not-found-scala-2-13-3
+lazy val macros = (project in file("macros"))
+  .settings(settingsScala2*)
+  .settings(
+    libraryDependencies ++= common ++ legacyLibs,
+    resolvers ++=
+      // for kalium
+      Resolver.sonatypeOssRepos("releases") ++
+        Resolver.sonatypeOssRepos("snapshots") :+ ("jitpack" at "https://jitpack.io"),
+  )
