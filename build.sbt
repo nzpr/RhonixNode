@@ -145,3 +145,10 @@ lazy val rholang = (project in file("rholang"))
   .settings(bnfcSettings*)
   .settings(libraryDependencies ++= common ++ tests)
   .dependsOn(sdk % "compile->compile;test->test")
+
+// Rholang implementation
+lazy val legacy = (project in file("legacy"))
+  .settings(settingsScala2*)
+  .settings(bnfcSettings*)
+  .settings(libraryDependencies ++= common ++ tests)
+  .dependsOn(sdk % "compile->compile;test->test", rholang)
