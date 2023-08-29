@@ -1,9 +1,9 @@
 package io.rhonix.rholang.parmanager
 
 import cats.Eval
-import coop.rchain.models.rholangn._
-import coop.rchain.models.rholangn.parmanager.Constants._
-import coop.rchain.models.rholangn.parmanager.primitive.PrimitiveWriter
+import io.rhonix.rholang._
+import io.rhonix.rholang.parmanager.Constants._
+import io.rhonix.rholang.parmanager.primitive.PrimitiveWriter
 import cats.syntax.all._
 
 private[parmanager] object RhoHash {

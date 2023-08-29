@@ -3,7 +3,7 @@ package io.rhonix.rholang.parmanager
 import cats.Eval
 import cats.syntax.all._
 import com.google.protobuf.CodedOutputStream
-import coop.rchain.models.rholangn.{RhoTypeN, _}
+import io.rhonix.rholang.{RhoTypeN, _}
 
 import scala.annotation.unused
 

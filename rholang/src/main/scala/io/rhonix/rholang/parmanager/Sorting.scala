@@ -1,6 +1,6 @@
 package io.rhonix.rholang.parmanager
 
-import coop.rchain.models.rholangn._
+import io.rhonix.rholang._
 
 import java.util
 import scala.math.Ordered.orderingToOrdered

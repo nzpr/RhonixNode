@@ -1,7 +1,7 @@
 package io.rhonix.rholang
 
 import cats.Eval
-import coop.rchain.models.rholangn.parmanager.Manager._
+import io.rhonix.rholang.parmanager.Manager._
 
 /** Base trait for Rholang elements in the Reducer */
 sealed trait RhoTypeN {

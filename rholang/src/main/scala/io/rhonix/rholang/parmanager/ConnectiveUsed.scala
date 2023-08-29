@@ -1,7 +1,7 @@
 package io.rhonix.rholang.parmanager
 
 import cats.Eval
-import coop.rchain.models.rholangn._
+import io.rhonix.rholang._
 import cats.syntax.all._
 
 private[parmanager] object ConnectiveUsed {

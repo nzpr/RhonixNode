@@ -2,8 +2,8 @@ package io.rhonix.rholang.parmanager
 
 import cats.Applicative
 import cats.syntax.all._
-import coop.rchain.models.rholangn.RhoTypeN
-import coop.rchain.models.rholangn.parmanager.primitive.PrimitiveWriter
+import io.rhonix.rholang.RhoTypeN
+import io.rhonix.rholang.parmanager.primitive.PrimitiveWriter
 
 object RhoRecWriter {
   def apply[F[_]: Applicative](
