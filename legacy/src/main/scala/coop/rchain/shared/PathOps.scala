@@ -5,6 +5,7 @@ import cats.syntax.all.*
 
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 
 object PathOps {
 
@@ -60,7 +61,7 @@ object PathOps {
         Sync[F].delay(
           Files
             .walk(path)
-            .sorted(Comparator.reverseOrder())
+            .sorted(Comparator.reverseOrder[Path]())
             .iterator()
             .asScala
             .toList,
