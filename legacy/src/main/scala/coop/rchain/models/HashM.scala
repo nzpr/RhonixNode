@@ -4,8 +4,6 @@ import cats.Contravariant
 import cats.effect.Sync
 import cats.syntax.all._
 import com.google.protobuf.ByteString
-import coop.rchain.casper.protocol._
-import coop.rchain.casper.protocol.deploy.v1
 import coop.rchain.crypto.hash.Blake2b512Random
 import coop.rchain.crypto.signatures.Signed
 import coop.rchain.models.Expr.ExprInstance.{GBigInt, GInt}
@@ -146,38 +144,38 @@ object HashM extends HashMDerivation {
 
   }
 
-  implicit val BlockInfoHash                  = gen[BlockInfo]
-  implicit val LightBlockInfoHash             = gen[LightBlockInfo]
-  implicit val BondInfo                       = gen[BondInfo]
-  implicit val DeployInfo                     = gen[DeployInfo]
-  implicit val ContinuationsWithBlockInfoHash = gen[ContinuationsWithBlockInfo]
-  implicit val DataWithBlockInfoHash          = gen[DataWithBlockInfo]
-  implicit val WaitingContinuationInfoHash    = gen[WaitingContinuationInfo]
-  implicit val BlockQueryByHeightHash         = gen[BlocksQueryByHeight]
-  implicit val Status                         = gen[Status]
-
-  implicit val FinalizedFringeHash       = gen[FinalizedFringeProto]
-  implicit val BlockMessageHash          = gen[BlockMessageProto]
-  implicit val BlockMetadataInternalHash = gen[BlockMetadataProto]
-  implicit val BodyHash                  = gen[RholangStateProto]
-  implicit val BondHash                  = gen[BondProto]
-  implicit val DeployDataHash            = gen[DeployDataProto]
-  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
-  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
-  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
-  implicit val bindPattern               = gen[BindPattern]
-  implicit val parWithRandom             = gen[ParWithRandom]
+//  implicit val BlockInfoHash                  = gen[BlockInfo]
+//  implicit val LightBlockInfoHash             = gen[LightBlockInfo]
+//  implicit val BondInfo                       = gen[BondInfo]
+//  implicit val DeployInfo                     = gen[DeployInfo]
+//  implicit val ContinuationsWithBlockInfoHash = gen[ContinuationsWithBlockInfo]
+//  implicit val DataWithBlockInfoHash          = gen[DataWithBlockInfo]
+//  implicit val WaitingContinuationInfoHash    = gen[WaitingContinuationInfo]
+//  implicit val BlockQueryByHeightHash         = gen[BlocksQueryByHeight]
+//  implicit val Status                         = gen[Status]
+//
+//  implicit val FinalizedFringeHash       = gen[FinalizedFringeProto]
+//  implicit val BlockMessageHash          = gen[BlockMessageProto]
+//  implicit val BlockMetadataInternalHash = gen[BlockMetadataProto]
+//  implicit val BodyHash                  = gen[RholangStateProto]
+//  implicit val BondHash                  = gen[BondProto]
+//  implicit val DeployDataHash            = gen[DeployDataProto]
+//  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
+//  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
+//  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
+  implicit val bindPattern   = gen[BindPattern]
+  implicit val parWithRandom = gen[ParWithRandom]
 
   implicit val PCostHash              = gen[PCost]
   implicit val TaggedContinuationHash = gen[TaggedContinuation]
 
   // deploy service V1
-  implicit val ContinuationAtNamePayloadV2Hash  = gen[v1.ContinuationAtNamePayload]
-  implicit val BlockResponseV2Hash              = gen[v1.BlockResponse]
-  implicit val BlockInfoResponseV2Hash          = gen[v1.BlockInfoResponse]
-  implicit val ContinuationAtNameResponseV2Hash = gen[v1.ContinuationAtNameResponse]
-  implicit val FindDeployResponseV2Hash         = gen[v1.FindDeployResponse]
-  implicit val LastFinalizedBlockResponseV2Hash = gen[v1.LastFinalizedBlockResponse]
+//  implicit val ContinuationAtNamePayloadV2Hash  = gen[v1.ContinuationAtNamePayload]
+//  implicit val BlockResponseV2Hash              = gen[v1.BlockResponse]
+//  implicit val BlockInfoResponseV2Hash          = gen[v1.BlockInfoResponse]
+//  implicit val ContinuationAtNameResponseV2Hash = gen[v1.ContinuationAtNameResponse]
+//  implicit val FindDeployResponseV2Hash         = gen[v1.FindDeployResponse]
+//  implicit val LastFinalizedBlockResponseV2Hash = gen[v1.LastFinalizedBlockResponse]
 }
 
 trait HashMDerivation {
