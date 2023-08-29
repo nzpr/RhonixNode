@@ -93,7 +93,7 @@ object Dependencies {
     "io.github.liquibase4s" %% "liquibase4s-cats-effect" % "1.0.0",
   )
 
-  val common = Seq(catsCore, catsEffect, fs2Core)
+  val common = Seq(catsCore, catsEffect, fs2Core, kindProjector)
 
   val diagnostics = Seq(kamon, kamonStatus, kamonInfluxDbReporter, kamonZipkinReporter)
 
