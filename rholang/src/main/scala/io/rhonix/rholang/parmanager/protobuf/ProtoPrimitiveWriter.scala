@@ -2,7 +2,7 @@ package io.rhonix.rholang.parmanager.protobuf
 
 import cats.Eval
 import com.google.protobuf.CodedOutputStream
-import coop.rchain.models.rholangn.parmanager.primitive.PrimitiveWriter
+import io.rhonix.rholang.parmanager.primitive.PrimitiveWriter
 
 /** Wrapper for protobuf serialization of primitive types. */
 object ProtoPrimitiveWriter {

@@ -1,6 +1,6 @@
 package io.rhonix.rholang.parmanager.blake2
 
-import coop.rchain.models.rholangn.parmanager.Constants.hashSize
+import io.rhonix.rholang.parmanager.Constants.hashSize
 import org.bouncycastle.crypto.digests.Blake2bDigest
 
 object Blake2Hash {

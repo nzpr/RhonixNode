@@ -2,10 +2,10 @@ package io.rhonix.rholang.parmanager
 
 import cats.Eval
 import com.google.protobuf.CodedOutputStream
-import coop.rchain.models.rholangn._
-import coop.rchain.models.rholangn.parmanager.Constants.hashSize
-import coop.rchain.models.rholangn.parmanager.blake2.Blake2Hash
-import coop.rchain.models.rholangn.parmanager.protobuf.{ProtoCodec, ProtoPrimitiveReader, ProtoPrimitiveWriter}
+import io.rhonix.rholang._
+import io.rhonix.rholang.parmanager.Constants.hashSize
+import io.rhonix.rholang.parmanager.blake2.Blake2Hash
+import io.rhonix.rholang.parmanager.protobuf.{ProtoCodec, ProtoPrimitiveReader, ProtoPrimitiveWriter}
 
 import java.io.InputStream
 

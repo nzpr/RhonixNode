@@ -2,7 +2,7 @@ package io.rhonix.rholang.parmanager.protobuf
 
 import cats.Eval
 import com.google.protobuf.CodedInputStream
-import coop.rchain.models.rholangn.parmanager.primitive.PrimitiveReader
+import io.rhonix.rholang.parmanager.primitive.PrimitiveReader
 
 import java.io.InputStream
 

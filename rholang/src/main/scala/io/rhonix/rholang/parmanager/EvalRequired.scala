@@ -1,6 +1,6 @@
 package io.rhonix.rholang.parmanager
 
-import coop.rchain.models.rholangn._
+import io.rhonix.rholang._
 
 private[parmanager] object EvalRequired {
   private def eReq(p: RhoTypeN): Boolean                               = p.evalRequired
