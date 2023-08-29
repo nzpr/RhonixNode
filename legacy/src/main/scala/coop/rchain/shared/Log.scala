@@ -3,6 +3,7 @@ package coop.rchain.shared
 import cats.*
 import cats.effect.Sync
 import cats.syntax.all.*
+import com.typesafe.scalalogging.Logger
 import coop.rchain.catscontrib.effect.implicits.*
 
 import scala.language.experimental.macros
