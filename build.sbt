@@ -143,12 +143,26 @@ lazy val sim = (project in file("sim"))
 lazy val rholang = (project in file("rholang"))
   .settings(settingsScala2*)
   .settings(bnfcSettings*)
-  .settings(libraryDependencies ++= common ++ tests)
+  .settings(libraryDependencies ++= common ++ tests :+ protobuf :+ bouncyProvCastle)
+  // TODO Matching the rholang object should be always exhaustive. Remove when done.
+  .settings(scalacOptions ++= Seq("-Xlint:-strict-unsealed-patmat", "-Xnon-strict-patmat-analysis"))
   .dependsOn(sdk % "compile->compile;test->test")
 
 // Rholang implementation
 lazy val legacy = (project in file("legacy"))
   .settings(settingsScala2*)
-  .settings(bnfcSettings*)
-  .settings(libraryDependencies ++= common ++ tests)
-  .dependsOn(sdk % "compile->compile;test->test", rholang)
+  .settings(
+    scalacOptions ~= { options =>
+      options.filterNot(Set("-Xfatal-warnings", "-Ywarn-unused:imports")) ++ Seq(
+        "-Xlint:-strict-unsealed-patmat",
+        "-Xnon-strict-patmat-analysis",
+        "-Wconf:cat=deprecation:ws", // suppress deprecation warnings
+      )
+    },
+    Compile / compile / wartremoverErrors ~= {
+      _.filterNot(Seq(Wart.SeqApply, Wart.Throw, Wart.Var, Wart.SeqUpdated).contains)
+    },
+    libraryDependencies ++= common ++ tests ++ legacyLibs,
+    resolvers += "jitpack" at "https://jitpack.io",
+  )
+  .dependsOn(sdk, rholang) // depends on new rholang implementation
