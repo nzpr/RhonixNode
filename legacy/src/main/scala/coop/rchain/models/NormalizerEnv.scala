@@ -1,11 +1,20 @@
 package coop.rchain.models
 
 import com.google.protobuf.ByteString
-import coop.rchain.casper.protocol.DeployData
 import coop.rchain.crypto.PublicKey
 import coop.rchain.crypto.signatures.Signed
 
 import scala.annotation.implicitNotFound
+final case class DeployData(
+  term: String,
+  timestamp: Long,
+  phloPrice: Long,
+  phloLimit: Long,
+  validAfterBlockNumber: Long,
+  shardId: String,
+) {
+  def totalPhloCharge = phloLimit * phloPrice
+}
 
 /** TODO: Check why environment is needed in normalizer? It's used only in reducer. */
 final class NormalizerEnv[Env](env: Env) {
