@@ -1,4 +1,4 @@
-package coop.rchain.models
+package coop.rchain
 
 import coop.rchain.models.ByteStringSyntax
 import coop.rchain.models.ByteArraySyntax
