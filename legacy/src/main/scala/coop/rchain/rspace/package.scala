@@ -1,4 +1,4 @@
-package coop.rchain.rspace
+package coop.rchain
 
 import coop.rchain.metrics.Metrics
 import coop.rchain.rspace.history.syntax.HistoryReaderSyntax
