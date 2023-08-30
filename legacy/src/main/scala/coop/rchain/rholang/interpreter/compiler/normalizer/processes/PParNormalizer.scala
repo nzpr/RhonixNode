@@ -3,7 +3,7 @@ package coop.rchain.rholang.interpreter.compiler.normalizer.processes
 import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.PPar
+import io.rhonix.rholang.ast.rholang.Absyn.PPar
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.{ProcVisitInputs, ProcVisitOutputs}
 

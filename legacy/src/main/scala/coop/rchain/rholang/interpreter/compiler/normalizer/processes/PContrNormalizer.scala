@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{Name, PContr}
+import io.rhonix.rholang.ast.rholang.Absyn.{Name, PContr}
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.compiler.normalizer.{NameNormalizeMatcher, RemainderNormalizeMatcher}
 

@@ -3,7 +3,7 @@ package coop.rchain.rholang.interpreter.compiler.normalizer.processes
 import cats.effect.Sync
 import cats.syntax.all._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 import coop.rchain.rholang.interpreter.compiler.{ProcVisitInputs, ProcVisitOutputs}
 
 object PSimpleTypeNormalizer {

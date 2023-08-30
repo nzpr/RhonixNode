@@ -5,7 +5,7 @@ import cats.syntax.all._
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
 import coop.rchain.models.{Par, Var}
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{KeyValuePair => AbsynKeyValuePair, _}
+import io.rhonix.rholang.ast.rholang.Absyn.{KeyValuePair => AbsynKeyValuePair, _}
 import coop.rchain.rholang.interpreter.compiler._
 
 import scala.jdk.CollectionConverters._

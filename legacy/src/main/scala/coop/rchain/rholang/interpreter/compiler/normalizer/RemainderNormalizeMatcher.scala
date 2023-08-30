@@ -6,7 +6,7 @@ import coop.rchain.models.Var
 import coop.rchain.models.Var.VarInstance.FreeVar
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.errors.UnexpectedReuseOfProcContextFree
 

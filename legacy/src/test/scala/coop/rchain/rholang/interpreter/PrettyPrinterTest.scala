@@ -22,7 +22,7 @@ import coop.rchain.rholang.interpreter.compiler.normalizer.{
   GroundNormalizeMatcher,
   NameNormalizeMatcher,
 }
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 import cats.Eval
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec

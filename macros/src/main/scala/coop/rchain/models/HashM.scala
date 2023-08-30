@@ -58,7 +58,7 @@ object HashMDerivation {
 
   // copied and adapted from scala.util.hashing.MurmurHash3,
   // which is used in Scala's case class hash code implementation
-  @SuppressWarnings(Array("org.wartremover.warts.Var"))
+  @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.SeqApply"))
   private def productHash(prefix: String, elements: Seq[Int]): Int = {
     val arr = elements.size
     // Case objects have the hashCode inlined directly into the

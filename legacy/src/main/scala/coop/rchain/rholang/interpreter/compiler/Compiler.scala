@@ -7,8 +7,8 @@ import coop.rchain.models.Par
 import coop.rchain.models.rholang.sorter.Sortable
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.Proc
-import io.rhonix.rholang.ast.rholang_mercury.{parser, Yylex}
+import io.rhonix.rholang.ast.rholang.Absyn.Proc
+import io.rhonix.rholang.ast.rholang.{parser, Yylex}
 import coop.rchain.rholang.interpreter.errors._
 
 import java.io.{Reader, StringReader}

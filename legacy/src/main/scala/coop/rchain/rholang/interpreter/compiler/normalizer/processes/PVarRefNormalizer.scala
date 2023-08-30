@@ -3,7 +3,7 @@ package coop.rchain.rholang.interpreter.compiler.normalizer.processes
 import cats.effect.Sync
 import cats.syntax.all._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{PVarRef, VarRefKindName, VarRefKindProc}
+import io.rhonix.rholang.ast.rholang.Absyn.{PVarRef, VarRefKindName, VarRefKindProc}
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.errors.{UnboundVariableRef, UnexpectedNameContext, UnexpectedProcContext}
 

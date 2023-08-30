@@ -5,7 +5,7 @@ import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{Name, NameQuote, NameVar, NameWildcard}
+import io.rhonix.rholang.ast.rholang.Absyn.{Name, NameQuote, NameVar, NameWildcard}
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.errors.{UnexpectedNameContext, UnexpectedReuseOfNameContextFree}
 
