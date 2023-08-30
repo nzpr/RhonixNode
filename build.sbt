@@ -148,9 +148,11 @@ lazy val rholang = (project in file("rholang"))
   .settings(scalacOptions ++= Seq("-Xlint:-strict-unsealed-patmat", "-Xnon-strict-patmat-analysis"))
   .dependsOn(sdk % "compile->compile;test->test")
 
+import protocbridge.Target
 // Legacy implementation (rholang + rspace)
 lazy val legacy = (project in file("legacy"))
   .settings(settingsScala2*)
+  .enablePlugins(Fs2Grpc)
   .settings(
     scalacOptions ~= { options =>
       options.filterNot(Set("-Xfatal-warnings", "-Ywarn-unused:imports")) ++ Seq(
@@ -162,6 +164,12 @@ lazy val legacy = (project in file("legacy"))
     Compile / compile / wartremoverErrors ~= {
       _.filterNot(Seq(Wart.SeqApply, Wart.Throw, Wart.Var, Wart.SeqUpdated).contains)
     },
+    scalapbCodeGenerators := Seq(
+      new Target(
+        gen(flatPackage = true)._1,
+        (Compile / sourceManaged).value,
+        gen(flatPackage = true)._2
+      )),
     libraryDependencies ++= common ++ tests ++ legacyLibs,
     resolvers += ("jitpack" at "https://jitpack.io"),
   )
