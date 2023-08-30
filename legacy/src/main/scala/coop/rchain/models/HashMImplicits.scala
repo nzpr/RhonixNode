@@ -66,16 +66,16 @@ object HashMImplicits {
 
   }
 
-  implicit val Env: HashM[Map[String, Par]] = opaqueHash
-  implicit val ParHash: HashM[Par]          = hashMGen[Par]
-  implicit val ExprHash                     = hashMGen[Expr]
-  implicit val VarHash                      = hashMGen[Var]
-  implicit val SendHash                     = hashMGen[Send]
-  implicit val ReceiveHash                  = hashMGen[Receive]
-  implicit val ReceiveBindHash              = hashMGen[ReceiveBind]
-  implicit val NewHash                      = hashMGen[New]
-  implicit val MatchHash                    = hashMGen[Match]
-  implicit def SignedHash[A: HashM]         = new HashM[Signed[A]] {
+  implicit val EnvHash: HashM[Map[String, Par]] = opaqueHash
+  implicit val ParHash: HashM[Par]              = hashMGen[Par]
+  implicit val ExprHash                         = hashMGen[Expr]
+  implicit val VarHash                          = hashMGen[Var]
+  implicit val SendHash                         = hashMGen[Send]
+  implicit val ReceiveHash                      = hashMGen[Receive]
+  implicit val ReceiveBindHash                  = hashMGen[ReceiveBind]
+  implicit val NewHash                          = hashMGen[New]
+  implicit val MatchHash                        = hashMGen[Match]
+  implicit def SignedHash[A: HashM]             = new HashM[Signed[A]] {
     override def hash[F[_]: Sync](value: Signed[A]): F[Int] =
       HashM[A]
         .hash(value.data)
@@ -134,8 +134,8 @@ object HashMImplicits {
 //  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
 //  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
 //  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
-  implicit val bindPattern   = hashMGen[BindPattern]
-  implicit val parWithRandom = hashMGen[ParWithRandom]
+  implicit val bindPatternHash   = hashMGen[BindPattern]
+  implicit val parWithRandomHash = hashMGen[ParWithRandom]
 
   implicit val PCostHash              = hashMGen[PCost]
   implicit val TaggedContinuationHash = hashMGen[TaggedContinuation]
