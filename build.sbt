@@ -159,6 +159,7 @@ lazy val legacy = (project in file("legacy"))
         "-Xlint:-strict-unsealed-patmat",
         "-Xnon-strict-patmat-analysis",
         "-Wconf:cat=deprecation:ws", // suppress deprecation warnings
+        "-Xlint:-missing-interpolator" // Disable false positive strings containing ${...}
       )
     },
     Compile / compile / wartremoverErrors ~= {
