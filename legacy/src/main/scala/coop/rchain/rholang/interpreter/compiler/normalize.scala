@@ -3,8 +3,8 @@ package coop.rchain.rholang.interpreter.compiler
 import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models._
-import coop.rchain.models.rholangn._
-import coop.rchain.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang._
+import io.rhonix.rholang.ast.rholang_mercury.Absyn._
 import coop.rchain.rholang.interpreter.compiler.normalizer.processes._
 import coop.rchain.rholang.interpreter.errors._
 
@@ -17,38 +17,37 @@ object ProcNormalizeMatcher {
   /**
     * Rholang normalizer entry point
     */
-  def normalizeMatch[F[_]: Sync](p: Proc, input: ProcVisitInputs)(
-      implicit env: Map[String, Par]
+  def normalizeMatch[F[_]: Sync](p: Proc, input: ProcVisitInputs)(implicit
+    env: Map[String, Par],
   ): F[ProcVisitOutputs] = Sync[F].defer {
     def unaryExp(
-        subProc: Proc,
-        input: ProcVisitInputs,
-        constructor: ParN => ExprN
+      subProc: Proc,
+      input: ProcVisitInputs,
+      constructor: ParN => ExprN,
     ): F[ProcVisitOutputs] =
       normalizeMatch[F](subProc, input.copy(par = NilN))
-        .map(
-          subResult =>
-            ProcVisitOutputs(
-              ParN.combine(input.par, constructor(subResult.par)),
-              subResult.freeMap
-            )
+        .map(subResult =>
+          ProcVisitOutputs(
+            ParN.combine(input.par, constructor(subResult.par)),
+            subResult.freeMap,
+          ),
         )
 
     def binaryExp[T](
-        subProcLeft: Proc,
-        subProcRight: Proc,
-        input: ProcVisitInputs,
-        constructor: (ParN, ParN) => ExprN
+      subProcLeft: Proc,
+      subProcRight: Proc,
+      input: ProcVisitInputs,
+      constructor: (ParN, ParN) => ExprN,
     ): F[ProcVisitOutputs] =
       for {
-        leftResult <- normalizeMatch[F](subProcLeft, input.copy(par = NilN))
+        leftResult  <- normalizeMatch[F](subProcLeft, input.copy(par = NilN))
         rightResult <- normalizeMatch[F](
-                        subProcRight,
-                        input.copy(par = NilN, freeMap = leftResult.freeMap)
-                      )
+                         subProcRight,
+                         input.copy(par = NilN, freeMap = leftResult.freeMap),
+                       )
       } yield ProcVisitOutputs(
         ParN.combine(input.par, constructor(leftResult.par, rightResult.par)),
-        rightResult.freeMap
+        rightResult.freeMap,
       )
 
     p match {
@@ -140,7 +139,7 @@ object ProcNormalizeMatcher {
       case p: PMatch =>
         PMatchNormalizer.normalize(p, input)
 
-      case p: PIf =>
+      case p: PIf     =>
         PIfNormalizer
           .normalize(p.proc_1, p.proc_2, new PNil(), input.copy(par = NilN))
           .map(n => n.copy(par = ParN.combine(n.par, input.par)))
@@ -151,7 +150,7 @@ object ProcNormalizeMatcher {
 
       case _ =>
         Sync[F].raiseError(
-          UnrecognizedNormalizerError("Compilation of construct not yet supported.")
+          UnrecognizedNormalizerError("Compilation of construct not yet supported."),
         )
     }
   }
@@ -166,9 +165,9 @@ object ProcNormalizeMatcher {
   * @param knownFree
   */
 final case class ProcVisitInputs(
-    par: ParN,
-    boundMapChain: BoundMapChain[VarSort],
-    freeMap: FreeMap[VarSort]
+  par: ParN,
+  boundMapChain: BoundMapChain[VarSort],
+  freeMap: FreeMap[VarSort],
 )
 // Returns the update Par and an updated map of free variables.
 final case class ProcVisitOutputs(par: ParN, freeMap: FreeMap[VarSort])
@@ -177,7 +176,7 @@ final case class NameVisitInputs(boundMapChain: BoundMapChain[VarSort], freeMap:
 final case class NameVisitOutputs(par: ParN, freeMap: FreeMap[VarSort])
 
 final case class CollectVisitInputs(
-    boundMapChain: BoundMapChain[VarSort],
-    freeMap: FreeMap[VarSort]
+  boundMapChain: BoundMapChain[VarSort],
+  freeMap: FreeMap[VarSort],
 )
 final case class CollectVisitOutputs(expr: ExprN, freeMap: FreeMap[VarSort])

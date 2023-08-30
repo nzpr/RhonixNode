@@ -3,23 +3,20 @@ package coop.rchain.rholang.interpreter.compiler.normalizer.processes
 import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
-import coop.rchain.models.rholangn.Bindings._
-import coop.rchain.models.rholangn._
-import coop.rchain.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.Bindings._
+import io.rhonix.rholang._
+import io.rhonix.rholang.ast.rholang_mercury.Absyn._
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler._
-import coop.rchain.rholang.interpreter.compiler.normalizer.{
-  NameNormalizeMatcher,
-  RemainderNormalizeMatcher
-}
+import coop.rchain.rholang.interpreter.compiler.normalizer.{NameNormalizeMatcher, RemainderNormalizeMatcher}
 
 import java.util.UUID
 import scala.jdk.CollectionConverters._
 
 object PLetNormalizer {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-  def normalize[F[_]: Sync](p: PLet, input: ProcVisitInputs)(
-      implicit env: Map[String, Par]
+  def normalize[F[_]: Sync](p: PLet, input: ProcVisitInputs)(implicit
+    env: Map[String, Par],
   ): F[ProcVisitOutputs] =
     p.decls_ match {
 
@@ -46,9 +43,8 @@ object PLetNormalizer {
          */
         val variableNames = List.fill(listNames.size)(UUID.randomUUID().toString)
 
-        val psends = variableNames.zip(listProcs).map {
-          case (variableName, listProc) =>
-            new PSend(new NameVar(variableName), new SendSingle(), listProc)
+        val psends = variableNames.zip(listProcs).map { case (variableName, listProc) =>
+          new PSend(new NameVar(variableName), new SendSingle(), listProc)
         }
 
         val pinput = {
@@ -56,24 +52,23 @@ object PLetNormalizer {
           variableNames
             .zip(listNames)
             .zip(listNameRemainders)
-            .map {
-              case ((variableName, listName), nameRemainder) =>
-                new LinearBindImpl(
-                  listName,
-                  nameRemainder,
-                  new SimpleSource(new NameVar(variableName))
-                )
+            .map { case ((variableName, listName), nameRemainder) =>
+              new LinearBindImpl(
+                listName,
+                nameRemainder,
+                new SimpleSource(new NameVar(variableName)),
+              )
             }
             .foreach(listLinearBind.add)
-          val listReceipt = new ListReceipt()
+          val listReceipt    = new ListReceipt()
           listReceipt.add(new ReceiptLinear(new LinearSimple(listLinearBind)))
           new PInput(listReceipt, p.proc_)
         }
 
         val ppar = {
           val procs = psends :+ pinput
-          procs.drop(2).foldLeft(new PPar(procs.head, procs(1))) {
-            case (ppar, proc) => new PPar(ppar, proc)
+          procs.drop(2).foldLeft(new PPar(procs.head, procs(1))) { case (ppar, proc) =>
+            new PPar(ppar, proc)
           }
         }
 
@@ -95,12 +90,12 @@ object PLetNormalizer {
       the process (value) "1" is quoted and bound to "x" as a name. There is no way to perform an AST transformation
       of sequential let into a match process and still preserve these semantics, so we have to do an ADT transformation.
        */
-      case _ =>
+      case _                            =>
         val newContinuation =
           p.decls_ match {
-            case _: EmptyDeclImpl => p.proc_
+            case _: EmptyDeclImpl                 => p.proc_
             case linearDeclsImpl: LinearDeclsImpl =>
-              val newDecl =
+              val newDecl  =
                 linearDeclsImpl.listlineardecl_.asScala.head match {
                   case impl: LinearDeclImpl => impl.decl_
                 }
@@ -117,64 +112,57 @@ object PLetNormalizer {
           }
 
         def listProcToEList(
-            listProc: List[Proc],
-            knownFree: FreeMap[VarSort]
+          listProc: List[Proc],
+          knownFree: FreeMap[VarSort],
         ): F[ProcVisitOutputs] =
           listProc
-            .foldM((Vector.empty[ParN], knownFree)) {
-              case ((vectorPar, knownFree), proc) =>
-                ProcNormalizeMatcher
-                  .normalizeMatch[F](
-                    proc,
-                    ProcVisitInputs(NilN, input.boundMapChain, knownFree)
-                  )
-                  .map {
-                    case ProcVisitOutputs(par, updatedKnownFree) =>
-                      (
-                        par +: vectorPar,
-                        updatedKnownFree
-                      )
-                  }
-            }
-            .map {
-              case (vectorPar, knownFree) =>
-                ProcVisitOutputs(
-                  EListN(vectorPar.reverse, none),
-                  knownFree
+            .foldM((Vector.empty[ParN], knownFree)) { case ((vectorPar, knownFree), proc) =>
+              ProcNormalizeMatcher
+                .normalizeMatch[F](
+                  proc,
+                  ProcVisitInputs(NilN, input.boundMapChain, knownFree),
                 )
+                .map { case ProcVisitOutputs(par, updatedKnownFree) =>
+                  (
+                    par +: vectorPar,
+                    updatedKnownFree,
+                  )
+                }
+            }
+            .map { case (vectorPar, knownFree) =>
+              ProcVisitOutputs(
+                EListN(vectorPar.reverse, none),
+                knownFree,
+              )
             }
 
         // Largely similar to how consume patterns are processed.
         def listNameToEList(
-            listName: List[Name],
-            nameRemainder: NameRemainder
+          listName: List[Name],
+          nameRemainder: NameRemainder,
         ): F[ProcVisitOutputs] =
           RemainderNormalizeMatcher
-            .normalizeMatchName(nameRemainder, FreeMap.empty[VarSort]) >>= {
-            case (optionalVar, remainderKnownFree) =>
-              listName
-                .foldM((Vector.empty[ParN], remainderKnownFree)) {
-                  case ((vectorPar, knownFree), name) =>
-                    NameNormalizeMatcher
-                      .normalizeMatch[F](
-                        name,
-                        NameVisitInputs(input.boundMapChain.push, knownFree)
-                      )
-                      .map {
-                        case NameVisitOutputs(par, updatedKnownFree) =>
-                          (
-                            par +: vectorPar,
-                            updatedKnownFree
-                          )
-                      }
-                }
-                .map {
-                  case (vectorPar, knownFree) =>
-                    ProcVisitOutputs(
-                      EListN(vectorPar.reverse, optionalVar),
-                      knownFree
+            .normalizeMatchName(nameRemainder, FreeMap.empty[VarSort]) >>= { case (optionalVar, remainderKnownFree) =>
+            listName
+              .foldM((Vector.empty[ParN], remainderKnownFree)) { case ((vectorPar, knownFree), name) =>
+                NameNormalizeMatcher
+                  .normalizeMatch[F](
+                    name,
+                    NameVisitInputs(input.boundMapChain.push, knownFree),
+                  )
+                  .map { case NameVisitOutputs(par, updatedKnownFree) =>
+                    (
+                      par +: vectorPar,
+                      updatedKnownFree,
                     )
-                }
+                  }
+              }
+              .map { case (vectorPar, knownFree) =>
+                ProcVisitOutputs(
+                  EListN(vectorPar.reverse, optionalVar),
+                  knownFree,
+                )
+              }
           }
 
         p.decl_ match {
@@ -188,21 +176,20 @@ object PLetNormalizer {
                       ProcVisitInputs(
                         NilN,
                         input.boundMapChain.absorbFree(patternKnownFree),
-                        valueKnownFree
+                        valueKnownFree,
+                      ),
+                    ).map { case ProcVisitOutputs(continuationPar, continuationKnownFree) =>
+                      val m = MatchN(
+                        target = valueListPar,
+                        cases = Seq(
+                          MatchCaseN(
+                            patternListPar,
+                            continuationPar,
+                            patternKnownFree.countNoWildcards,
+                          ),
+                        ),
                       )
-                    ).map {
-                      case ProcVisitOutputs(continuationPar, continuationKnownFree) =>
-                        val m = MatchN(
-                          target = valueListPar,
-                          cases = Seq(
-                            MatchCaseN(
-                              patternListPar,
-                              continuationPar,
-                              patternKnownFree.countNoWildcards
-                            )
-                          )
-                        )
-                        ProcVisitOutputs(ParN.combine(input.par, m), continuationKnownFree)
+                      ProcVisitOutputs(ParN.combine(input.par, m), continuationKnownFree)
                     }
                 }
             }

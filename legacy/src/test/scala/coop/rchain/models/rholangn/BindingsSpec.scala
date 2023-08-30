@@ -7,7 +7,7 @@ import coop.rchain.models.Var.VarInstance._
 import coop.rchain.models.Var.WildcardMsg
 import coop.rchain.models._
 import coop.rchain.models.rholang.implicits._
-import coop.rchain.models.rholangn.Bindings._
+import io.rhonix.rholang.Bindings._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -44,7 +44,7 @@ class BindingsSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matche
       List(),
       List(),
       List(),
-      AlwaysEqual(BitSet())
+      AlwaysEqual(BitSet()),
     )
     val p2: Par = Par(
       List(),
@@ -55,7 +55,7 @@ class BindingsSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matche
       List(),
       List(),
       List(),
-      AlwaysEqual(BitSet())
+      AlwaysEqual(BitSet()),
     )
     p1.equals(p2) should be(false)
   }
@@ -71,11 +71,11 @@ class BindingsSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matche
     val bind11   = ReceiveBindN(Seq(FreeVarN(41), FreeVarN(42)), NilN, Some(BoundVarN(42)), 2)
     val bind12   = ReceiveBindN(Seq(FreeVarN(42), FreeVarN(41)), NilN, Some(BoundVarN(42)), 2)
     val p1: ParN = ReceiveN(Seq(bind11, bind12), NilN, persistent = true, peek = false, 4)
-    val bind21 =
+    val bind21   =
       ReceiveBind(Seq(EVar(FreeVar(41)), EVar(FreeVar(42))), Par(), Some(BoundVar(42)), 2)
-    val bind22 =
+    val bind22   =
       ReceiveBind(Seq(EVar(FreeVar(42)), EVar(FreeVar(41))), Par(), Some(BoundVar(42)), 2)
-    val p2: Par = Receive(Seq(bind21, bind22), Par(), persistent = true, peek = false, 4)
+    val p2: Par  = Receive(Seq(bind21, bind22), Par(), persistent = true, peek = false, 4)
     toProto(p1) should be(p2)
     fromProto(p2) should be(p1)
   }
@@ -425,8 +425,8 @@ class BindingsSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matche
 
   it should "test ConnAndN" in {
     val p1: ParN = ConnAndN(WildcardN, SendN(NilN, NilN))
-    val p2: Par = Connective(
-      ConnAndBody(ConnectiveBody(Seq(EVar(Wildcard(WildcardMsg())), Send(Par(), Seq(Par())))))
+    val p2: Par  = Connective(
+      ConnAndBody(ConnectiveBody(Seq(EVar(Wildcard(WildcardMsg())), Send(Par(), Seq(Par()))))),
     )
     toProto(p1) should be(p2)
     fromProto(p2) should be(p1)
@@ -434,8 +434,8 @@ class BindingsSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matche
 
   it should "test ConnOrN" in {
     val p1: ParN = ConnOrN(WildcardN, SendN(NilN, NilN))
-    val p2: Par = Connective(
-      ConnOrBody(ConnectiveBody(Seq(EVar(Wildcard(WildcardMsg())), Send(Par(), Seq(Par())))))
+    val p2: Par  = Connective(
+      ConnOrBody(ConnectiveBody(Seq(EVar(Wildcard(WildcardMsg())), Send(Par(), Seq(Par()))))),
     )
     toProto(p1) should be(p2)
     fromProto(p2) should be(p1)

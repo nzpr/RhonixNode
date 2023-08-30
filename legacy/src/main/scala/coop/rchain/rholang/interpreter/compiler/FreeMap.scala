@@ -1,6 +1,6 @@
 package coop.rchain.rholang.interpreter.compiler
 
-import coop.rchain.models.rholangn._
+import io.rhonix.rholang._
 
 /**
   * A structure to keep track of free variables using de Bruijn levels (0 based).
@@ -12,10 +12,10 @@ import coop.rchain.models.rholangn._
   * @tparam T The typing discipline we're enforcing.
   */
 final case class FreeMap[T](
-    nextLevel: Int,
-    levelBindings: Map[String, FreeContext[T]],
-    wildcards: List[SourcePosition],
-    connectives: List[(ConnectiveN, SourcePosition)]
+  nextLevel: Int,
+  levelBindings: Map[String, FreeContext[T]],
+  wildcards: List[SourcePosition],
+  connectives: List[(ConnectiveN, SourcePosition)],
 ) {
 
   def get(name: String): Option[FreeContext[T]] = levelBindings.get(name)
@@ -27,7 +27,7 @@ final case class FreeMap[T](
           nextLevel + 1,
           levelBindings + (name -> FreeContext(nextLevel, typ, sourcePosition)),
           wildcards,
-          connectives
+          connectives,
         )
     }
 
@@ -43,7 +43,7 @@ final case class FreeMap[T](
           (
             accEnv + (name -> FreeContext(level + nextLevel, typ, sourcePosition)),
             if (levelBindings.contains(name)) (name, sourcePosition) :: shadowed
-            else shadowed
+            else shadowed,
           )
       }
 
@@ -52,9 +52,9 @@ final case class FreeMap[T](
         nextLevel + freeMap.nextLevel,
         accEnv,
         wildcards ++ freeMap.wildcards,
-        connectives ++ freeMap.connectives
+        connectives ++ freeMap.connectives,
       ),
-      shadowed
+      shadowed,
     )
   }
 
@@ -62,14 +62,14 @@ final case class FreeMap[T](
     FreeMap(nextLevel, levelBindings, wildcards :+ sourcePosition, connectives)
 
   def addConnective(
-      connective: ConnectiveN,
-      sourcePosition: SourcePosition
+    connective: ConnectiveN,
+    sourcePosition: SourcePosition,
   ): FreeMap[T] =
     FreeMap(
       nextLevel,
       levelBindings,
       wildcards,
-      connectives :+ ((connective, sourcePosition))
+      connectives :+ ((connective, sourcePosition)),
     )
 
   def count: Int = nextLevel + wildcards.length + connectives.length

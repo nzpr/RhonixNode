@@ -1,7 +1,7 @@
 package coop.rchain.rholang
 import cats.Invariant
 import cats.data.NonEmptyList
-import coop.rchain.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang_mercury.Absyn._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Gen, Shrink}
 import org.scalacheck.Shrink._
@@ -19,7 +19,7 @@ object tools {
 
   def javaCollectionToSeq[C <: java.util.Collection[T], T](col: C): Seq[T] = {
     import scala.jdk.CollectionConverters._
-    (col.iterator().asScala).toSeq
+    col.iterator().asScala.toSeq
   }
 
   def streamSingleton[T](v: T): LazyList[T] = v #:: LazyList.empty[T]
@@ -51,12 +51,12 @@ object tools {
     p match {
       case par: PPar =>
         extractFreeVariables(localNames, par.proc_1) ++ extractFreeVariables(localNames, par.proc_2)
-      case v: PVar =>
+      case v: PVar   =>
         v.procvar_ match {
           case vv: ProcVarVar if !localNames.contains(vv.var_) => Set(vv.var_)
           case _                                               => Set.empty[String]
         }
-      case n: PNew =>
+      case n: PNew   =>
         val newNames = extractNames(javaCollectionToSeq[ListNameDecl, NameDecl](n.listnamedecl_))
         extractFreeVariables(localNames ++ newNames, n.proc_)
 
@@ -81,24 +81,24 @@ object ProcGen {
   }
 
   private def pgroundGen(state: State): Gen[Proc] = {
-    val groundIntGen = arbitrary[Long]
-      .map((n: Long) => {
+    val groundIntGen    = arbitrary[Long]
+      .map { (n: Long) =>
         if (n > 0)
           new PGround(new GroundInt(n.toString))
         else new PNeg(new PGround(new GroundInt((-n).toString)))
-      })
-    val groundBoolGen =
+      }
+    val groundBoolGen   =
       Gen.oneOf(new BoolFalse(), new BoolTrue()).map(b => new PGround(new GroundBool(b)))
     val groundStringGen =
       Arbitrary.arbString.arbitrary.map(s => new PGround(new GroundString(stringQuotes(s))))
-    val groundUriGen =
+    val groundUriGen    =
       uriGen.map(s => new PGround(new GroundUri(s)))
 
     Gen.oneOf(
       groundIntGen,
       groundBoolGen,
       groundStringGen,
-      groundUriGen
+      groundUriGen,
     )
   }
 
@@ -111,7 +111,7 @@ object ProcGen {
   private lazy val sendGen: Gen[Send] =
     Gen.oneOf(
       Gen.const(new SendSingle()),
-      Gen.const(new SendMultiple())
+      Gen.const(new SendMultiple()),
     )
 
   private def psendGen(state: State): Gen[PSend] = {
@@ -143,7 +143,7 @@ object ProcGen {
 
     for {
       seqNameDecl <- Gen.nonEmptyListOf(nameDeclGen)
-      names       = extractNames(seqNameDecl)
+      names        = extractNames(seqNameDecl)
       proc        <- procGen(processContextProcs, newState.addNames(names))
     } yield new PNew(seqToJavaCollection[ListNameDecl, NameDecl](seqNameDecl), proc)
   }
@@ -161,17 +161,18 @@ object ProcGen {
   def topLevelGen(height: Int): Gen[Proc] =
     procGen(processContextProcs, State(height))
 
-  private val uriShrinker: Shrink[String] = Shrink { x: String =>
-    {
-      val components = x.split(":").toIndexedSeq
+  private val uriShrinker: Shrink[String] = Shrink {
+    x: String =>
+      {
+        val components = x.split(":").toIndexedSeq
 
-      for {
-        shrinkedComponentSeq <- shrinkContainer[Seq, String]
-                                 .shrink(components)
-                                 .takeWhile(_.nonEmpty)
-        shrinkedComponents <- shrinkedComponentSeq.map(c => shrinkString.shrink(c))
-      } yield mkUri(shrinkedComponents)
-    }
+        for {
+          shrinkedComponentSeq <- shrinkContainer[Seq, String]
+                                    .shrink(components)
+                                    .takeWhile(_.nonEmpty)
+          shrinkedComponents   <- shrinkedComponentSeq.map(c => shrinkString.shrink(c))
+        } yield mkUri(shrinkedComponents)
+      }
   }
 
   private val invariantFunctorShrink = new Invariant[Shrink] {
@@ -179,17 +180,16 @@ object ProcGen {
       Shrink(b => fa.shrink(g(b)).map(f))
   }
 
-  private val groundIntShrinker = invariantFunctorShrink.imap(shrinkIntegral[Long])(
-    i => new GroundInt(i.toString)
-  )(gi => gi.longliteral_.toLong)
+  private val groundIntShrinker =
+    invariantFunctorShrink.imap(shrinkIntegral[Long])(i => new GroundInt(i.toString))(gi => gi.longliteral_.toLong)
 
-  private val groundStringShrinker = invariantFunctorShrink.imap(shrinkString)(
-    s => new GroundString(stringQuotes(s))
-  )(gs => withoutQuotes(gs.stringliteral_))
+  private val groundStringShrinker =
+    invariantFunctorShrink.imap(shrinkString)(s => new GroundString(stringQuotes(s)))(gs =>
+      withoutQuotes(gs.stringliteral_),
+    )
 
-  private val groundUriShrinker = invariantFunctorShrink.imap(uriShrinker)(
-    s => new GroundUri(uriQuotes(s))
-  )(gu => withoutQuotes(gu.uriliteral_))
+  private val groundUriShrinker =
+    invariantFunctorShrink.imap(uriShrinker)(s => new GroundUri(uriQuotes(s)))(gu => withoutQuotes(gu.uriliteral_))
 
   def procShrinker: Shrink[Proc] = Shrink.withLazyList {
     case p: PGround =>
@@ -213,7 +213,7 @@ object ProcGen {
         shrinkContainer[Seq, Proc]
           .shrink(initialProcs)
           .takeWhile(_.nonEmpty)
-          .map(procs => new PSend(p.name_, p.send_, seqToJavaCollection[ListProc, Proc](procs)))
+          .map(procs => new PSend(p.name_, p.send_, seqToJavaCollection[ListProc, Proc](procs))),
       )
 
     case p: PNew =>
@@ -229,9 +229,9 @@ object ProcGen {
       }
 
       LazyList.from(for {
-        newNames     <- shrinkListNameDecl(initialNames)
+        newNames    <- shrinkListNameDecl(initialNames)
         newLocalVars = extractNames(newNames)
-        proc         <- shrink(p.proc_).filter(hasNoFreeVars(newLocalVars, _))
+        proc        <- shrink(p.proc_).filter(hasNoFreeVars(newLocalVars, _))
       } yield new PNew(seqToJavaCollection[ListNameDecl, NameDecl](newNames), proc))
 
     case p: PVar =>

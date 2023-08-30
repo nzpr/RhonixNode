@@ -4,15 +4,15 @@ import cats.effect.Sync
 import coop.rchain.models.Par
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.{ProcVisitInputs, ProcVisitOutputs}
-import coop.rchain.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang_mercury.Absyn._
 
 import java.util.UUID
 import scala.jdk.CollectionConverters._
 
 object PSendSynchNormalizer {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-  def normalize[F[_]: Sync](p: PSendSynch, input: ProcVisitInputs)(
-      implicit env: Map[String, Par]
+  def normalize[F[_]: Sync](p: PSendSynch, input: ProcVisitInputs)(implicit
+    env: Map[String, Par],
   ): F[ProcVisitOutputs] = {
     val identifier = UUID.randomUUID().toString
     val nameVar    = new NameVar(identifier)
@@ -29,7 +29,7 @@ object PSendSynchNormalizer {
 
       val listLinearBind = new ListLinearBind()
       listLinearBind.add(
-        new LinearBindImpl(listName, new NameRemainderEmpty, new SimpleSource(nameVar))
+        new LinearBindImpl(listName, new NameRemainderEmpty, new SimpleSource(nameVar)),
       )
 
       val listReceipt = new ListReceipt()
@@ -40,7 +40,7 @@ object PSendSynchNormalizer {
         p.synchsendcont_ match {
           case _: EmptyCont               => new PNil()
           case nonEmptyCont: NonEmptyCont => nonEmptyCont.proc_
-        }
+        },
       )
     }
 

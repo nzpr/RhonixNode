@@ -5,10 +5,10 @@ import cats.syntax.all._
 import coop.rchain.models.Connective.ConnectiveInstance
 import coop.rchain.models.Par
 import coop.rchain.models.rholang.sorter.Sortable
-import coop.rchain.models.rholangn.Bindings._
-import coop.rchain.models.rholangn._
-import coop.rchain.rholang.ast.rholang_mercury.Absyn.Proc
-import coop.rchain.rholang.ast.rholang_mercury.{parser, Yylex}
+import io.rhonix.rholang.Bindings._
+import io.rhonix.rholang._
+import io.rhonix.rholang.ast.rholang_mercury.Absyn.Proc
+import io.rhonix.rholang.ast.rholang_mercury.{parser, Yylex}
 import coop.rchain.rholang.interpreter.errors._
 
 import java.io.{Reader, StringReader}
@@ -60,27 +60,26 @@ object Compiler {
       for {
         lexer  <- lexer(reader)
         parser <- parser(lexer)
-        proc <- F.delay(parser.pProc()).adaptError {
-                 case ex: SyntaxError =>
-                   ex
-                 case ex: Exception if ex.getMessage.startsWith("Syntax error") =>
-                   SyntaxError(ex.getMessage)
-                 case er: Error
-                     if er.getMessage.startsWith("Unterminated string at EOF, beginning at") =>
-                   LexerError(er.getMessage)
-                 case er: Error if er.getMessage.startsWith("Illegal Character") =>
-                   LexerError(er.getMessage)
-                 case er: Error if er.getMessage.startsWith("Unterminated string on line") =>
-                   LexerError(er.getMessage)
-                 case th: Throwable => UnrecognizedInterpreterError(th)
-               }
+        proc   <- F.delay(parser.pProc()).adaptError {
+                    case ex: SyntaxError                                                                   =>
+                      ex
+                    case ex: Exception if ex.getMessage.startsWith("Syntax error")                         =>
+                      SyntaxError(ex.getMessage)
+                    case er: Error if er.getMessage.startsWith("Unterminated string at EOF, beginning at") =>
+                      LexerError(er.getMessage)
+                    case er: Error if er.getMessage.startsWith("Illegal Character")                        =>
+                      LexerError(er.getMessage)
+                    case er: Error if er.getMessage.startsWith("Unterminated string on line")              =>
+                      LexerError(er.getMessage)
+                    case th: Throwable                                                                     => UnrecognizedInterpreterError(th)
+                  }
       } yield proc
 
     private def normalizeTerm(term: Proc)(implicit normalizerEnv: Map[String, Par]): F[Par] =
       ProcNormalizeMatcher
         .normalizeMatch[F](
           term,
-          ProcVisitInputs(NilN, BoundMapChain.empty, FreeMap.empty)
+          ProcVisitInputs(NilN, BoundMapChain.empty, FreeMap.empty),
         )
         .flatMap { normalizedTerm =>
           if (normalizedTerm.freeMap.count > 0) {
@@ -89,7 +88,7 @@ object Compiler {
                 case (name, FreeContext(_, _, sourcePosition)) => s"$name at $sourcePosition"
               }
               F.raiseError(
-                TopLevelFreeVariablesNotAllowedError(topLevelFreeList.mkString(", "))
+                TopLevelFreeVariablesNotAllowedError(topLevelFreeList.mkString(", ")),
               )
             } else if (normalizedTerm.freeMap.connectives.nonEmpty) {
               def connectiveInstanceToString(conn: ConnectiveN): String = conn match {
@@ -98,10 +97,9 @@ object Compiler {
                 case _: ConnNotN => "~ (negation)"
                 case x           => x.toString
               }
-              val connectives = normalizedTerm.freeMap.connectives
-                .map {
-                  case (connType, sourcePosition) =>
-                    s"${connectiveInstanceToString(connType)} at $sourcePosition"
+              val connectives                                           = normalizedTerm.freeMap.connectives
+                .map { case (connType, sourcePosition) =>
+                  s"${connectiveInstanceToString(connType)} at $sourcePosition"
                 }
                 .mkString(", ")
               F.raiseError(TopLevelLogicalConnectivesNotAllowedError(connectives))
@@ -110,7 +108,7 @@ object Compiler {
                 s"_ (wildcard) at $sourcePosition"
               }
               F.raiseError(
-                TopLevelWildcardsNotAllowedError(topLevelWildcardList.mkString(", "))
+                TopLevelWildcardsNotAllowedError(topLevelWildcardList.mkString(", ")),
               )
             }
           } else toProto(normalizedTerm.par).pure[F]
@@ -122,13 +120,13 @@ object Compiler {
       *       constructors.
       */
     private def lexer(fileReader: Reader): F[Yylex] =
-      F.delay(new Yylex(fileReader)).adaptError {
-        case th: Throwable => LexerError("Lexer construction error: " + th.getMessage)
+      F.delay(new Yylex(fileReader)).adaptError { case th: Throwable =>
+        LexerError("Lexer construction error: " + th.getMessage)
       }
 
     private def parser(lexer: Yylex): F[ErrorHandlingParser] =
-      F.delay(new ErrorHandlingParser(lexer, lexer.getSymbolFactory)).adaptError {
-        case th: Throwable => ParserError("Parser construction error: " + th.getMessage)
+      F.delay(new ErrorHandlingParser(lexer, lexer.getSymbolFactory)).adaptError { case th: Throwable =>
+        ParserError("Parser construction error: " + th.getMessage)
       }
   }
 
@@ -153,9 +151,9 @@ class ErrorHandlingParser(s: Yylex, sf: java_cup.runtime.SymbolFactory) extends 
       cur_token match {
         case cs: ComplexSymbol =>
           s"syntax error(${cs.getName}): ${s
-            .yytext()} at ${cs.getLeft.getLine}:${cs.getLeft.getColumn}-${cs.getRight.getLine}:${cs.getRight.getColumn}"
-        case _ => cur_token.toString()
-      }
+              .yytext()} at ${cs.getLeft.getLine}:${cs.getLeft.getColumn}-${cs.getRight.getLine}:${cs.getRight.getColumn}"
+        case _                 => cur_token.toString()
+      },
     )
 
   /**

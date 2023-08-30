@@ -2,7 +2,7 @@ package coop.rchain.models.rholangn
 
 import cats.Eval
 import coop.rchain.catscontrib.effect.implicits.sEval
-import coop.rchain.models.rholangn.parmanager.{Manager, Serialization}
+import io.rhonix.rholang.parmanager.{Manager, Serialization}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -13,16 +13,16 @@ class StackSafetySpec extends AnyFlatSpec with Matchers {
 
   def findMaxRecursionDepth(): Int = {
     def count(i: Int): Int =
-      try {
-        count(i + 1) //apparently, the try-catch is enough for tailrec to not work. Lucky!
-      } catch {
+      try
+        count(i + 1) // apparently, the try-catch is enough for tailrec to not work. Lucky!
+      catch {
         case _: StackOverflowError => i
       }
     println("About to find max recursion depth for this test run")
-    val maxDepth = count(0)
+    val maxDepth           = count(0)
     println(s"Calculated max recursion depth is $maxDepth")
     // Because of OOM errors on CI depth recursion is limited
-    val maxDepthLimited = Math.min(200, maxDepth)
+    val maxDepthLimited    = Math.min(200, maxDepth)
     println(s"Used recursion depth is limited to $maxDepthLimited")
     maxDepthLimited
   }
