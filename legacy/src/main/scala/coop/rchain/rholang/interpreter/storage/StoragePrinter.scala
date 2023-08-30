@@ -3,7 +3,6 @@ package coop.rchain.rholang.interpreter.storage
 import cats.FlatMap
 import cats.effect.Async
 import cats.syntax.all._
-import coop.rchain.casper.protocol.DeployData
 import coop.rchain.crypto.signatures.Signed
 import coop.rchain.models.TaggedContinuation.TaggedCont.ParBody
 import coop.rchain.models._
