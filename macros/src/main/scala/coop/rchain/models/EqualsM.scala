@@ -48,7 +48,7 @@ object EqualM {
 
 }
 
-trait EqualMDerivation {
+object EqualMDerivation {
   import magnolia.*
 
   type Typeclass[T] = EqualM[T]

@@ -8,6 +8,8 @@ import coop.rchain.models.BitSetBytesMapper.bitSetBytesMapper
 import coop.rchain.models.ParSetTypeMapper.parSetESetTypeMapper
 import coop.rchain.models.ParMapTypeMapper.parMapEMapTypeMapper
 import coop.rchain.models.BigIntTypeMapper.bigIntBytesTypeMapper
+import coop.rchain.models.EqualMDerivation.gen
+import coop.rchain.models.EqualMImplicits._
 
 object RhoTypesProto extends _root_.scalapb.GeneratedFileObject {
   lazy val dependencies: Seq[_root_.scalapb.GeneratedFileObject] = Seq(
