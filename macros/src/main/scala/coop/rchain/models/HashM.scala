@@ -87,5 +87,5 @@ object HashMDerivation {
 
   }
 
-  implicit def gen[T]: HashM[T] = macro Magnolia.gen[T]
+  implicit def hashMGen[T]: HashM[T] = macro Magnolia.gen[T]
 }
