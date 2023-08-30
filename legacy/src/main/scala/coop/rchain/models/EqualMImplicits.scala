@@ -11,7 +11,6 @@ import cats.Eval
 import coop.rchain.models.EqualM.*
 import coop.rchain.models.EqualMDerivation.*
 
-
 import scala.Function.tupled
 import scala.collection.immutable.BitSet
 
@@ -107,9 +106,9 @@ object EqualMImplicits {
 //  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
 //  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
 //  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
-  implicit val bindPattern   = eqMGen[BindPattern]
-  implicit val parWithRandom = eqMGen[ParWithRandom]
+  implicit val bindPatternEqual   = eqMGen[BindPattern]
+  implicit val parWithRandomEqual = eqMGen[ParWithRandom]
 
-  implicit val PCostHash              = eqMGen[PCost]
-  implicit val TaggedContinuationHash = eqMGen[TaggedContinuation]
+  implicit val PCostEqual              = eqMGen[PCost]
+  implicit val TaggedContinuationEqual = eqMGen[TaggedContinuation]
 }
