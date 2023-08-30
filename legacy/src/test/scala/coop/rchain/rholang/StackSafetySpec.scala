@@ -21,6 +21,8 @@ import org.scalatest.Assertions
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import coop.rchain.catscontrib.effect.implicits.sEval
+import coop.rchain.models.EqualMImplicits._
+import coop.rchain.models.HashMImplicits._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._

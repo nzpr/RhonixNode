@@ -3,7 +3,7 @@ package coop.rchain.rholang.interpreter.compiler.normalizer.processes
 import cats.effect.Sync
 import cats.syntax.all._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{PVar, ProcVarVar, ProcVarWildcard}
+import io.rhonix.rholang.ast.rholang.Absyn.{PVar, ProcVarVar, ProcVarWildcard}
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.errors.{UnexpectedProcContext, UnexpectedReuseOfProcContextFree}
 

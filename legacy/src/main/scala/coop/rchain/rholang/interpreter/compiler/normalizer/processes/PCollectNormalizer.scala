@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang.ParN
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.PCollect
+import io.rhonix.rholang.ast.rholang.Absyn.PCollect
 import coop.rchain.rholang.interpreter.compiler.normalizer.CollectionNormalizeMatcher
 import coop.rchain.rholang.interpreter.compiler.{CollectVisitInputs, ProcVisitInputs, ProcVisitOutputs}
 

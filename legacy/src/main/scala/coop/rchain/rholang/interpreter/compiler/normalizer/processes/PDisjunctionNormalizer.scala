@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.PDisjunction
+import io.rhonix.rholang.ast.rholang.Absyn.PDisjunction
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.{FreeMap, ProcVisitInputs, ProcVisitOutputs, SourcePosition}
 

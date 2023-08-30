@@ -5,7 +5,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{Case, CaseImpl, PMatch, Proc}
+import io.rhonix.rholang.ast.rholang.Absyn.{Case, CaseImpl, PMatch, Proc}
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.{FreeMap, ProcVisitInputs, ProcVisitOutputs}
 import coop.rchain.rholang.interpreter.errors.UnrecognizedNormalizerError

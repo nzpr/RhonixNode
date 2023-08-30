@@ -34,12 +34,13 @@ object Dependencies {
   val enumeratum        = "com.beachape"               %% "enumeratum"      % "1.7.2"
   val xalan             = "xalan"                       % "xalan"           % "2.7.3"
   val catsMtl           = "org.typelevel"              %% "cats-mtl-core"   % "0.7.1"
-  val catsMtlLaws       = "org.typelevel"              %% "cats-mtl-laws"   % "1.3.0"
+  val catsMtlLaws       = "org.typelevel"              %% "cats-mtl-laws"   % "0.7.1"
   val kalium            = "com.github.rchain"           % "kalium"          % "0.8.1"
   val lightningj        = "org.lightningj"              % "lightningj"      % "0.5.2-Beta"
   val scalacheck        = "org.scalacheck"             %% "scalacheck"      % "1.14.1"
   val scalaLogging      = "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
   val scallop           = "org.rogach"                 %% "scallop"         % "3.3.2"
+  val catsEffectLawsTest = "org.typelevel"             %% "cats-effect-laws"% "3.5.0" % "test"
   val legacyLibs        = Seq(
     magnolia,
     guava,
@@ -57,12 +58,14 @@ object Dependencies {
     enumeratum,
     xalan,
     catsMtl,
+    catsMtlLaws,
     kalium,
     lightningj,
     shapeless,
     scalacheck,
     scalaLogging,
     scallop,
+    catsEffectLawsTest
   )
 
   // Testing frameworks

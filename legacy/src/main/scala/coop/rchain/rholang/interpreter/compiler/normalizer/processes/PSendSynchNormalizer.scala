@@ -4,7 +4,7 @@ import cats.effect.Sync
 import coop.rchain.models.Par
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.{ProcVisitInputs, ProcVisitOutputs}
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 
 import java.util.UUID
 import scala.jdk.CollectionConverters._

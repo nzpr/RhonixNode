@@ -5,7 +5,7 @@ import cats.syntax.all._
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
 import coop.rchain.models.{Par, ReceiveBind}
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.compiler.normalizer.processes.Utils.failOnInvalidConnective

@@ -1,7 +1,7 @@
 package coop.rchain.rholang
 import cats.Invariant
 import cats.data.NonEmptyList
-import io.rhonix.rholang.ast.rholang_mercury.Absyn._
+import io.rhonix.rholang.ast.rholang.Absyn._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Gen, Shrink}
 import org.scalacheck.Shrink._

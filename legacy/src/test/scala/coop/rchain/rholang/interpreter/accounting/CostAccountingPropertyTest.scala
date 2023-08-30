@@ -10,8 +10,8 @@ import coop.rchain.models._
 import coop.rchain.rholang.Resources._
 import coop.rchain.rholang.interpreter.compiler.Compiler
 import coop.rchain.rholang.interpreter.{PrettyPrinter => PP, _}
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{PPar, Proc}
-import io.rhonix.rholang.ast.rholang_mercury.PrettyPrinter
+import io.rhonix.rholang.ast.rholang.Absyn.{PPar, Proc}
+import io.rhonix.rholang.ast.rholang.PrettyPrinter
 import coop.rchain.rholang.syntax._
 import coop.rchain.rholang.{GenTools, ProcGen}
 import coop.rchain.shared.Log

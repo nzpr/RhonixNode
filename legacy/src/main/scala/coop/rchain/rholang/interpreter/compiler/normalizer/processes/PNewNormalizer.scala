@@ -5,7 +5,7 @@ import cats.syntax.all._
 import coop.rchain.models.Par
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{NameDeclSimpl, NameDeclUrn, PNew}
+import io.rhonix.rholang.ast.rholang.Absyn.{NameDeclSimpl, NameDeclUrn, PNew}
 import coop.rchain.rholang.interpreter.compiler.ProcNormalizeMatcher.normalizeMatch
 import coop.rchain.rholang.interpreter.compiler.normalizer.GroundNormalizeMatcher
 import coop.rchain.rholang.interpreter.compiler.{NameSort, ProcVisitInputs, ProcVisitOutputs, SourcePosition}

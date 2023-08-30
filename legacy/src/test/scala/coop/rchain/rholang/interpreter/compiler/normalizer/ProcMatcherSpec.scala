@@ -7,7 +7,7 @@ import coop.rchain.models._
 import coop.rchain.models.rholang.implicits._
 import io.rhonix.rholang.Bindings._
 import io.rhonix.rholang._
-import io.rhonix.rholang.ast.rholang_mercury.Absyn.{Bundle => _, Ground => _, KeyValuePair => _, Send => _, _}
+import io.rhonix.rholang.ast.rholang.Absyn.{Bundle => _, Ground => _, KeyValuePair => _, Send => _, _}
 import coop.rchain.rholang.interpreter.compiler._
 import coop.rchain.rholang.interpreter.errors._
 import org.scalatest._
