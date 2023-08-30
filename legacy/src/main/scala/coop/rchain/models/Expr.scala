@@ -10,6 +10,8 @@ import coop.rchain.models.ParMapTypeMapper.parMapEMapTypeMapper
 import coop.rchain.models.BigIntTypeMapper.bigIntBytesTypeMapper
 import coop.rchain.models.EqualMDerivation.gen
 import coop.rchain.models.EqualMImplicits._
+import coop.rchain.models.HashMDerivation.gen
+import coop.rchain.models.HashMImplicits._
 
 /** Any process may be an operand to an expression.
   * Only processes equivalent to a ground process of compatible type will reduce.
