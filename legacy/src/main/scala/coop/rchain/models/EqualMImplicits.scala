@@ -63,16 +63,16 @@ object EqualMImplicits {
 
   implicit def EvalEqual[A: EqualM]: EqualM[Eval[A]] = by(_.value)
 
-  implicit val ParEqual: EqualM[Par] = gen[Par]
-  implicit val ExprEqual             = gen[Expr]
-  implicit val VarEqual              = gen[Var]
-  implicit val SendEqual             = gen[Send]
-  implicit val ReceiveEqual          = gen[Receive]
-  implicit val ReceiveBindEqual      = gen[ReceiveBind]
-  implicit val NewEqual              = gen[New]
-  implicit val MatchEqual            = gen[Match]
+  implicit val ParEqual: EqualM[Par] = eqMGen[Par]
+  implicit val ExprEqual             = eqMGen[Expr]
+  implicit val VarEqual              = eqMGen[Var]
+  implicit val SendEqual             = eqMGen[Send]
+  implicit val ReceiveEqual          = eqMGen[Receive]
+  implicit val ReceiveBindEqual      = eqMGen[ReceiveBind]
+  implicit val NewEqual              = eqMGen[New]
+  implicit val MatchEqual            = eqMGen[Match]
 
-  implicit val ConnectiveEqual = gen[Connective]
+  implicit val ConnectiveEqual = eqMGen[Connective]
 //  implicit def SignedEqual[A: EqualM] = new EqualM[Signed[A]] {
 //    override def equal[F[_]: Sync](self: Signed[A], other: Signed[A]): F[Boolean] =
 //      if (self.sigAlgorithm == other.sigAlgorithm && self.sig == other.sig)
@@ -80,8 +80,8 @@ object EqualMImplicits {
 //      else Sync[F].pure(false)
 //  }
 
-  implicit val ESetEqual = gen[ESet]
-  implicit val EMapEqual = gen[EMap]
+  implicit val ESetEqual = eqMGen[ESet]
+  implicit val EMapEqual = eqMGen[EMap]
 
   implicit val SortedParHashSetEqual: EqualM[SortedParHashSet] = by(_.sortedPars)
   implicit val SortedParMapEqual: EqualM[SortedParMap]         = by(_.sortedList)
@@ -107,9 +107,9 @@ object EqualMImplicits {
 //  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
 //  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
 //  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
-  implicit val bindPattern   = gen[BindPattern]
-  implicit val parWithRandom = gen[ParWithRandom]
+  implicit val bindPattern   = eqMGen[BindPattern]
+  implicit val parWithRandom = eqMGen[ParWithRandom]
 
-  implicit val PCostHash              = gen[PCost]
-  implicit val TaggedContinuationHash = gen[TaggedContinuation]
+  implicit val PCostHash              = eqMGen[PCost]
+  implicit val TaggedContinuationHash = eqMGen[TaggedContinuation]
 }

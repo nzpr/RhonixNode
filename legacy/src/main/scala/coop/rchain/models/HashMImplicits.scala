@@ -67,14 +67,14 @@ object HashMImplicits {
   }
 
   implicit val Env: HashM[Map[String, Par]] = opaqueHash
-  implicit val ParHash: HashM[Par]          = gen[Par]
-  implicit val ExprHash                     = gen[Expr]
-  implicit val VarHash                      = gen[Var]
-  implicit val SendHash                     = gen[Send]
-  implicit val ReceiveHash                  = gen[Receive]
-  implicit val ReceiveBindHash              = gen[ReceiveBind]
-  implicit val NewHash                      = gen[New]
-  implicit val MatchHash                    = gen[Match]
+  implicit val ParHash: HashM[Par]          = hashMGen[Par]
+  implicit val ExprHash                     = hashMGen[Expr]
+  implicit val VarHash                      = hashMGen[Var]
+  implicit val SendHash                     = hashMGen[Send]
+  implicit val ReceiveHash                  = hashMGen[Receive]
+  implicit val ReceiveBindHash              = hashMGen[ReceiveBind]
+  implicit val NewHash                      = hashMGen[New]
+  implicit val MatchHash                    = hashMGen[Match]
   implicit def SignedHash[A: HashM]         = new HashM[Signed[A]] {
     override def hash[F[_]: Sync](value: Signed[A]): F[Int] =
       HashM[A]
@@ -82,13 +82,13 @@ object HashMImplicits {
         .map(dataHash => Objects.hash(value.sig, value.sigAlgorithm, Int.box(dataHash)))
   }
 
-  implicit val GIntHash    = gen[GInt] // This is only possible to derive here, b/c LongHashM is private
-  implicit val GBigIntHash = gen[GBigInt]
+  implicit val GIntHash    = hashMGen[GInt] // This is only possible to derive here, b/c LongHashM is private
+  implicit val GBigIntHash = hashMGen[GBigInt]
 
-  implicit val ConnectiveHash = gen[Connective]
+  implicit val ConnectiveHash = hashMGen[Connective]
 
-  implicit val ESetHash = gen[ESet]
-  implicit val EMapHash = gen[EMap]
+  implicit val ESetHash = hashMGen[ESet]
+  implicit val EMapHash = hashMGen[EMap]
 
   implicit val SortedParHashSetHash: HashM[SortedParHashSet] = seqHash[Par].contramap(_.sortedPars)
   implicit val SortedParMapHash: HashM[SortedParMap]         = seqHash[(Par, Par)].contramap(_.sortedList)
@@ -134,11 +134,11 @@ object HashMImplicits {
 //  implicit val ProcessedDeployHash       = gen[ProcessedDeployProto]
 //  implicit val ProcessedSystemDeployHash = gen[ProcessedSystemDeployProto]
 //  implicit val ReportConsumeProto        = gen[ReportConsumeProto]
-  implicit val bindPattern   = gen[BindPattern]
-  implicit val parWithRandom = gen[ParWithRandom]
+  implicit val bindPattern   = hashMGen[BindPattern]
+  implicit val parWithRandom = hashMGen[ParWithRandom]
 
-  implicit val PCostHash              = gen[PCost]
-  implicit val TaggedContinuationHash = gen[TaggedContinuation]
+  implicit val PCostHash              = hashMGen[PCost]
+  implicit val TaggedContinuationHash = hashMGen[TaggedContinuation]
 
   // deploy service V1
 //  implicit val ContinuationAtNamePayloadV2Hash  = gen[v1.ContinuationAtNamePayload]

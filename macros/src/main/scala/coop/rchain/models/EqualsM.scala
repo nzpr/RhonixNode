@@ -77,5 +77,5 @@ object EqualMDerivation {
 
   }
 
-  implicit def gen[T]: EqualM[T] = macro Magnolia.gen[T]
+  implicit def eqMGen[T]: EqualM[T] = macro Magnolia.gen[T]
 }
