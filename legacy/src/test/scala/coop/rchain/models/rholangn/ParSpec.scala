@@ -1,6 +1,6 @@
 package coop.rchain.models.rholangn
 
-import coop.rchain.models.rholangn.parmanager.Manager
+import io.rhonix.rholang.parmanager.Manager
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -85,11 +85,11 @@ class ParSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   it should "test New with different data order" in {
     val inj1: Map[String, ParN] =
       Map("rho:rchain:deployId" -> NilN, "rho:rchain:deployerId" -> NilN)
-    val p1 = NewN(1, BoundVarN(0), Seq("rho:io:stdout", "rho:io:stderr"), inj1)
+    val p1                      = NewN(1, BoundVarN(0), Seq("rho:io:stdout", "rho:io:stderr"), inj1)
 
     val inj2: Map[String, ParN] =
       Map("rho:rchain:deployerId" -> NilN, "rho:rchain:deployId" -> NilN)
-    val p2 = NewN(1, BoundVarN(0), Seq("rho:io:stderr", "rho:io:stdout"), inj2)
+    val p2                      = NewN(1, BoundVarN(0), Seq("rho:io:stderr", "rho:io:stdout"), inj2)
     simpleCheck(p1, Some(p2))
   }
 
@@ -164,8 +164,8 @@ class ParSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   }
 
   it should "test EMap with different data order" in {
-    val p1 = EMapN(Seq(NilN    -> EMapN(), EMapN() -> NilN))
-    val p2 = EMapN(Seq(EMapN() -> NilN, NilN       -> EMapN()))
+    val p1 = EMapN(Seq(NilN -> EMapN(), EMapN() -> NilN))
+    val p2 = EMapN(Seq(EMapN() -> NilN, NilN -> EMapN()))
     simpleCheck(p1, Some(p2))
   }
 

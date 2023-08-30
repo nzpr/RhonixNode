@@ -1,6 +1,6 @@
 package coop.rchain.models.rholangn
 
-import coop.rchain.models.rholangn.CollectionSpecTestData._
+import io.rhonix.rholang.CollectionSpecTestData._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -53,9 +53,9 @@ class EListSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers 
 
 class ETupleSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   it should "throw exception during creation tuple with an empty par sequence " in {
-    try {
+    try
       ETupleN(Seq())
-    } catch {
+    catch {
       case ex: Exception => ex shouldBe a[Throwable]
     }
   }
@@ -142,8 +142,8 @@ class ESetSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
 
 class EMapSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   it should "preserve ordering" in {
-    val p1 = EMapN(Seq(NilN   -> GIntN(42), pproc1 -> EMapN()))
-    val p2 = EMapN(Seq(pproc2 -> EMapN(), NilN     -> GIntN(42)))
+    val p1 = EMapN(Seq(NilN -> GIntN(42), pproc1 -> EMapN()))
+    val p2 = EMapN(Seq(pproc2 -> EMapN(), NilN -> GIntN(42)))
     p1.sortedPs should be(p2.sortedPs)
     p1 should be(p2)
   }
@@ -176,9 +176,9 @@ class EMapSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   }
 
   it should "perform union operation" in {
-    val p11 = EMapN(Seq(NilN      -> GIntN(42), pproc1    -> EMapN()))
-    val p12 = EMapN(Seq(GIntN(42) -> GIntN(43), pproc2    -> NilN))
-    val p2  = EMapN(Seq(NilN      -> GIntN(42), GIntN(42) -> GIntN(43), pproc1 -> NilN))
+    val p11 = EMapN(Seq(NilN -> GIntN(42), pproc1 -> EMapN()))
+    val p12 = EMapN(Seq(GIntN(42) -> GIntN(43), pproc2 -> NilN))
+    val p2  = EMapN(Seq(NilN -> GIntN(42), GIntN(42) -> GIntN(43), pproc1 -> NilN))
     p11 ++ p12 should be(p2)
   }
 

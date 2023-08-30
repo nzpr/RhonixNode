@@ -2,22 +2,22 @@ package coop.rchain.rholang.interpreter.compiler.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all._
-import coop.rchain.models.rholangn.Bindings._
-import coop.rchain.models.rholangn._
+import io.rhonix.rholang.Bindings._
+import io.rhonix.rholang._
 import coop.rchain.models.{Par, Var}
-import coop.rchain.rholang.ast.rholang_mercury.Absyn.{KeyValuePair => AbsynKeyValuePair, _}
+import io.rhonix.rholang.ast.rholang_mercury.Absyn.{KeyValuePair => AbsynKeyValuePair, _}
 import coop.rchain.rholang.interpreter.compiler._
 
 import scala.jdk.CollectionConverters._
 
 object CollectionNormalizeMatcher {
-  def normalizeMatch[F[_]: Sync](c: Collection, input: CollectVisitInputs)(
-      implicit env: Map[String, Par]
+  def normalizeMatch[F[_]: Sync](c: Collection, input: CollectVisitInputs)(implicit
+    env: Map[String, Par],
   ): F[CollectVisitOutputs] = {
     def foldMatch(
-        knownFree: FreeMap[VarSort],
-        listproc: List[Proc],
-        constructor: Seq[ParN] => ExprN
+      knownFree: FreeMap[VarSort],
+      listproc: List[Proc],
+      constructor: Seq[ParN] => ExprN,
     ): F[CollectVisitOutputs] = {
       val init = (Vector[ParN](), knownFree)
       listproc
@@ -28,19 +28,18 @@ object CollectionNormalizeMatcher {
               (result.par +: acc._1, result.freeMap)
             }
         }
-        .map {
-          case (ps, resultKnownFree) =>
-            CollectVisitOutputs(
-              constructor(ps.reverse),
-              resultKnownFree
-            )
+        .map { case (ps, resultKnownFree) =>
+          CollectVisitOutputs(
+            constructor(ps.reverse),
+            resultKnownFree,
+          )
         }
     }
 
     def foldMatchMap(
-        knownFree: FreeMap[VarSort],
-        remainder: Option[Var],
-        listProc: List[AbsynKeyValuePair]
+      knownFree: FreeMap[VarSort],
+      remainder: Option[Var],
+      listProc: List[AbsynKeyValuePair],
     ): F[CollectVisitOutputs] = {
       val init = (Seq[(ParN, ParN)](), knownFree)
       listProc
@@ -49,20 +48,20 @@ object CollectionNormalizeMatcher {
             case e: KeyValuePairImpl =>
               for {
                 keyResult <- ProcNormalizeMatcher.normalizeMatch[F](
-                              e.proc_1,
-                              ProcVisitInputs(NilN, input.boundMapChain, acc._2)
-                            )
+                               e.proc_1,
+                               ProcVisitInputs(NilN, input.boundMapChain, acc._2),
+                             )
                 valResult <- ProcNormalizeMatcher.normalizeMatch[F](
-                              e.proc_2,
-                              ProcVisitInputs(
-                                NilN,
-                                input.boundMapChain,
-                                keyResult.freeMap
-                              )
-                            )
+                               e.proc_2,
+                               ProcVisitInputs(
+                                 NilN,
+                                 input.boundMapChain,
+                                 keyResult.freeMap,
+                               ),
+                             )
               } yield (
                 Seq((keyResult.par, valResult.par)) ++ acc._1,
-                valResult.freeMap
+                valResult.freeMap,
               )
           }
         }
@@ -70,7 +69,7 @@ object CollectionNormalizeMatcher {
           val resultKnownFree = folded._2
           CollectVisitOutputs(
             EMapN(folded._1.reverse, remainder.map(fromProtoVarOpt)),
-            resultKnownFree
+            resultKnownFree,
           )
         }
     }
@@ -79,11 +78,10 @@ object CollectionNormalizeMatcher {
       case cl: CollectList =>
         RemainderNormalizeMatcher
           .normalizeMatchProc[F](cl.procremainder_, input.freeMap)
-          .flatMap {
-            case (optionalRemainder, knownFree) =>
-              val constructor: Option[VarN] => Seq[ParN] => ExprN =
-                optionalRemainder => ps => EListN(ps, optionalRemainder)
-              foldMatch(knownFree, cl.listproc_.asScala.toList, constructor(optionalRemainder))
+          .flatMap { case (optionalRemainder, knownFree) =>
+            val constructor: Option[VarN] => Seq[ParN] => ExprN =
+              optionalRemainder => ps => EListN(ps, optionalRemainder)
+            foldMatch(knownFree, cl.listproc_.asScala.toList, constructor(optionalRemainder))
           }
 
       case ct: CollectTuple =>
@@ -96,23 +94,21 @@ object CollectionNormalizeMatcher {
       case cs: CollectSet =>
         RemainderNormalizeMatcher
           .normalizeMatchProc[F](cs.procremainder_, input.freeMap)
-          .flatMap {
-            case (optionalRemainder, knownFree) =>
-              val constructor: Option[VarN] => Seq[ParN] => ExprN =
-                optionalRemainder => pars => ESetN(pars, optionalRemainder)
-              foldMatch(knownFree, cs.listproc_.asScala.toList, constructor(optionalRemainder))
+          .flatMap { case (optionalRemainder, knownFree) =>
+            val constructor: Option[VarN] => Seq[ParN] => ExprN =
+              optionalRemainder => pars => ESetN(pars, optionalRemainder)
+            foldMatch(knownFree, cs.listproc_.asScala.toList, constructor(optionalRemainder))
           }
 
       case cm: CollectMap =>
         RemainderNormalizeMatcher
           .normalizeMatchProc[F](cm.procremainder_, input.freeMap)
-          .flatMap {
-            case (optionalRemainder, knownFree) =>
-              foldMatchMap(
-                knownFree,
-                optionalRemainder.map(toProtoVarOpt),
-                cm.listkeyvaluepair_.asScala.toList
-              )
+          .flatMap { case (optionalRemainder, knownFree) =>
+            foldMatchMap(
+              knownFree,
+              optionalRemainder.map(toProtoVarOpt),
+              cm.listkeyvaluepair_.asScala.toList,
+            )
           }
 
     }
