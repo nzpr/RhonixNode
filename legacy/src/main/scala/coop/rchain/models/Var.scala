@@ -8,6 +8,10 @@ import coop.rchain.models.BitSetBytesMapper.bitSetBytesMapper
 import coop.rchain.models.ParSetTypeMapper.parSetESetTypeMapper
 import coop.rchain.models.ParMapTypeMapper.parMapEMapTypeMapper
 import coop.rchain.models.BigIntTypeMapper.bigIntBytesTypeMapper
+import coop.rchain.models.EqualMDerivation.gen
+import coop.rchain.models.EqualMImplicits._
+import coop.rchain.models.EqualMDerivation.gen
+import coop.rchain.models.EqualMImplicits._
 
 /** While we use vars in both positions, when producing the normalized
   * representation we need a discipline to track whether a var is a name or a

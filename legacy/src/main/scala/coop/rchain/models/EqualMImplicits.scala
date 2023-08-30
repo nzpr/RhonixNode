@@ -9,7 +9,8 @@ import coop.rchain.crypto.hash.Blake2b512Random
 import coop.rchain.crypto.signatures.Signed
 import cats.Eval
 import coop.rchain.models.EqualM.*
-import magnolia.Magnolia.gen
+import coop.rchain.models.EqualMDerivation.*
+
 
 import scala.Function.tupled
 import scala.collection.immutable.BitSet

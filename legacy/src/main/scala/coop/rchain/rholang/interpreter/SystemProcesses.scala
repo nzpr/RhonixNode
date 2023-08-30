@@ -4,7 +4,6 @@ import cats.effect.Async
 import cats.syntax.all._
 import com.google.protobuf.ByteString
 import com.typesafe.scalalogging.Logger
-import coop.rchain.casper.protocol.BlockMessage
 import coop.rchain.crypto.PublicKey
 import coop.rchain.crypto.hash.{Blake2b256, Keccak256, Sha256}
 import coop.rchain.crypto.signatures.{Ed25519, Secp256k1}
