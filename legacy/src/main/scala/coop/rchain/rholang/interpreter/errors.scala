@@ -1,7 +1,7 @@
 package coop.rchain.rholang.interpreter
 
 import coop.rchain.rholang.interpreter.compiler.SourcePosition
-import net.logstash.logback.encoder.org.apache.commons.lang3.exception.ExceptionUtils
+import org.apache.commons.lang3.exception.ExceptionUtils
 
 object errors {
 
