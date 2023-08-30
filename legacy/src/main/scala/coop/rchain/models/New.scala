@@ -10,6 +10,8 @@ import coop.rchain.models.ParMapTypeMapper.parMapEMapTypeMapper
 import coop.rchain.models.BigIntTypeMapper.bigIntBytesTypeMapper
 import coop.rchain.models.EqualMDerivation.gen
 import coop.rchain.models.EqualMImplicits._
+import coop.rchain.models.HashMDerivation.gen
+import coop.rchain.models.HashMImplicits._
 
 /** Number of variables bound in the new statement.
   * For normalized form, p should not contain solely another new.

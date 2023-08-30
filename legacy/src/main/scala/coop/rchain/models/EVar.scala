@@ -10,6 +10,8 @@ import coop.rchain.models.ParMapTypeMapper.parMapEMapTypeMapper
 import coop.rchain.models.BigIntTypeMapper.bigIntBytesTypeMapper
 import coop.rchain.models.EqualMDerivation.gen
 import coop.rchain.models.EqualMImplicits._
+import coop.rchain.models.HashMDerivation.gen
+import coop.rchain.models.HashMImplicits._
 
 /** A variable used as a var should be bound in a process context, not a name
   * context. For example:
