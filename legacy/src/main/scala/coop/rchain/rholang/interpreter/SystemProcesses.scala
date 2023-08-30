@@ -127,12 +127,12 @@ object SystemProcesses {
   }
   object BlockData {
     def empty: BlockData = BlockData(0, PublicKey(Base16.unsafeDecode("00")), 0)
-    def fromBlock(template: BlockMessage) =
-      BlockData(
-        template.blockNumber,
-        PublicKey(template.sender),
-        template.seqNum
-      )
+//    def fromBlock(template: BlockMessage) =
+//      BlockData(
+//        template.blockNumber,
+//        PublicKey(template.sender),
+//        template.seqNum
+//      )
   }
   type Contract[F[_]] = Seq[ListParWithRandom] => F[Unit]
 
