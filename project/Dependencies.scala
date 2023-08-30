@@ -18,7 +18,7 @@ object Dependencies {
 
   // LEGACY dependencies of imported projects
   val protobuf          = "com.google.protobuf"         % "protobuf-java"   % "3.22.2"
-  val scalapbRuntimeLib = "com.thesamet.scalapb"       %% "scalapb-runtime" % "0.11.13"
+  val scalapbRuntimeLib = "com.thesamet.scalapb"       %% "scalapb-runtime" % "0.11.13" % "protobuf"
   val scalapbCompiler   = "com.thesamet.scalapb"       %% "compilerplugin"  % "0.11.13"
   val magnolia          = "com.propensive"             %% "magnolia"        % "0.17.0"
   val bouncyProvCastle  = "org.bouncycastle"            % "bcprov-jdk15on"  % "1.70"
