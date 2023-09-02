@@ -15,3 +15,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends sbt
 # git
 RUN apt-get install -y --no-install-recommends git
+# jflex
+RUN apt-get install jflex -y --no-install-recommends
+# bnfc
+RUN apt-get install -y --no-install-recommends curl \
+    && curl -sSL https://get.haskellstack.org/ | sh \
+    && stack install BNFC \
+    && ln -s /root/.local/bin/bnfc /usr/local/bin/bnfc
