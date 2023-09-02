@@ -15,3 +15,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends sbt
 # git
 RUN apt-get install -y --no-install-recommends git
+# jflex
+RUN apt-get install -y --no-install-recommends jflex
+# bnfc
+RUN apt-get install -y --no-install-recommends cabal-install \
+    && cabal update \
+    && cabal install alex happy \
+    && cabal install BNFC
