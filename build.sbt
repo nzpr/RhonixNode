@@ -16,6 +16,8 @@ lazy val commonSettings = Seq(
   // to run such tests in IntelliJ this argument has to be added explicitly.
   javaOptions ++= Seq(
     "--add-opens=java.base/java.lang=ALL-UNNAMED",
+    "--add-opens=java.base/java.nio=ALL-UNNAMED",
+    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
   ),
   Test / fork               := true,
   Test / parallelExecution  := false,
