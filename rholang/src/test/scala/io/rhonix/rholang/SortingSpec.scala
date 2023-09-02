@@ -45,7 +45,7 @@ class SortingSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matcher
     val values               = Seq.range(1, unsorted.length + 1).map(x => GIntN(x.toLong))
     val pars                 = unsorted zip values
     val sorted               = EMapN(pars).sortedPs
-    val expectedPars =
+    val expectedPars         =
       pars.sortWith((a, b) => compareHashes(a._1.rhoHash.value, b._1.rhoHash.value) < 0)
     sorted should be(expectedPars)
   }
@@ -58,7 +58,7 @@ class SortingSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matcher
     val bind5         = ReceiveBindN(Seq(FreeVarN(45)), NilN, Some(BoundVarN(42)), 1)
     val unsortedBinds = Seq(bind1, bind2, bind3, bind4, bind5)
     val sorted        = parmanager.Manager.sortBinds(unsortedBinds)
-    val expected =
+    val expected      =
       unsortedBinds.sortWith((a, b) => compareHashes(a.rhoHash.value, b.rhoHash.value) < 0)
     sorted should be(expected)
 
