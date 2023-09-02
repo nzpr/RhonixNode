@@ -42,11 +42,4 @@ class NetworkScheduleSpec extends AnyFlatSpec with Matchers {
       _.collect { case s -> ToCreate(_, x) if s == 2 => x == senders.map(_ -> 1).toMap }.forall(identity)
     } should be(true)
   }
-
-  "random schedule" should "work" in {
-    val genMForS: Int => org.scalacheck.Gen[Int] = _ => org.scalacheck.Gen.chooseNum(0, 100)
-    val genS: org.scalacheck.Gen[Int]            = org.scalacheck.Gen.chooseNum(0, 100)
-    val rs                                       = NetworkScheduleGen.random(genMForS, genS, 100, 100).sample.get
-    println(rs.schedule.take(10).toList)
-  }
 }

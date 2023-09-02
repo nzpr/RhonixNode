@@ -78,10 +78,4 @@ object Dag {
     val r = c.iterator.flatMap { case (k, up) => (f.getOrElse(k, 0) to up).reverseIterator.map(k -> _) }
     r.flatMap(lookup.tupled)
   }
-
-  def seenByAll[M](x: Set[M], seenMap: Map[M, Set[M]]): Set[M] = x.map(seenMap).fold(Set())(_ intersect _)
-//  def seenBySome[M](x: Set[M], seenMap: Map[M, Set[M]]) = x.flatMap(seenMap)
-//
-//  def inTheView[M](target: M, observers: Set[M], seenMap: Map[M, Set[M]]) =
-//    observers.exists(seenMap(_).contains(target))
 }

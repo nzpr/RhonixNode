@@ -1,0 +1,52 @@
+# GitHub Actions workflow for continuous integration.
+#
+# For information GitHub Actions see:
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/getting-started-with-github-actions
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/configuring-workflows
+
+name: CI
+on:
+  push:
+    branches:
+      - staging
+      - trying
+    tags: '**'
+  pull_request:
+    branches:
+      - dev
+      - 'feature/**'
+      - 'release/**'
+
+env:
+  # This is read by every new JVM. Every JVM thinks it can use up to 80% of
+  # total memory available to the system (used or unused). This may not be
+  # appropriate when sbt is configured to run tests in parallel in forked JVMs.
+  # However, setting this value too low or leaving it at default value, 25% on
+  # OpenJDK 11, makes some unit tests occasionally fail on OutOfMemoryError on
+  # GitHub runners which have only 7GB of RAM.
+  _JAVA_OPTIONS: -XX:MaxRAMPercentage=80.0 -XX:MaxDirectMemorySize=128M
+
+jobs:
+  build_base:
+    name: Build Base
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: rhodevteam/node-buildenv:ubuntu-20.04-bnfc-latest
+    outputs:
+      VERSION: ${{ env.VERSION }}
+      BRANCH: ${{ env.BRANCH }}
+      DEV_LATEST_TAG: ${{ env.DEV_LATEST_TAG }}
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v1
+
+      - name: Compile
+        run: |
+          export SBT_OPTS="$SBT_OPTS -Dsbt.task.timings=true -Xmx2500m -Xss2m"
+          sbt update scalafmtCheckAll compile test:compile
+
+      - name: Run tests
+        run: |
+          export SBT_OPTS="$SBT_OPTS -Dsbt.task.timings=true -Xmx2500m -Xss2m"
+          sbt test

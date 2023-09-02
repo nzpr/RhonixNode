@@ -16,9 +16,12 @@ import sdk.api.*
 import sdk.db.*
 import squeryl.*
 
+// TODO re-enable these tests when it is possible to execute them on CI.
+// At the moment Github Actions does not allow non-root users and embedded postgres requires non-root.
+// https://github.com/fergusstrange/embedded-postgres/issues/95
 class DbSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
 
-  "Validator insert function call" should "add the correct entry to the Validator table" in {
+  "Validator insert function call" should "add the correct entry to the Validator table" ignore {
     forAll { (validator: Validator) =>
       (for {
         session           <- makeSession[IO]
@@ -37,7 +40,7 @@ class DbSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
     }
   }
 
-  "Bond insert function call" should "add the correct entry to the Bond table" in {
+  "Bond insert function call" should "add the correct entry to the Bond table" ignore {
     forAll { (validator: Validator, bondStake: Long) =>
       (for {
         session        <- makeSession[IO]
@@ -54,7 +57,7 @@ class DbSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
     }
   }
 
-  "Deploy insert function call" should "add the correct entry to the Deploy table" in {
+  "Deploy insert function call" should "add the correct entry to the Deploy table" ignore {
     forAll { (deploy: Deploy) =>
       (for {
         session      <- makeSession[IO]
@@ -70,7 +73,7 @@ class DbSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
     }
   }
 
-  "Block insert function call" should "add the correct entry to the Block table" in {
+  "Block insert function call" should "add the correct entry to the Block table" ignore {
     forAll { (validator: Validator, block: Block) =>
       (for {
         session <- makeSession[IO]
@@ -111,7 +114,7 @@ class DbSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
     }
   }
 
-  "Complex Db logic" should "works correct" in {
+  "Complex Db logic" should "works correct" ignore {
     forAll {
       (validator1: Validator, validator2: Validator, bond: Bond, deploy1: Deploy, deploy2: Deploy, block: Block) =>
         (for {

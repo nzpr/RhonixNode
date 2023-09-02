@@ -13,8 +13,8 @@ import weaver.{LazoState, Offence}
 object LazoSim {
 
   final case class LazoDagBuilder[F[_]: Monad, M, S](
-                                                      finST: Ref[F, Map[S, FringeData[M]]],
-                                                      lazoRef: Ref[F, LazoState[M, S]],
+    finST: Ref[F, Map[S, FringeData[M]]],
+    lazoRef: Ref[F, LazoState[M, S]],
   ) extends BlockDagBuilder[F, M, S] {
 
     // This Dag builder is valid for the purpose of the simulation when the BlockDagSchedule emits concurrent
