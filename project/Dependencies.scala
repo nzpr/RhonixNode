@@ -15,13 +15,13 @@ object Dependencies {
   val protobuf = "com.google.protobuf" % "protobuf-java" % "3.22.2"
 
   // Testing frameworks
-  val scalacheckShapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.16" % "1.3.1"   % Test
+  val scalacheckShapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.16" % "1.3.1" % Test
   val scalatest           = "org.scalatest"              %% "scalatest"                 % "3.2.15" // cross CrossVersion.for3Use2_13
   val scalatest_ce        =
     "org.typelevel" %% "cats-effect-testing-scalatest" % "1.4.0" % Test // cross CrossVersion.for3Use2_13
-  val mockito      = "org.mockito"   %% "mockito-scala-cats" % "1.17.12" % Test
-  val scalacheck_e = "org.typelevel" %% "scalacheck-effect"  % "1.0.4"   % Test
-  val scalatestScalacheck  = "org.scalatestplus" %% "scalacheck-1-17" % "3.2.16.0" % Test
+  val mockito             = "org.mockito"       %% "mockito-scala-cats" % "1.17.12"  % Test
+  val scalacheck_e        = "org.typelevel"     %% "scalacheck-effect"  % "1.0.4"    % Test
+  val scalatestScalacheck = "org.scalatestplus" %% "scalacheck-1-17"    % "3.2.16.0" % Test
 
   // Diagnostics
   val kamonBundle           = "io.kamon" %% "kamon-bundle"   % "2.6.1"
@@ -47,6 +47,16 @@ object Dependencies {
     "io.github.liquibase4s" %% "liquibase4s-cats-effect" % "1.0.0",
   )
 
+  // Cryptography
+  val bcprov = "org.bouncycastle" % "bcprov-jdk15on" % "1.68"
+
+  // Tmp
+  val scodecCore = "org.scodec" %% "scodec-core" % "1.11.10"
+  val scodecCats = "org.scodec" %% "scodec-cats" % "1.2.0"
+  val scodecBits = "org.scodec" %% "scodec-bits" % "1.1.37"
+
+  val tmp = Seq(scodecCore, scodecCats, scodecBits)
+
   val common = Seq(catsCore, catsEffect, fs2Core)
 
   val diagnostics = Seq(kamonBundle, kamonInfluxDbReporter, kamonJaegerReporter)
@@ -58,4 +68,6 @@ object Dependencies {
   val tests = Seq(scalatest, scalatest_ce, mockito, scalacheck_e, scalacheckShapeless, scalatestScalacheck)
 
   val dbLibs = Seq(embeddedPostgres, postgresql, squeryl, junitJupiter) ++ liquibase4s
+
+  val crypto = Seq(bcprov)
 }

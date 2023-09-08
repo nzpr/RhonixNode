@@ -43,7 +43,7 @@ lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
   .settings(
-    libraryDependencies ++= common ++ dbLibs ++ tests,
+    libraryDependencies ++= common ++ dbLibs ++ tests ++ crypto ++ tmp,
   )
 
 // Database interfaces implementation
