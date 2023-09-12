@@ -1,9 +1,9 @@
-package sdk.tmp
+package sdk.crypto
 
 import scodec.Codec
 import scodec.bits.ByteVector
 import scodec.codecs.{bytes, fixedSizeBytes}
-import sdk.crypto.{Base16, Blake2b256}
+import sdk.primitive.Base16
 
 /**
   * Represents a Blake2b256 Hash

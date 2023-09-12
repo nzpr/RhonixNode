@@ -5,10 +5,10 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import sdk.history.RadixTree.*
 import scodec.bits.ByteVector
+import sdk.crypto.Blake2b256Hash
 import sdk.db.kvstore.{KeyValueStore, KeyValueStoreSyntax, KeyValueTypedStore}
 import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
 import sdk.syntax.all.sharedSyntaxKeyValueStore
-import sdk.tmp.Blake2b256Hash
 
 /**
   * History implementation with radix tree

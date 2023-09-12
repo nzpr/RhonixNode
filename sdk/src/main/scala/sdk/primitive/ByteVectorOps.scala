@@ -1,4 +1,4 @@
-package sdk.tmp
+package sdk.primitive
 
 import scodec.bits.ByteVector
 

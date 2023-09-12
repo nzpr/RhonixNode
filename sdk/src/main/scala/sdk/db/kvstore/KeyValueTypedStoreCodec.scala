@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import scodec.Codec
 import scodec.bits.BitVector
-import sdk.tmp.ByteVectorOps.*
+import sdk.primitive.ByteVectorOps.*
 class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   store: KeyValueStore[F],
   kCodec: Codec[K],

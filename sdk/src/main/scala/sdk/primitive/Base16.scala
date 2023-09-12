@@ -1,4 +1,4 @@
-package sdk.crypto
+package sdk.primitive
 
 import javax.xml.bind.DatatypeConverter
 import scala.util.Try

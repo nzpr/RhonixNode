@@ -4,10 +4,10 @@ import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all.*
 import scodec.bits.ByteVector
+import sdk.crypto.Blake2b256Hash
 import sdk.db.kvstore.KeyValueTypedStore
 import sdk.history.KeySegment.*
 import sdk.syntax.all.sharedSyntaxKeyValueTypedStore
-import sdk.tmp.Blake2b256Hash
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
