@@ -86,6 +86,7 @@ object RadixTree {
     *        item 2 (index_secondByte_prefix_value) = 02_80_empty_FF..FFFF
     * }}}
     */
+  @SuppressWarnings(Array("org.wartremover.warts.SeqApply", "org.wartremover.warts.SeqUpdated"))
   object Codecs {
     private val defSize  = 32 // Default size for non-empty item data
     private val headSize = 2  // 2 bytes: first - item index, second - second byte
@@ -277,6 +278,7 @@ object RadixTree {
     * lastItemIndex - Last processed item index
     * }}}
     */
+  @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
   def sequentialExport[F[_]: Sync](
     rootHash: Blake2b256Hash,
     lastPrefix: Option[KeySegment],
@@ -557,6 +559,7 @@ object RadixTree {
     * 1 byte is used as symbol in the path. Such symbol can take 256 values from 0x00 to 0xFF.
     * In this case, the maximum number of children for each node is 256.
     */
+  @SuppressWarnings(Array("org.wartremover.warts.SeqApply", "org.wartremover.warts.SeqUpdated"))
   class RadixTreeImpl[F[_]: Sync: Parallel](
     store: KeyValueTypedStore[F, Blake2b256Hash, ByteVector],
   ) {
