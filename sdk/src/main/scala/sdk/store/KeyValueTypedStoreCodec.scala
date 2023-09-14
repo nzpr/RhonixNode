@@ -2,47 +2,20 @@ package sdk.store
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import scodec.Codec
 import scodec.bits.BitVector
 import sdk.data.ByteVectorOps.*
+import sdk.data.Codec
 
 class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   store: KeyValueStore[F],
-  kCodec: Codec[K],
-  vCodec: Codec[V],
+  kCodec: Codec[F, K],
+  vCodec: Codec[F, V],
 ) extends KeyValueTypedStore[F, K, V] {
-  // TODO: create specialized exceptions for Codec errors
-  def encodeKey(key: K): F[BitVector] =
-    kCodec
-      .encode(key)
-      .fold(
-        err => new Exception(err.message).raiseError[F, BitVector],
-        _.pure[F],
-      )
 
-  def decodeKey(bytes: BitVector): F[K] =
-    kCodec
-      .decodeValue(bytes)
-      .fold(
-        err => new Exception(err.message).raiseError[F, K],
-        _.pure[F],
-      )
-
-  def encodeValue(value: V): F[BitVector] =
-    vCodec
-      .encode(value)
-      .fold(
-        err => new Exception(err.message).raiseError[F, BitVector],
-        _.pure[F],
-      )
-
-  def decodeValue(bytes: BitVector): F[V] =
-    vCodec
-      .decodeValue(bytes)
-      .fold(
-        err => new Exception(err.message).raiseError[F, V],
-        _.pure[F],
-      )
+  def encodeKey(key: K): F[BitVector]     = kCodec.encode(key)
+  def decodeKey(bytes: BitVector): F[K]   = kCodec.decode(bytes)
+  def encodeValue(value: V): F[BitVector] = vCodec.encode(value)
+  def decodeValue(bytes: BitVector): F[V] = vCodec.decode(bytes)
 
   import cats.instances.option.*
   import cats.instances.vector.*
@@ -78,22 +51,22 @@ class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
       results       <- store.get(keysBuf, _ => ())
     } yield results.map(_.nonEmpty)
 
-  override def collect[T](pf: PartialFunction[(K, () => V), T]): F[Seq[T]] =
-    for {
-      values <- store.iterate(
-                  _.map { case (kBuff, vBuff) =>
-                    val kBytes = BitVector(kBuff)
-                    // Inside LMDB iterator can only be synchronous operation / unsafe decode
-                    val k      = kCodec.decodeValue(kBytes).require
-                    // Lazy evaluate/decode value
-                    val fv     = () => {
-                      val vBytes = BitVector(vBuff)
-                      vCodec.decodeValue(vBytes).require
-                    }
-                    (k, fv)
-                  }.collect(pf).toVector,
-                )
-    } yield values
+  override def collect[T](pf: PartialFunction[(K, () => V), T]): F[Seq[T]] = ??? // TODO: implement in the future
+//    for {
+//      values <- store.iterate(
+//                  _.map { case (kBuff, vBuff) =>
+//                    val kBytes = BitVector(kBuff)
+//                    // Inside LMDB iterator can only be synchronous operation / unsafe decode
+//                    val k      = kCodec.decodeValue(kBytes).require
+//                    // Lazy evaluate/decode value
+//                    val fv     = () => {
+//                      val vBytes = BitVector(vBuff)
+//                      vCodec.decodeValue(vBytes).require
+//                    }
+//                    (k, fv)
+//                  }.collect(pf).toVector,
+//                )
+//    } yield values
 
   override def toMap: F[Map[K, V]] =
     for {

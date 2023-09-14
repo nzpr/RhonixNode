@@ -71,14 +71,6 @@ object Blake2b256Hash {
   def fromByteArray(bytes: Array[Byte]): Blake2b256Hash =
     fromByteVector(ByteVector(bytes))
 
-  val codecBlake2b256Hash: Codec[Blake2b256Hash] = scodec.codecs
-    .bytes(size = Blake2b256Hash.length)
-    .xmap[Blake2b256Hash](Blake2b256Hash.fromByteVector, _.bytes)
-    .as[Blake2b256Hash]
-
-  implicit val codecWithBytesStringBlake2b256Hash: Codec[Blake2b256Hash] =
-    fixedSizeBytes(length.toLong, bytes).as[Blake2b256Hash]
-
   implicit val ordering: Ordering[Blake2b256Hash] =
     (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)
 }

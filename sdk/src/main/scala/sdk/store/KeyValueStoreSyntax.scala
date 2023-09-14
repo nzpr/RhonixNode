@@ -3,7 +3,7 @@ package sdk.store
 import cats.Functor
 import cats.effect.Sync
 import cats.syntax.all.*
-import scodec.Codec
+import sdk.data.Codec
 
 import java.nio.ByteBuffer
 
@@ -46,7 +46,8 @@ final class KeyValueStoreOps[F[_]](
     contains(Seq(key)).map(_.head)
 
   // From key-value store, with serializers for K and V, typed store can be created
-  def toTypedStore[K, V](kCodec: Codec[K], vCodec: Codec[V])(implicit
+  def toTypedStore[K, V](kCodec: Codec[F, K], vCodec: Codec[F, V])(implicit
     s: Sync[F],
-  ): KeyValueTypedStore[F, K, V] = new KeyValueTypedStoreCodec[F, K, V](store, kCodec, vCodec)
+  ): KeyValueTypedStore[F, K, V] =
+    new KeyValueTypedStoreCodec[F, K, V](store, kCodec, vCodec)
 }
