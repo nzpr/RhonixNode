@@ -7,10 +7,9 @@ import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scodec.bits.ByteVector
-import sdk.crypto.Blake2b256Hash
-import sdk.db.kvstore.InMemoryKeyValueStore
+import sdk.data.{Base16, Blake2b256Hash}
 import sdk.history.TestData.*
-import sdk.primitive.Base16
+import sdk.store.InMemoryKeyValueStore
 
 import java.nio.ByteBuffer
 import scala.collection.concurrent.TrieMap

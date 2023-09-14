@@ -1,10 +1,11 @@
-package sdk.db.kvstore
+package sdk.store
 
 import cats.effect.Sync
 import cats.syntax.all.*
 import scodec.Codec
 import scodec.bits.BitVector
-import sdk.primitive.ByteVectorOps.*
+import sdk.data.ByteVectorOps.*
+
 class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   store: KeyValueStore[F],
   kCodec: Codec[K],

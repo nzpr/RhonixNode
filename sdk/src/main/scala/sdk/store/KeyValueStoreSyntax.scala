@@ -1,4 +1,4 @@
-package sdk.db.kvstore
+package sdk.store
 
 import cats.Functor
 import cats.effect.Sync

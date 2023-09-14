@@ -1,4 +1,4 @@
-package sdk.primitive
+package sdk.data
 
 import scodec.bits.ByteVector
 

@@ -69,5 +69,5 @@ object Dependencies {
 
   val dbLibs = Seq(embeddedPostgres, postgresql, squeryl, junitJupiter) ++ liquibase4s
 
-  val crypto = Seq(bcprov)
+  val cryptoLibs = Seq(bcprov)
 }

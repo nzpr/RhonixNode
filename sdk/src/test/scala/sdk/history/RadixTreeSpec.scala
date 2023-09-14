@@ -7,12 +7,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{EitherValues, OptionValues}
 import scodec.bits.ByteVector
-import sdk.crypto.Blake2b256Hash
-import sdk.db.kvstore.{InMemoryKeyValueStore, KeyValueTypedStore}
+import sdk.data.{Base16, Blake2b256Hash}
 import sdk.history.KeySegment.commonPrefix
 import sdk.history.RadixTree.*
 import sdk.history.instances.RadixHistory
-import sdk.primitive.Base16
+import sdk.store.{InMemoryKeyValueStore, KeyValueTypedStore}
 import sdk.syntax.all.{sharedSyntaxKeyValueStore, sharedSyntaxKeyValueTypedStore}
 
 import java.nio.ByteBuffer

@@ -1,7 +1,7 @@
 package sdk.syntax
 
 import sdk.api.syntax.ApiFindSyntax
-import sdk.db.kvstore.{KeyValueStoreSyntax, KeyValueTypedStoreSyntax}
+import sdk.store.{KeyValueStoreSyntax, KeyValueTypedStoreSyntax}
 import sdk.primitive.*
 
 trait AllSyntax

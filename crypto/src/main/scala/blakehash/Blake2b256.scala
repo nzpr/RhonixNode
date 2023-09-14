@@ -1,12 +1,12 @@
-package sdk.crypto
+package blakehash
 
 import org.bouncycastle.crypto.digests.Blake2bDigest
 import org.bouncycastle.crypto.io.DigestOutputStream
 import scodec.bits.ByteVector
 
 /**
-  * Blake2b256 hashing algorithm
-  */
+ * Blake2b256 hashing algorithm
+ */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 object Blake2b256 {
   val hashLength = 32

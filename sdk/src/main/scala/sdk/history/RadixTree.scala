@@ -4,9 +4,9 @@ import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all.*
 import scodec.bits.ByteVector
-import sdk.crypto.Blake2b256Hash
-import sdk.db.kvstore.KeyValueTypedStore
+import sdk.data.Blake2b256Hash
 import sdk.history.KeySegment.*
+import sdk.store.KeyValueTypedStore
 import sdk.syntax.all.sharedSyntaxKeyValueTypedStore
 
 import scala.annotation.tailrec

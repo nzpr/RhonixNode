@@ -2,10 +2,9 @@ package sdk.history
 
 import cats.Parallel
 import cats.effect.{Async, Sync}
-import scodec.bits.ByteVector
-import sdk.crypto.Blake2b256Hash
-import sdk.db.kvstore.KeyValueStore
+import sdk.data.Blake2b256Hash
 import sdk.history.instances.RadixHistory
+import sdk.store.KeyValueStore
 
 /**
   * History definition represents key-value API for RSpace tuple space

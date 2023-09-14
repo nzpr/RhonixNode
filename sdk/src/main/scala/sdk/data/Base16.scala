@@ -1,4 +1,4 @@
-package sdk.primitive
+package sdk.data
 
 import javax.xml.bind.DatatypeConverter
 import scala.util.Try
@@ -26,7 +26,8 @@ object Base16 {
       val padded     =
         if (digitsOnly.length % 2 == 0) digitsOnly
         else "0" + digitsOnly
-      DatatypeConverter.parseHexBinary(padded)
+      DatatypeConverter.parseHexBinary(padded) // TODO: rewrite to exclude jaxb dependecies
+      // e.g.  `padded.sliding(2, 2).toArray.map(Integer.parseInt(_, 16).toByte)`
     }.toOption
 
   private def bytes2hex(bytes: Array[Byte], sep: Option[String]): String =

@@ -37,14 +37,13 @@ lazy val settingsScala2 = commonSettings ++ Seq(
 
 lazy val rhonix = (project in file("."))
   .settings(commonSettings*)
-  .aggregate(sdk, weaver, dproc, db, node)
+  .aggregate(sdk, weaver, dproc, db, node, crypto)
 
 lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
-  .settings(
-    libraryDependencies ++= common ++ dbLibs ++ tests ++ crypto ++ tmp,
-  )
+  .settings(libraryDependencies ++= common ++ dbLibs ++ tests ++ tmp)
+  .dependsOn(crypto)
 
 // Database interfaces implementation
 lazy val db = (project in file("db"))
@@ -111,6 +110,14 @@ lazy val api = (project in file("api"))
     libraryDependencies ++= common ++ tests ++ diagnostics ++ http4s,
   )
   .dependsOn(sdk % "compile->compile;test->test")
+
+// cryptography
+lazy val crypto = (project in file("crypto"))
+  //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
+  .settings(settingsScala2*)
+  .settings(
+    libraryDependencies ++= common ++ tests ++ cryptoLibs,
+  )
 
 // TODO this is commented out since JmhPlugin messes up with compile paths and IDEA doesn't like it
 // lazy val bench = (project in file("bench"))

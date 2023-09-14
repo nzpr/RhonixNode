@@ -1,15 +1,15 @@
-package sdk.crypto
+package sdk.data
 
+import blakehash.Blake2b256
 import scodec.Codec
 import scodec.bits.ByteVector
 import scodec.codecs.{bytes, fixedSizeBytes}
-import sdk.primitive.Base16
 
 /**
-  * Represents a Blake2b256 Hash
-  *
-  * The default constructor is private to prevent construction means other than [[Blake2b256Hash$.create(bytes:*]] or [[Blake2b256Hash$.create(byteVectors:*]]
-  */
+ * Represents a Blake2b256 Hash
+ *
+ * The default constructor is private to prevent construction means other than [[Blake2b256Hash$.create(bytes:*]] or [[Blake2b256Hash$.create(byteVectors:*]]
+ */
 class Blake2b256Hash private (val bytes: ByteVector) {
 
   require(
@@ -33,22 +33,22 @@ object Blake2b256Hash {
   val length: Int = 32
 
   /**
-    * Constructs a [[Blake2b256Hash]]
-    *
-    * @param bytes The bytes to hash
-    * @return The hash
-    */
+   * Constructs a [[Blake2b256Hash]]
+   *
+   * @param bytes The bytes to hash
+   * @return The hash
+   */
   def create(bytes: Array[Byte]): Blake2b256Hash =
     new Blake2b256Hash(ByteVector(Blake2b256.hash(bytes)))
 
   /**
-    * Constructs a [[Blake2b256Hash]]
-    *
-    * @param byteVectors sequence of byte vectors,
-    * that will be hashed as a single concatenated
-    * bytes string
-    * @return The hash
-    */
+   * Constructs a [[Blake2b256Hash]]
+   *
+   * @param byteVectors sequence of byte vectors,
+   * that will be hashed as a single concatenated
+   * bytes string
+   * @return The hash
+   */
   def create(byteVectors: Seq[ByteVector]): Blake2b256Hash =
     new Blake2b256Hash(ByteVector(Blake2b256.hash(byteVectors: _*)))
 

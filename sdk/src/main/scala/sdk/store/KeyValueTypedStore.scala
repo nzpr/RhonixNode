@@ -1,4 +1,4 @@
-package sdk.db.kvstore
+package sdk.store
 
 trait KeyValueTypedStore[F[_], K, V] {
   def get(keys: Seq[K]): F[Seq[Option[V]]]
