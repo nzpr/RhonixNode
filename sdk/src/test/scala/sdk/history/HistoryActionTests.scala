@@ -6,8 +6,7 @@ import cats.syntax.all.*
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scodec.bits.ByteVector
-import sdk.data.{Base16, Blake2b256Hash}
+import sdk.data.{Base16, Blake2b256Hash, ByteArray}
 import sdk.history.TestData.*
 import sdk.store.InMemoryKeyValueStore
 
@@ -187,18 +186,19 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "collision detecting in KVDB" should "works" in withEmptyHistoryAndStore { (emptyHistoryF, inMemoStore) =>
-    def copyBVToBuf(bv: ByteVector): ByteBuffer = {
-      val arr    = bv.toArray
+    def copyBVToBuf(ba: ByteArray): ByteBuffer = {
+      val arr    = ba.toArray
       val newBuf = ByteBuffer.allocateDirect(arr.length)
       newBuf.put(arr).rewind()
     }
-    val insertRecord                            = insert(_zeros) :: Nil
-    val deleteRecord                            = delete(_zeros) :: Nil
-    val collisionKVPair                         = (copyBVToBuf(History.emptyRootHash.bytes), randomBlake.bytes)
+    val insertRecord                           = insert(_zeros) :: Nil
+    val deleteRecord                           = delete(_zeros) :: Nil
+    val collisionKVPair                        =
+      (copyBVToBuf(History.emptyRootHash.bytes), randomBlake.bytes)
     for {
       emptyHistory <- emptyHistoryF
       newHistory   <- emptyHistory.process(insertRecord)
-      _            <- inMemoStore.put[ByteVector](Seq(collisionKVPair), copyBVToBuf)
+      _            <- inMemoStore.put[ByteArray](Seq(collisionKVPair), copyBVToBuf)
       err          <- newHistory.process(deleteRecord).attempt
     } yield {
       val ex = err.left.value

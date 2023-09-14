@@ -2,7 +2,8 @@ package blakehash
 
 import org.bouncycastle.crypto.digests.Blake2bDigest
 import org.bouncycastle.crypto.io.DigestOutputStream
-import scodec.bits.ByteVector
+
+import java.io.OutputStream
 
 /**
  * Blake2b256 hashing algorithm
@@ -19,10 +20,14 @@ object Blake2b256 {
     res
   }
 
-  def hash(inputs: ByteVector*): Array[Byte] = {
+  /**
+   * Constructs a Blake2b256 from sequence of T, that will be hashed as a single concatenated bytes stream.
+   * @param copyToStream function which turns T into a sequence of bytes and writes this sequence to OutputStream
+   */
+  def hash[T](inputs: T*)(copyToStream: (T, OutputStream) => Unit): Array[Byte] = {
     val outStream = new DigestOutputStream(new Blake2bDigest(256))
     for (input <- inputs)
-      input.copyToStream(outStream)
+      copyToStream(input, outStream)
     outStream.getDigest
     // no calls to .close() since
     // DigestOutputStream doesn't use any closeable resources

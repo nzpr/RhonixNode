@@ -1,10 +1,9 @@
 package sdk.history.instances
 
-import cats.{Applicative, Parallel}
 import cats.effect.Sync
 import cats.syntax.all.*
-import scodec.bits.ByteVector
-import sdk.data.{Blake2b256Hash, Codec, CodecBlake2b256Hash, CodecByteVector}
+import cats.{Applicative, Parallel}
+import sdk.data.*
 import sdk.history.RadixTree.*
 import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
 import sdk.store.{KeyValueStore, KeyValueTypedStore}
@@ -16,11 +15,11 @@ import sdk.syntax.all.sharedSyntaxKeyValueStore
 object RadixHistory {
   val emptyRootHash: Blake2b256Hash                       = RadixTree.emptyRootHash
   def kCodec[F[_]: Applicative]: Codec[F, Blake2b256Hash] = CodecBlake2b256Hash[F]
-  def vCodec[F[_]: Applicative]: Codec[F, ByteVector]     = CodecByteVector[F]
+  def vCodec[F[_]: Applicative]: Codec[F, ByteArray]      = CodecByteArray[F]
 
   def apply[F[_]: Sync: Parallel](
     root: Blake2b256Hash,
-    store: KeyValueTypedStore[F, Blake2b256Hash, ByteVector],
+    store: KeyValueTypedStore[F, Blake2b256Hash, ByteArray],
   ): F[RadixHistory[F]] =
     for {
       impl <- Sync[F].delay(new RadixTreeImpl[F](store))
@@ -29,7 +28,7 @@ object RadixHistory {
 
   def createStore[F[_]: Sync](
     store: KeyValueStore[F],
-  ): KeyValueTypedStore[F, Blake2b256Hash, ByteVector] =
+  ): KeyValueTypedStore[F, Blake2b256Hash, ByteArray] =
     store.toTypedStore(kCodec, vCodec)
 }
 
@@ -37,7 +36,7 @@ final case class RadixHistory[F[_]: Sync: Parallel](
   rootHash: Blake2b256Hash,
   rootNode: Node,
   impl: RadixTreeImpl[F],
-  store: KeyValueTypedStore[F, Blake2b256Hash, ByteVector],
+  store: KeyValueTypedStore[F, Blake2b256Hash, ByteArray],
 ) extends History[F] {
   override type HistoryF = History[F]
 

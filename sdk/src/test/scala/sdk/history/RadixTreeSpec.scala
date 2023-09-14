@@ -6,8 +6,7 @@ import cats.syntax.all.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{EitherValues, OptionValues}
-import scodec.bits.ByteVector
-import sdk.data.{Base16, Blake2b256Hash}
+import sdk.data.{Base16, Blake2b256Hash, ByteArray}
 import sdk.history.KeySegment.commonPrefix
 import sdk.history.RadixTree.*
 import sdk.history.instances.RadixHistory
@@ -350,7 +349,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
 
     val serializedNode      = RadixTree.Codecs.encode(referenceNode)
     val deserializedNode    = RadixTree.Codecs.decode(serializedNode)
-    val referenceSerialized = createBV(
+    val referenceSerialized = createBA(
       "0102FFFF00000000000000000000000000000000000000000000000000000000000000010280FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     )
     deserializedNode shouldBe referenceNode
@@ -358,7 +357,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "decode wrong serialized data" should "be stopped with assertion error" in {
-    val wrongSerialized = createBV(
+    val wrongSerialized = createBA(
       "0102FFFF00000000000000000000000000000010280FFFFFFFFFFFFFFFFFFFFFFFFFF",
     )
     try
@@ -371,17 +370,17 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "collisions in KVDB" should "be detected" in withImplAndStore { (impl, inMemoStore) =>
-    def copyBVToBuf(bv: ByteVector): ByteBuffer = {
-      val arr    = bv.toArray
+    def copyBaToBuf(ba: ByteArray): ByteBuffer = {
+      val arr    = ba.toArray
       val newBuf = ByteBuffer.allocateDirect(arr.length)
       newBuf.put(arr).rewind()
     }
 
-    val collisionKVPair       = (copyBVToBuf(RadixTree.emptyRootHash.bytes), ByteVector(0x00))
+    val collisionKVPair       = (copyBaToBuf(RadixTree.emptyRootHash.bytes), ByteArray(0x00))
     val referenceErrorMessage = s"1 collisions in KVDB (first collision with key = " +
       s"${RadixTree.emptyRootHash.bytes.toHex})."
     for {
-      _   <- inMemoStore.put[ByteVector](Seq(collisionKVPair), copyBVToBuf)
+      _   <- inMemoStore.put[ByteArray](Seq(collisionKVPair), copyBaToBuf)
       _    = impl.saveNode(emptyNode)
       err <- impl.commit.attempt
 
@@ -581,11 +580,11 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "function commonPrefix" should "return correct prefixes" in {
-    val v12345 = KeySegment(ByteVector(1, 2, 3, 4, 5))
-    val v1245  = KeySegment(ByteVector(1, 2, 4, 5))
-    val v123   = KeySegment(ByteVector(1, 2, 3))
-    val v12367 = KeySegment(ByteVector(1, 2, 3, 6, 7))
-    val v22345 = KeySegment(ByteVector(2, 2, 3, 4, 5))
+    val v12345 = KeySegment(ByteArray(1, 2, 3, 4, 5))
+    val v1245  = KeySegment(ByteArray(1, 2, 4, 5))
+    val v123   = KeySegment(ByteArray(1, 2, 3))
+    val v12367 = KeySegment(ByteArray(1, 2, 3, 6, 7))
+    val v22345 = KeySegment(ByteArray(2, 2, 3, 4, 5))
     val res1   = commonPrefix(v12345, v1245)
     val res2   = commonPrefix(v12345, v123)
     val res3   = commonPrefix(v12345, KeySegment.empty)
@@ -594,30 +593,30 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val res6   = commonPrefix(KeySegment.empty, KeySegment.empty)
 
     val referenceRes1 = (
-      KeySegment(ByteVector(1, 2)),
-      KeySegment(ByteVector(3, 4, 5)),
-      KeySegment(ByteVector(4, 5)),
+      KeySegment(ByteArray(1, 2)),
+      KeySegment(ByteArray(3, 4, 5)),
+      KeySegment(ByteArray(4, 5)),
     )
 
     val referenceRes2 = (
-      KeySegment(ByteVector(1, 2, 3)),
-      KeySegment(ByteVector(4, 5)),
+      KeySegment(ByteArray(1, 2, 3)),
+      KeySegment(ByteArray(4, 5)),
       KeySegment.empty,
     )
 
     val referenceRes3 =
-      (KeySegment.empty, KeySegment(ByteVector(1, 2, 3, 4, 5)), KeySegment.empty)
+      (KeySegment.empty, KeySegment(ByteArray(1, 2, 3, 4, 5)), KeySegment.empty)
 
     val referenceRes4 = (
-      KeySegment(ByteVector(1, 2, 3)),
-      KeySegment(ByteVector(4, 5)),
-      KeySegment(ByteVector(6, 7)),
+      KeySegment(ByteArray(1, 2, 3)),
+      KeySegment(ByteArray(4, 5)),
+      KeySegment(ByteArray(6, 7)),
     )
 
     val referenceRes5 = (
       KeySegment.empty,
-      KeySegment(ByteVector(2, 2, 3, 4, 5)),
-      KeySegment(ByteVector(1, 2, 3, 4, 5)),
+      KeySegment(ByteArray(2, 2, 3, 4, 5)),
+      KeySegment(ByteArray(1, 2, 3, 4, 5)),
     )
 
     val referenceRes6 = (KeySegment.empty, KeySegment.empty, KeySegment.empty)
@@ -642,14 +641,14 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   def createBlakeHash(s: String): Blake2b256Hash = {
-    val notEmptyPart = createBV(s)
-    val emptyPart    = List.fill(32 - notEmptyPart.size.toInt)(0x00.toByte)
-    Blake2b256Hash.fromByteVector(ByteVector(emptyPart) ++ notEmptyPart)
+    val notEmptyPart = createBA(s)
+    val emptyPart    = List.fill(32 - notEmptyPart.size)(0x00.toByte)
+    Blake2b256Hash.fromByteArray(ByteArray(emptyPart) ++ notEmptyPart)
   }
 
-  def createBV(s: String): ByteVector = ByteVector(Base16.unsafeDecode(s))
+  def createBA(s: String): ByteArray = ByteArray(Base16.unsafeDecode(s))
 
-  def createKeySegment(s: String): KeySegment                         = KeySegment(createBV(s))
+  def createKeySegment(s: String): KeySegment                         = KeySegment(createBA(s))
   def createInsertActions(dataSet: List[radixKV]): List[InsertAction] =
     dataSet.map { ds =>
       InsertAction(ds.rKey, ds.rValue)
@@ -694,7 +693,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   )
   case class ExportParameters(
     rootHash: Blake2b256Hash,      // hash
-    typedStore: KeyValueTypedStore[IO, Blake2b256Hash, ByteVector],
+    typedStore: KeyValueTypedStore[IO, Blake2b256Hash, ByteArray],
     takeSize: Int,                 // take size
     skipSize: Int,                 // skip size
     withSkip: Boolean,             // start with skip is true
@@ -709,7 +708,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
 
   def validateMultipageExport(
     rootHash: Blake2b256Hash,
-    store: KeyValueTypedStore[IO, Blake2b256Hash, ByteVector],
+    store: KeyValueTypedStore[IO, Blake2b256Hash, ByteArray],
     withSkip: Boolean,
   ): IO[MultipageExportResults] = {
 
@@ -749,7 +748,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     }
 
     // Initialize structure for export
-    val initSeq        = Seq[ByteVector]()
+    val initSeq        = Seq[ByteArray]()
     val initExportData =
       ExportData(Seq[KeySegment](), Seq.empty, initSeq, Seq[KeySegment](), Seq.empty)
     val initParameters = ExportParameters(

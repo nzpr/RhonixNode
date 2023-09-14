@@ -2,9 +2,7 @@ package sdk.store
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import scodec.bits.BitVector
-import sdk.data.ByteVectorOps.*
-import sdk.data.Codec
+import sdk.data.{ByteArray, Codec}
 
 class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   store: KeyValueStore[F],
@@ -12,42 +10,42 @@ class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   vCodec: Codec[F, V],
 ) extends KeyValueTypedStore[F, K, V] {
 
-  def encodeKey(key: K): F[BitVector]     = kCodec.encode(key)
-  def decodeKey(bytes: BitVector): F[K]   = kCodec.decode(bytes)
-  def encodeValue(value: V): F[BitVector] = vCodec.encode(value)
-  def decodeValue(bytes: BitVector): F[V] = vCodec.decode(bytes)
+  def encodeKey(key: K): F[ByteArray]     = kCodec.encode(key)
+  def decodeKey(bytes: ByteArray): F[K]   = kCodec.decode(bytes)
+  def encodeValue(value: V): F[ByteArray] = vCodec.encode(value)
+  def decodeValue(bytes: ByteArray): F[V] = vCodec.decode(bytes)
 
   import cats.instances.option.*
   import cats.instances.vector.*
 
   override def get(keys: Seq[K]): F[Seq[Option[V]]] =
     for {
-      keysBitVector <- keys.toVector.traverse(encodeKey)
-      keysBuf        = keysBitVector.map(_.toByteVector.toDirectByteBuffer)
-      valuesBytes   <- store.get(keysBuf, BitVector(_))
+      keysByteArray <- keys.toVector.traverse(encodeKey)
+      keysBuf        = keysByteArray.map(_.toByteBuffer)
+      valuesBytes   <- store.get(keysBuf, ByteArray(_))
       values        <- valuesBytes.toVector.traverse(_.traverse(decodeValue))
     } yield values
 
   override def put(kvPairs: Seq[(K, V)]): F[Unit] =
     for {
-      pairsBitVector <- kvPairs.toVector.traverse { case (k, v) =>
+      pairsByteArray <- kvPairs.toVector.traverse { case (k, v) =>
                           encodeKey(k).map2(encodeValue(v))((x, y) => (x, y))
                         }
-      pairs           = pairsBitVector.map { case (k, v) => (k.toByteVector.toDirectByteBuffer, v) }
-      _              <- store.put[BitVector](pairs, _.toByteVector.toDirectByteBuffer)
+      pairs           = pairsByteArray.map { case (k, v) => (k.toByteBuffer, v) }
+      _              <- store.put[ByteArray](pairs, _.toByteBuffer)
     } yield ()
 
   override def delete(keys: Seq[K]): F[Int] =
     for {
-      keysBitVector <- keys.toVector.traverse(encodeKey)
-      keysBuf        = keysBitVector.map(_.toByteVector.toDirectByteBuffer)
+      keysByteArray <- keys.toVector.traverse(encodeKey)
+      keysBuf        = keysByteArray.map(_.toByteBuffer)
       deletedCount  <- store.delete(keysBuf)
     } yield deletedCount
 
   override def contains(keys: Seq[K]): F[Seq[Boolean]] =
     for {
-      keysBitVector <- keys.toVector.traverse(encodeKey)
-      keysBuf        = keysBitVector.map(_.toByteVector.toDirectByteBuffer)
+      keysByteArray <- keys.toVector.traverse(encodeKey)
+      keysBuf        = keysByteArray.map(_.toByteBuffer)
       results       <- store.get(keysBuf, _ => ())
     } yield results.map(_.nonEmpty)
 
@@ -71,7 +69,7 @@ class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   override def toMap: F[Map[K, V]] =
     for {
       valuesBytes <- store.iterate(
-                       _.map { case (k, v) => (BitVector(k), BitVector(v)) }.toVector,
+                       _.map { case (k, v) => (ByteArray(k), ByteArray(v)) }.toVector,
                      )
       values      <- valuesBytes.traverse { case (k, v) =>
                        for {

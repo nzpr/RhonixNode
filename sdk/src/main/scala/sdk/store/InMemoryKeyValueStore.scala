@@ -1,14 +1,14 @@
 package sdk.store
 
 import cats.effect.Sync
-import scodec.bits.ByteVector
+import sdk.data.ByteArray
 
 import java.nio.ByteBuffer
 import scala.collection.concurrent.TrieMap
 
 final case class InMemoryKeyValueStore[F[_]: Sync]() extends KeyValueStore[F] {
 
-  val state = TrieMap[ByteBuffer, ByteVector]()
+  val state: TrieMap[ByteBuffer, ByteArray] = TrieMap[ByteBuffer, ByteArray]()
 
   override def get[T](keys: Seq[ByteBuffer], fromBuffer: ByteBuffer => T): F[Seq[Option[T]]] =
     Sync[F].delay(
@@ -19,7 +19,7 @@ final case class InMemoryKeyValueStore[F[_]: Sync]() extends KeyValueStore[F] {
     Sync[F].delay(
       kvPairs
         .foreach { case (k, v) =>
-          state.put(k, ByteVector(toBuffer(v)))
+          state.put(k, ByteArray(toBuffer(v)))
         },
     )
 
@@ -37,6 +37,6 @@ final case class InMemoryKeyValueStore[F[_]: Sync]() extends KeyValueStore[F] {
   def numRecords(): Int = state.size
 
   def sizeBytes(): Long =
-    state.map { case (byteBuffer, byteVector) => byteBuffer.capacity + byteVector.size }.sum
+    state.map { case (byteBuffer, byteArray) => byteBuffer.capacity + byteArray.size.toLong }.sum
 
 }

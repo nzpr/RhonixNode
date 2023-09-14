@@ -42,7 +42,7 @@ lazy val rhonix = (project in file("."))
 lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
-  .settings(libraryDependencies ++= common ++ dbLibs ++ tests ++ tmp)
+  .settings(libraryDependencies ++= common ++ dbLibs ++ tests)
   .dependsOn(crypto)
 
 // Database interfaces implementation

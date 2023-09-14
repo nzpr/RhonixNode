@@ -50,13 +50,6 @@ object Dependencies {
   // Cryptography
   val bcprov = "org.bouncycastle" % "bcprov-jdk15on" % "1.68"
 
-  // Tmp
-  val scodecCore = "org.scodec" %% "scodec-core" % "1.11.10"
-  val scodecCats = "org.scodec" %% "scodec-cats" % "1.2.0"
-  val scodecBits = "org.scodec" %% "scodec-bits" % "1.1.37"
-
-  val tmp = Seq(scodecCore, scodecCats, scodecBits)
-
   val common = Seq(catsCore, catsEffect, fs2Core)
 
   val diagnostics = Seq(kamonBundle, kamonInfluxDbReporter, kamonJaegerReporter)

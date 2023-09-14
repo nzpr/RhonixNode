@@ -6,34 +6,20 @@ import sdk.data.Blake2b256Hash
 import sdk.history.instances.RadixHistory
 import sdk.store.KeyValueStore
 
-/**
-  * History definition represents key-value API for RSpace tuple space
-  *
-  * [[History]] contains only references to data stored on keys ([[KeySegment]]).
-  *
-  * [[ColdStoreInstances.ColdKeyValueStore]] holds full data referenced by [[LeafPointer]] in [[History]].
-  */
+/** History definition represents key-value API for RSpace tuple space */
 trait History[F[_]] {
   type HistoryF <: History[F]
 
-  /**
-    * Read operation on the Merkle tree
-    */
+  /** Read operation on the Merkle tree */
   def read(key: KeySegment): F[Option[Blake2b256Hash]]
 
-  /**
-    * Insert/update/delete operations on the underlying Merkle tree (key-value store)
-    */
+  /** Insert/update/delete operations on the underlying Merkle tree (key-value store) */
   def process(actions: List[HistoryAction]): F[HistoryF]
 
-  /**
-    * Get the root of the Merkle tree
-    */
+  /** Get the root of the Merkle tree */
   def root: Blake2b256Hash
 
-  /**
-    * Returns History with specified root pointer
-    */
+  /** Returns History with specified root pointer */
   def reset(root: Blake2b256Hash): F[HistoryF]
 }
 
