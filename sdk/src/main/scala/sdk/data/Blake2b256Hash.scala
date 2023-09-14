@@ -29,7 +29,7 @@ class Blake2b256Hash private (val bytes: ByteArray) {
 
 object Blake2b256Hash {
 
-  val length: Int = 32
+  val length: Int = Blake2b256.hashLength
 
   /**
    * Constructs a [[Blake2b256Hash]]

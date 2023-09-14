@@ -13,7 +13,7 @@ object Blake2b256 {
   val hashLength = 32
 
   def hash(input: Array[Byte]): Array[Byte] = {
-    val digestFn = new Blake2bDigest(256)
+    val digestFn = new Blake2bDigest(hashLength * 8)
     digestFn.update(input, 0, input.length)
     val res      = new Array[Byte](hashLength)
     digestFn.doFinal(res, 0)
