@@ -1,6 +1,7 @@
 package sdk.data
 
 import blakehash.Blake2b256
+import sdk.Base16
 
 import java.io.OutputStream
 

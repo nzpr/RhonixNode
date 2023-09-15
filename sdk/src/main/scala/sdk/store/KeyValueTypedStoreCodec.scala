@@ -2,7 +2,8 @@ package sdk.store
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import sdk.data.{ByteArray, Codec}
+import sdk.Codec
+import sdk.data.ByteArray
 
 class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
   store: KeyValueStore[F],

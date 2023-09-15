@@ -3,6 +3,7 @@ package sdk.history.instances
 import cats.effect.Sync
 import cats.syntax.all.*
 import cats.{Applicative, Parallel}
+import sdk.Codec
 import sdk.data.*
 import sdk.history.RadixTree.*
 import sdk.history.{History, HistoryAction, KeySegment, RadixTree}

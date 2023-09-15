@@ -1,4 +1,4 @@
-package sdk.data
+package sdk
 
 import javax.xml.bind.DatatypeConverter
 import scala.util.Try

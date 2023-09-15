@@ -1,5 +1,7 @@
 package sdk.data
 
+import sdk.Base16
+
 import java.io.OutputStream
 import java.nio.ByteBuffer
 

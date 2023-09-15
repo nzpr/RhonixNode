@@ -6,7 +6,8 @@ import cats.syntax.all.*
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import sdk.data.{Base16, Blake2b256Hash, ByteArray}
+import sdk.Base16
+import sdk.data.{Blake2b256Hash, ByteArray}
 import sdk.history.TestData.*
 import sdk.store.InMemoryKeyValueStore
 
