@@ -104,7 +104,7 @@ object ByteArray {
 
   /** Creates a ByteArray instance from a Array[Byte].
    * The operation does not clone input the data, changing the input array will change instance. */
-  def applyUnsafe(x: Array[Byte]): ByteArray = new ByteArray(x.clone())
+  def applyUnsafe(x: Array[Byte]): ByteArray = new ByteArray(x)
 
   /** Creates a ByteArray instance from a ByteBuffer. When created, a duplicate of the data is created in memory.
    * This ensures that any changes made to the ByteBuffer won't affect the original
