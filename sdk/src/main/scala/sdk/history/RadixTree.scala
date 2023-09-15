@@ -46,14 +46,14 @@ object RadixTree {
   /**
     * Number of items always constant.
     */
-  val numItems = 256
+  val NumItems = 256
 
   /**
     * Empty node consists only of [[EmptyItem]]s.
     */
-  val emptyNode: Node = (0 until numItems).map(_ => EmptyItem).toVector
+  val EmptyNode: Node = (0 until NumItems).map(_ => EmptyItem).toVector
 
-  val emptyRootHash: Blake2b256Hash = hashNode(emptyNode)._1
+  val EmptyRootHash: Blake2b256Hash = hashNode(EmptyNode)._1
 
   /**
     * Binary codecs for serializing/deserializing Node in Radix tree
@@ -87,8 +87,8 @@ object RadixTree {
     */
   @SuppressWarnings(Array("org.wartremover.warts.SeqApply", "org.wartremover.warts.SeqUpdated"))
   object Codecs {
-    private val defSize  = 32 // Default size for non-empty item data
-    private val headSize = 2  // 2 bytes: first - item index, second - second byte
+    private val DefSize  = 32 // Default size for non-empty item data
+    private val HeadSize = 2  // 2 bytes: first - item index, second - second byte
 
     /** Serialization [[Node]] to [[ByteArray]]
       */
@@ -102,13 +102,13 @@ object RadixTree {
           val sizePrefix = leafPrefix.size.toInt
           assert(sizePrefix <= 127, "Error during serialization: size of prefix more than 127.")
           // No need for validation size of value because the size of Blake2b256Hash is always 32 bytes
-          size + headSize + sizePrefix + defSize
+          size + HeadSize + sizePrefix + DefSize
 
         case (size, NodePtr(ptrPrefix, _)) =>
           val sizePrefix = ptrPrefix.size.toInt
           assert(sizePrefix <= 127, "Error during serialization: size of prefix more than 127.")
           // No need for validation size of value because the size of Blake2b256Hash is always 32 bytes
-          size + headSize + sizePrefix + defSize
+          size + HeadSize + sizePrefix + DefSize
       }
 
       val arr = new Array[Byte](calcSize) // Allocation memory
@@ -141,8 +141,8 @@ object RadixTree {
               for (i <- 0 until prefixSize) arr(posPrefixStart + i) = prefix.value(i)
               // Fill leafValue
               val posValueStart = posPrefixStart + prefixSize
-              for (i <- 0 until defSize) arr(posValueStart + i) = value.bytes(i)
-              putItemIntoArray(idxItem + 1, posValueStart + defSize) // Loop to the next item.
+              for (i <- 0 until DefSize) arr(posValueStart + i) = value.bytes(i)
+              putItemIntoArray(idxItem + 1, posValueStart + DefSize) // Loop to the next item.
 
             case NodePtr(prefix, ptr) =>
               // Fill first byte - item index
@@ -156,8 +156,8 @@ object RadixTree {
               for (i <- 0 until prefixSize) arr(posPrefixStart + i) = prefix.value(i)
               // Fill ptr
               val posPtrStart = posPrefixStart + prefixSize
-              for (i <- 0 until defSize) arr(posPtrStart + i) = ptr.bytes(i)
-              putItemIntoArray(idxItem + 1, posPtrStart + defSize) // Loop to the next item.
+              for (i <- 0 until DefSize) arr(posPtrStart + i) = ptr.bytes(i)
+              putItemIntoArray(idxItem + 1, posPtrStart + DefSize) // Loop to the next item.
           }
         }
       ByteArray(putItemIntoArray(0, 0))
@@ -190,12 +190,12 @@ object RadixTree {
           for (i <- 0 until prefixSize) prefix(i) = arr(posPrefixStart + i) // Take prefix
 
           // Decoding leaf or nodePtr data
-          val valOrPtr         = new Array[Byte](defSize)
+          val valOrPtr         = new Array[Byte](DefSize)
           val posValOrPtrStart = posPrefixStart + prefixSize
-          for (i <- 0 until defSize)
+          for (i <- 0 until DefSize)
             valOrPtr(i) = arr(posValOrPtrStart + i) // Take next 32 bytes - it's data
 
-          val pos0Next = posValOrPtrStart + defSize // Calculating start position for next loop
+          val pos0Next = posValOrPtrStart + DefSize // Calculating start position for next loop
 
           // Decoding type of non-empty item
           val item =
@@ -208,7 +208,7 @@ object RadixTree {
         }
 
       try
-        decodeItem(0, emptyNode)
+        decodeItem(0, EmptyNode)
       catch {
         case cause: Exception =>
           throw new Exception("Error during deserialization: invalid data format", cause)
@@ -500,14 +500,14 @@ object RadixTree {
       for {
         rootParams    <- NodePathData(
                            rootHash,
-                           KeySegment.empty,
-                           lastPrefix.getOrElse(KeySegment.empty),
+                           KeySegment.Empty,
+                           lastPrefix.getOrElse(KeySegment.Empty),
                            Vector(),
                          ).pure
         noRootStart    = (emptyExportData, skipSize, takeSize)     // Start from next node after lastPrefix
         skippedStart   = (emptyExportData, skipSize - 1, takeSize) // Skipped node start
         rootExportData = {
-          val newNP = if (settings.flagNodePrefixes) Vector(KeySegment.empty) else Vector()
+          val newNP = if (settings.flagNodePrefixes) Vector(KeySegment.Empty) else Vector()
           val newNK =
             if (settings.flagNodeKeys) Vector(rootHash) else Vector()
           val newNV = if (settings.flagNodeValues) Vector(rootNodeSer) else Vector()
@@ -591,7 +591,7 @@ object RadixTree {
         for {
           storeNodeOpt <- loadNodeFromStore(nodePtr)
           _             = storeNodeOpt.map(cacheR.update(nodePtr, _)).getOrElse(errorMsg())
-        } yield storeNodeOpt.getOrElse(emptyNode)
+        } yield storeNodeOpt.getOrElse(EmptyNode)
       for {
         cacheNodeOpt <- Sync[F].delay(cacheR.get(nodePtr))
         r            <- cacheNodeOpt.map(_.pure).getOrElse(cacheMiss)
@@ -645,7 +645,7 @@ object RadixTree {
         kvIfAbsent         = kvPairs zip ifAbsent
         kvExist            = kvIfAbsent.filter(_._2).map(_._1)
         valueExistInStore <- store.get(kvExist.map(_._1))
-        kvvExist           = kvExist zip valueExistInStore.map(_.getOrElse(ByteArray.empty))
+        kvvExist           = kvExist zip valueExistInStore.map(_.getOrElse(ByteArray.Empty))
         kvCollision        = kvvExist.filter(kvv => !(kvv._1._2 == kvv._2)).map(_._1)
         _                 <- if (kvCollision.nonEmpty) collisionException(kvCollision) else ().pure
         kvAbsent           = kvIfAbsent.filterNot(_._2).map(_._1)
@@ -665,7 +665,7 @@ object RadixTree {
       type Params = (Node, KeySegment)
       def loop(params: Params): F[Either[Params, Option[Blake2b256Hash]]] =
         params match {
-          case (_, KeySegment.empty) =>
+          case (_, KeySegment.Empty) =>
             Option.empty[Blake2b256Hash].asRight[Params].pure // Not found
           case (curNode, prefix)     =>
             curNode(byteToInt(prefix.head)) match {
@@ -687,19 +687,19 @@ object RadixTree {
 
     private def createNodeFromItem(item: Item): Node =
       item match {
-        case EmptyItem                   => emptyNode
+        case EmptyItem                   => EmptyNode
         case Leaf(leafPrefix, leafValue) =>
           assert(
             leafPrefix.nonEmpty,
             "Impossible to create a node. LeafPrefix should be non empty.",
           )
-          emptyNode.updated(byteToInt(leafPrefix.head), Leaf(leafPrefix.tail, leafValue))
+          EmptyNode.updated(byteToInt(leafPrefix.head), Leaf(leafPrefix.tail, leafValue))
         case NodePtr(nodePtrPrefix, ptr) =>
           assert(
             nodePtrPrefix.nonEmpty,
             "Impossible to create a node. NodePtrPrefix should be non empty.",
           )
-          emptyNode
+          EmptyNode
             .updated(byteToInt(nodePtrPrefix.head), NodePtr(nodePtrPrefix.tail, ptr))
       }
 
@@ -710,7 +710,7 @@ object RadixTree {
       */
     def constructNodeFromItem(item: Item): F[Node] =
       item match {
-        case NodePtr(KeySegment.empty, ptr) => loadNode(ptr)
+        case NodePtr(KeySegment.Empty, ptr) => loadNode(ptr)
         case _                              => Sync[F].delay(createNodeFromItem(item))
       }
 
@@ -789,7 +789,7 @@ object RadixTree {
               // Create child node, insert existing and new leaf in this node.
               // Intentionally not recursive for speed up.
               val (commPrefix, insPrefixRest, leafPrefixRest) = commonPrefix(insPrefix, leafPrefix)
-              val newNode                                     = emptyNode
+              val newNode                                     = EmptyNode
                 .updated(byteToInt(leafPrefixRest.head), Leaf(leafPrefixRest.tail, leafValue))
                 .updated(byteToInt(insPrefixRest.head), Leaf(insPrefixRest.tail, insValue))
               saveNodeAndCreateItem(newNode, commPrefix, compaction = false).some.pure
@@ -802,7 +802,7 @@ object RadixTree {
               insertNewNodeToChild(ptr, commPrefix, insPrefixRest) // Add new node to existing child node.
             else {
               // Create child node, insert existing Ptr and new leaf in this node.
-              val newNode = emptyNode
+              val newNode = EmptyNode
                 .updated(byteToInt(ptrPrefixRest.head), NodePtr(ptrPrefixRest.tail, ptr))
                 .updated(byteToInt(insPrefixRest.head), Leaf(insPrefixRest.tail, insValue))
               saveNodeAndCreateItem(newNode, commPrefix, compaction = false).some.pure
@@ -886,7 +886,7 @@ object RadixTree {
           createdNode <- constructNodeFromItem(item)
           newActions   = trimKeys(actions)
           newNodeOpt  <- makeActions(createdNode, newActions)
-          newItem      = newNodeOpt.map(saveNodeAndCreateItem(_, KeySegment.empty))
+          newItem      = newNodeOpt.map(saveNodeAndCreateItem(_, KeySegment.Empty))
         } yield (itemIdx, newItem)
 
       // If we have more than 1 action. We can create more parallel processes.

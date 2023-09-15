@@ -295,7 +295,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     (impl, inMemoStore) =>
       for {
         nodesCount1 <- IO.delay(inMemoStore.numRecords())
-        _            = impl.saveNode(emptyNode)
+        _            = impl.saveNode(EmptyNode)
         _           <- impl.commit
 
         // After saving node numRecords must return 1
@@ -307,19 +307,19 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
 
   "function loadNode" should "load node from store" in withImplAndStore { (impl, _) =>
     for {
-      hash <- IO.delay(impl.saveNode(emptyNode))
+      hash <- IO.delay(impl.saveNode(EmptyNode))
       _    <- impl.commit
 
       _         = impl.clearReadCache()
       _         = impl.clearWriteCache()
       loadNode <- impl.loadNode(hash)
-      _         = loadNode shouldBe emptyNode
+      _         = loadNode shouldBe EmptyNode
     } yield ()
   }
 
   "Trying to load a non-existent node" should "throw error" in withImplAndStore { (impl, store) =>
     for {
-      hash <- IO.delay(impl.saveNode(emptyNode))
+      hash <- IO.delay(impl.saveNode(EmptyNode))
       _    <- impl.commit
       _     = store.clear() // Clearing database
       _     = impl.clearReadCache()
@@ -343,7 +343,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       createKeySegment(""),
       createBlakeHash("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
     )
-    val referenceNode = emptyNode
+    val referenceNode = EmptyNode
       .updated(1, leaf)
       .updated(2, nodePtr)
 
@@ -376,12 +376,12 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       newBuf.put(arr).rewind()
     }
 
-    val collisionKVPair       = (copyBaToBuf(RadixTree.emptyRootHash.bytes), ByteArray(0x00))
+    val collisionKVPair       = (copyBaToBuf(RadixTree.EmptyRootHash.bytes), ByteArray(0x00))
     val referenceErrorMessage = s"1 collisions in KVDB (first collision with key = " +
-      s"${RadixTree.emptyRootHash.bytes.toHex})."
+      s"${RadixTree.EmptyRootHash.bytes.toHex})."
     for {
       _   <- inMemoStore.put[ByteArray](Seq(collisionKVPair), copyBaToBuf)
-      _    = impl.saveNode(emptyNode)
+      _    = impl.saveNode(EmptyNode)
       err <- impl.commit.attempt
 
       ex = err.left.value
@@ -421,7 +421,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       val referenceTree2 = Vector("TREE2: root =>")
       for {
         // 1  Build a tree according to the example in specification
-        rootNodeAndHash1Opt <- impl.saveAndCommit(RadixTree.emptyNode, referenceInsertActions)
+        rootNodeAndHash1Opt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
         (rootNode1, _)       = rootNodeAndHash1Opt.get
 
         // Get the tree for compare with reference
@@ -439,7 +439,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
         // Number of nodes after deleting data must be equal to 5 (with root)
         nodesCount2 = inMemoStore.numRecords()
 
-        _ = rootNode2 shouldBe RadixTree.emptyNode
+        _ = rootNode2 shouldBe RadixTree.EmptyNode
         _ = tree1 shouldBe referenceTree1
         _ = nodesCount1 shouldBe 4
         _ = tree2 shouldBe referenceTree2
@@ -450,7 +450,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   "sequentialExport" should "export all data from tree" in withImplAndStore { (impl, store) =>
     for {
       // Create tree with 6 leafs
-      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.emptyNode, referenceInsertActions)
+      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
       (_, rootHash)       = rootNodeAndHashOpt.get
 
       // First data export
@@ -497,7 +497,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
-      rootAndHashOpt <- impl.saveAndCommit(RadixTree.emptyNode, referenceInsertActions)
+      rootAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
       (_, rootHash)   = rootAndHashOpt.get
 
       // Validate exception when skipSize = 0 and takeSize == 0
@@ -520,7 +520,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
-      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.emptyNode, referenceInsertActions)
+      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
       (_, rootHash)       = rootNodeAndHashOpt.get
 
       validateData                            <- validateMultipageExport(rootHash, typedStore, withSkip = false)
@@ -543,7 +543,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
-      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.emptyNode, referenceInsertActions)
+      rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
       (_, rootHash)       = rootNodeAndHashOpt.get
 
       validateData                              <- validateMultipageExport(rootHash, typedStore, withSkip = true)
@@ -564,7 +564,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
 
   "sequentialExport with non-existing tree" should "return empty data" in withImplAndStore { (impl, store) =>
     val typedStore    = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
-    val emptyRootHash = impl.saveNode(emptyNode)
+    val emptyRootHash = impl.saveNode(EmptyNode)
     for {
       exported1         <- sequentialExport(
                              emptyRootHash,
@@ -587,10 +587,10 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val v22345 = KeySegment(ByteArray(2, 2, 3, 4, 5))
     val res1   = commonPrefix(v12345, v1245)
     val res2   = commonPrefix(v12345, v123)
-    val res3   = commonPrefix(v12345, KeySegment.empty)
+    val res3   = commonPrefix(v12345, KeySegment.Empty)
     val res4   = commonPrefix(v12345, v12367)
     val res5   = commonPrefix(v22345, v12345)
-    val res6   = commonPrefix(KeySegment.empty, KeySegment.empty)
+    val res6   = commonPrefix(KeySegment.Empty, KeySegment.Empty)
 
     val referenceRes1 = (
       KeySegment(ByteArray(1, 2)),
@@ -601,11 +601,11 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val referenceRes2 = (
       KeySegment(ByteArray(1, 2, 3)),
       KeySegment(ByteArray(4, 5)),
-      KeySegment.empty,
+      KeySegment.Empty,
     )
 
     val referenceRes3 =
-      (KeySegment.empty, KeySegment(ByteArray(1, 2, 3, 4, 5)), KeySegment.empty)
+      (KeySegment.Empty, KeySegment(ByteArray(1, 2, 3, 4, 5)), KeySegment.Empty)
 
     val referenceRes4 = (
       KeySegment(ByteArray(1, 2, 3)),
@@ -614,12 +614,12 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     )
 
     val referenceRes5 = (
-      KeySegment.empty,
+      KeySegment.Empty,
       KeySegment(ByteArray(2, 2, 3, 4, 5)),
       KeySegment(ByteArray(1, 2, 3, 4, 5)),
     )
 
-    val referenceRes6 = (KeySegment.empty, KeySegment.empty, KeySegment.empty)
+    val referenceRes6 = (KeySegment.Empty, KeySegment.Empty, KeySegment.Empty)
 
     res1 shouldBe referenceRes1
     res2 shouldBe referenceRes2
@@ -758,7 +758,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       skipSize = 0,
       withSkip,
       initExportData,
-      Option(KeySegment.empty),
+      Option(KeySegment.Empty),
     )
     for {
       allExport       <- initParameters.tailRecM(multipageExport)

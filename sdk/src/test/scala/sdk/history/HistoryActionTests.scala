@@ -18,22 +18,22 @@ import scala.util.Random
 class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
 
   "creating and read one record" should "works" in withEmptyHistory { emptyHistoryF =>
-    val data = insert(_zeros) :: Nil
+    val data = insert(_Zeros) :: Nil
     for {
       emptyHistory <- emptyHistoryF
       newHistory   <- emptyHistory.process(data)
-      readValue    <- newHistory.read(_zeros)
+      readValue    <- newHistory.read(_Zeros)
       _             = readValue shouldBe data.head.hash.some
     } yield ()
   }
 
   "reset method of history" should "works" in withEmptyHistory { emptyHistoryF =>
-    val data = insert(_zeros) :: Nil
+    val data = insert(_Zeros) :: Nil
     for {
       emptyHistory    <- emptyHistoryF
       newHistory      <- emptyHistory.process(data)
       historyOneReset <- emptyHistory.reset(newHistory.root)
-      readValue       <- historyOneReset.read(_zeros)
+      readValue       <- historyOneReset.read(_Zeros)
       _                = readValue shouldBe data.head.hash.some
     } yield ()
   }
@@ -84,7 +84,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "history" should "not allow to process HistoryActions with same keys" in withEmptyHistory { emptyHistoryF =>
-    val data1 = insert(_zeros) :: insert(_zeros) :: Nil
+    val data1 = insert(_Zeros) :: insert(_Zeros) :: Nil
     for {
       emptyHistory <- emptyHistoryF
       err          <- emptyHistory.process(data1).attempt
@@ -93,7 +93,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
       ex shouldBe a[RuntimeException]
       ex.getMessage shouldBe s"Cannot process duplicate actions on one key."
     }
-    val data2 = insert(_zeros) :: delete(_zeros) :: Nil
+    val data2 = insert(_Zeros) :: delete(_Zeros) :: Nil
     for {
       emptyHistory <- emptyHistoryF
       err          <- emptyHistory.process(data2).attempt
@@ -105,8 +105,8 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "history after deleting all records" should "be empty" in withEmptyHistory { emptyHistoryF =>
-    val insertions = insert(_zeros) :: Nil
-    val deletions  = delete(_zeros) :: Nil
+    val insertions = insert(_Zeros) :: Nil
+    val deletions  = delete(_Zeros) :: Nil
     for {
       emptyHistory <- emptyHistoryF
       historyOne   <- emptyHistory.process(insertions)
@@ -125,15 +125,15 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "update of a record" should "not change past history" in withEmptyHistory { emptyHistoryF =>
-    val insertOne = insert(_zeros) :: Nil
-    val insertTwo = insert(_zeros) :: Nil
+    val insertOne = insert(_Zeros) :: Nil
+    val insertTwo = insert(_Zeros) :: Nil
     for {
       emptyHistory     <- emptyHistoryF
       historyOne       <- emptyHistory.process(insertOne)
-      readValueOnePre  <- historyOne.read(_zeros)
+      readValueOnePre  <- historyOne.read(_Zeros)
       historyTwo       <- historyOne.process(insertTwo)
-      readValueOnePost <- historyOne.read(_zeros)
-      readValueTwo     <- historyTwo.read(_zeros)
+      readValueOnePost <- historyOne.read(_Zeros)
+      readValueTwo     <- historyTwo.read(_Zeros)
       _                 = readValueOnePre shouldBe readValueOnePost
       _                 = readValueOnePre should not be readValueTwo
     } yield ()
@@ -171,7 +171,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
 
   "adding already existing records" should "not change history" in withEmptyHistoryAndStore {
     (emptyHistoryF, inMemoStore) =>
-      val inserts = insert(_zeros) :: Nil
+      val inserts = insert(_Zeros) :: Nil
       for {
         emptyHistory    <- emptyHistoryF
         emptyHistorySize = inMemoStore.sizeBytes()
@@ -191,8 +191,8 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
       val newBuf = ByteBuffer.allocateDirect(arr.length)
       newBuf.put(arr).rewind()
     }
-    val insertRecord                           = insert(_zeros) :: Nil
-    val deleteRecord                           = delete(_zeros) :: Nil
+    val insertRecord                           = insert(_Zeros) :: Nil
+    val deleteRecord                           = delete(_Zeros) :: Nil
     val collisionKVPair                        =
       (copyBVToBuf(History.emptyRootHash.bytes), randomBlake.bytes)
     for {
@@ -298,11 +298,11 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
 
 object TestData {
 
-  val _zeros: KeySegment     = KeySegment(List.fill(32)(0.toByte))
-  val _zerosOnes: KeySegment = KeySegment(List.fill(16)(0.toByte) ++ List.fill(16)(1.toByte))
-  val _31zeros: KeySegment   = KeySegment(List.fill(31)(0.toByte))
+  val _Zeros: KeySegment     = KeySegment(List.fill(32)(0.toByte))
+  val _ZerosOnes: KeySegment = KeySegment(List.fill(16)(0.toByte) ++ List.fill(16)(1.toByte))
+  val _31Zeros: KeySegment   = KeySegment(List.fill(31)(0.toByte))
 
-  def zerosAnd(i: Int): KeySegment           = _31zeros :+ i.toByte
+  def zerosAnd(i: Int): KeySegment           = _31Zeros :+ i.toByte
   def prefixWithZeros(s: String): KeySegment = {
     val a = List.fill(32 - s.length)(0.toByte)
     val b = s.toCharArray.toList.map(_.asDigit.toByte)

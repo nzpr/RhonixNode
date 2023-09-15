@@ -24,7 +24,7 @@ trait History[F[_]] {
 }
 
 object History {
-  val emptyRootHash: Blake2b256Hash = RadixHistory.emptyRootHash
+  val emptyRootHash: Blake2b256Hash = RadixHistory.EmptyRootHash
 
   def create[F[_]: Async: Sync: Parallel](
     root: Blake2b256Hash,

@@ -13,7 +13,7 @@ import sdk.syntax.all.sharedSyntaxKeyValueStore
   * History implementation with radix tree
   */
 object RadixHistory {
-  val emptyRootHash: Blake2b256Hash                       = RadixTree.emptyRootHash
+  val EmptyRootHash: Blake2b256Hash                       = RadixTree.EmptyRootHash
   def kCodec[F[_]: Applicative]: Codec[F, Blake2b256Hash] = CodecBlake2b256Hash[F]
   def vCodec[F[_]: Applicative]: Codec[F, ByteArray]      = CodecByteArray[F]
 

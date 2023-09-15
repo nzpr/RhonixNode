@@ -10,12 +10,12 @@ import java.io.OutputStream
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 object Blake2b256 {
-  val hashLength = 32
+  val HashLength = 32
 
   def hash(input: Array[Byte]): Array[Byte] = {
-    val digestFn = new Blake2bDigest(hashLength * 8)
+    val digestFn = new Blake2bDigest(HashLength * 8)
     digestFn.update(input, 0, input.length)
-    val res      = new Array[Byte](hashLength)
+    val res      = new Array[Byte](HashLength)
     digestFn.doFinal(res, 0)
     res
   }

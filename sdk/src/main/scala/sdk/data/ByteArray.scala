@@ -129,5 +129,5 @@ object ByteArray {
     ByteArray(buf)
   }
 
-  val empty: ByteArray = ByteArray(Array[Byte]())
+  val Empty: ByteArray = ByteArray(Array[Byte]())
 }
