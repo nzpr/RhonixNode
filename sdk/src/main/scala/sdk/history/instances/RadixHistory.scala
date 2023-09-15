@@ -15,8 +15,12 @@ import sdk.syntax.all.sharedSyntaxKeyValueStore
   */
 object RadixHistory {
   val EmptyRootHash: Blake2b256Hash                       = RadixTree.EmptyRootHash
-  def kCodec[F[_]: Applicative]: Codec[F, Blake2b256Hash] = CodecBlake2b256Hash[F]
-  def vCodec[F[_]: Applicative]: Codec[F, ByteArray]      = CodecByteArray[F]
+  def kCodec: Codec[Blake2b256Hash, ByteArray, Throwable] = new Codec[Blake2b256Hash, ByteArray, Throwable] {
+    override def encode(x: Blake2b256Hash): Either[Throwable, ByteArray] = x.bytes.asRight
+
+    override def decode(x: ByteArray): Either[Throwable, Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
+  }
+  def vCodec: Codec[ByteArray, ByteArray, Throwable]      = Codec.Identity[ByteArray, Throwable]
 
   def apply[F[_]: Sync: Parallel](
     root: Blake2b256Hash,
@@ -30,7 +34,7 @@ object RadixHistory {
   def createStore[F[_]: Sync](
     store: KeyValueStore[F],
   ): KeyValueTypedStore[F, Blake2b256Hash, ByteArray] =
-    store.toTypedStore(kCodec, vCodec)
+    store.toByteArrayTypedStore(kCodec, vCodec)
 }
 
 final case class RadixHistory[F[_]: Sync: Parallel](

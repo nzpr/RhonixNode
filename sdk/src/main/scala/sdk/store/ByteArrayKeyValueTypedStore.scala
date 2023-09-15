@@ -5,16 +5,37 @@ import cats.syntax.all.*
 import sdk.Codec
 import sdk.data.ByteArray
 
-class KeyValueTypedStoreCodec[F[_]: Sync, K, V](
+/// KV typed store that uses ByteArray as a heap object to copy native memory
+class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](
   store: KeyValueStore[F],
-  kCodec: Codec[F, K],
-  vCodec: Codec[F, V],
+  kCodec: Codec[K, ByteArray, Throwable],
+  vCodec: Codec[V, ByteArray, Throwable],
 ) extends KeyValueTypedStore[F, K, V] {
 
-  def encodeKey(key: K): F[ByteArray]     = kCodec.encode(key)
-  def decodeKey(bytes: ByteArray): F[K]   = kCodec.decode(bytes)
-  def encodeValue(value: V): F[ByteArray] = vCodec.encode(value)
-  def decodeValue(bytes: ByteArray): F[V] = vCodec.decode(bytes)
+  def encodeKey(key: K): F[ByteArray]     = kCodec
+    .encode(key)
+    .fold(
+      err => new Exception(err.getMessage).raiseError[F, ByteArray],
+      _.pure[F],
+    )
+  def decodeKey(bytes: ByteArray): F[K]   = kCodec
+    .decode(bytes)
+    .fold(
+      err => new Exception(err.getMessage).raiseError[F, K],
+      _.pure[F],
+    )
+  def encodeValue(value: V): F[ByteArray] = vCodec
+    .encode(value)
+    .fold(
+      err => new Exception(err.getMessage).raiseError[F, ByteArray],
+      _.pure[F],
+    )
+  def decodeValue(bytes: ByteArray): F[V] = vCodec
+    .decode(bytes)
+    .fold(
+      err => new Exception(err.getMessage).raiseError[F, V],
+      _.pure[F],
+    )
 
   import cats.instances.option.*
   import cats.instances.vector.*

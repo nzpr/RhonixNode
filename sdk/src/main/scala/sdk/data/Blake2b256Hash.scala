@@ -1,6 +1,7 @@
 package sdk.data
 
 import blakehash.Blake2b256
+import cats.implicits.catsSyntaxEitherId
 import sdk.Base16
 
 import java.io.OutputStream
@@ -55,21 +56,28 @@ object Blake2b256Hash {
   def create(byteArray: ByteArray): Blake2b256Hash =
     new Blake2b256Hash(ByteArray(Blake2b256.hash(byteArray)(copyToStream)))
 
-  def fromByteArray(bytes: ByteArray): Blake2b256Hash =
-    new Blake2b256Hash(bytes)
+  def fromByteArray(bytes: ByteArray): Either[Exception, Blake2b256Hash] = {
+    val lengthOk = bytes.length == Blake2b256Hash.length
+    if (lengthOk) new Blake2b256Hash(bytes).asRight
+    else
+      new Exception(s"Expected ${Blake2b256Hash.length} but got ${bytes.length}").asLeft[Blake2b256Hash]
+  }
 
-  def fromHex(string: String): Blake2b256Hash =
-    fromByteArray(ByteArray(Base16.unsafeDecode(string)))
-
-  def fromHexEither(string: String): Either[String, Blake2b256Hash] =
+  def fromHex(string: String): Either[Exception, Blake2b256Hash] =
     Base16
       .decode(string)
-      .fold[Either[String, Blake2b256Hash]](Left(s"Invalid hex string $string"))(b =>
+      .fold[Either[Exception, Blake2b256Hash]](Left(new Exception(s"Invalid hex string $string")))(b =>
         Right(new Blake2b256Hash(ByteArray(b))),
       )
 
-  def fromByteArray(bytes: Array[Byte]): Blake2b256Hash =
+  def fromByteArray(bytes: Array[Byte]): Either[Exception, Blake2b256Hash] =
     fromByteArray(ByteArray(bytes))
+
+  def fromByteArrayUnsafe(bytes: Array[Byte]): Blake2b256Hash =
+    fromByteArray(ByteArray(bytes)).fold(e => throw e, identity)
+
+  def fromByteArrayUnsafe(bytes: ByteArray): Blake2b256Hash =
+    fromByteArray(bytes).fold(e => throw e, identity)
 
   implicit val ordering: Ordering[Blake2b256Hash] =
     (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)

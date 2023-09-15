@@ -455,7 +455,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       (_, rootHash)       = rootNodeAndHashOpt.get
 
       // First data export
-      typedStore       = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+      typedStore       = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
       exported1       <- sequentialExport(
                            rootHash,
                            None,
@@ -495,7 +495,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "invalid initial conditions in sequentialExport" should "raise exception" in withImplAndStore { (impl, store) =>
-    val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+    val typedStore = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
       rootAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
@@ -518,7 +518,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "multipage export with last prefix" should "work correctly" in withImplAndStore { (impl, store) =>
-    val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+    val typedStore = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
       rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
@@ -541,7 +541,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "multipage export with skip" should "work correctly" in withImplAndStore { (impl, store) =>
-    val typedStore = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+    val typedStore = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     for {
       // Create tree with 6 leafs
       rootNodeAndHashOpt <- impl.saveAndCommit(RadixTree.EmptyNode, referenceInsertActions)
@@ -564,7 +564,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "sequentialExport with non-existing tree" should "return empty data" in withImplAndStore { (impl, store) =>
-    val typedStore    = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+    val typedStore    = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     val emptyRootHash = impl.saveNode(EmptyNode)
     for {
       exported1         <- sequentialExport(
@@ -644,7 +644,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   def createBlakeHash(s: String): Blake2b256Hash = {
     val notEmptyPart = createBA(s)
     val emptyPart    = List.fill(32 - notEmptyPart.size)(0x00.toByte)
-    Blake2b256Hash.fromByteArray(ByteArray(emptyPart) ++ notEmptyPart)
+    Blake2b256Hash.fromByteArrayUnsafe(ByteArray(emptyPart) ++ notEmptyPart)
   }
 
   def createBA(s: String): ByteArray = ByteArray(Base16.unsafeDecode(s))
@@ -793,7 +793,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   ): Unit = {
 
     val store         = InMemoryKeyValueStore[IO]()
-    val typedStore    = store.toTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
+    val typedStore    = store.toByteArrayTypedStore(RadixHistory.kCodec, RadixHistory.vCodec)
     val radixTreeImpl = new RadixTreeImpl[IO](typedStore)
     f(radixTreeImpl, store).timeout(20.seconds).unsafeRunSync()
   }

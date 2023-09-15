@@ -1,8 +1,15 @@
 package sdk
+import cats.syntax.all.*
 
-import sdk.data.ByteArray
+/// Codec that can fail
+trait Codec[A, B, Err] {
+  def encode(x: A): Either[Err, B]
+  def decode(x: B): Either[Err, A]
+}
 
-trait Codec[F[_], A] {
-  def encode(x: A): F[ByteArray]
-  def decode(x: ByteArray): F[A]
+object Codec {
+  def Identity[A, Err]: Codec[A, A, Err] = new Codec[A, A, Err] {
+    override def encode(x: A): Either[Err, A] = x.asRight[Err]
+    override def decode(x: A): Either[Err, A] = x.asRight[Err]
+  }
 }

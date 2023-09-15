@@ -199,8 +199,9 @@ object RadixTree {
 
           // Decoding type of non-empty item
           val item =
-            if (isLeaf(secondByte)) Leaf(KeySegment(prefix), Blake2b256Hash.fromByteArray(valOrPtr))
-            else NodePtr(KeySegment(prefix), Blake2b256Hash.fromByteArray(valOrPtr))
+            if (isLeaf(secondByte))
+              Leaf(KeySegment(prefix), Blake2b256Hash.fromByteArrayUnsafe(valOrPtr))
+            else NodePtr(KeySegment(prefix), Blake2b256Hash.fromByteArrayUnsafe(valOrPtr))
 
           val nodeNext = node.updated(idxItem, item)
 
