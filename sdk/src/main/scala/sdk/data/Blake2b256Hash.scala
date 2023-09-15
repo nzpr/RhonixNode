@@ -73,9 +73,11 @@ object Blake2b256Hash {
   def fromByteArray(bytes: Array[Byte]): Either[Exception, Blake2b256Hash] =
     fromByteArray(ByteArray(bytes))
 
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromByteArrayUnsafe(bytes: Array[Byte]): Blake2b256Hash =
     fromByteArray(ByteArray(bytes)).fold(e => throw e, identity)
 
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromByteArrayUnsafe(bytes: ByteArray): Blake2b256Hash =
     fromByteArray(bytes).fold(e => throw e, identity)
 
