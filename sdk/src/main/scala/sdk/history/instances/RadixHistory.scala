@@ -10,17 +10,19 @@ import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
 import sdk.store.{KeyValueStore, KeyValueTypedStore}
 import sdk.syntax.all.sharedSyntaxKeyValueStore
 
+import scala.util.Try
+
 /**
   * History implementation with radix tree
   */
 object RadixHistory {
-  val EmptyRootHash: Blake2b256Hash                       = RadixTree.EmptyRootHash
-  def kCodec: Codec[Blake2b256Hash, ByteArray, Throwable] = new Codec[Blake2b256Hash, ByteArray, Throwable] {
-    override def encode(x: Blake2b256Hash): Either[Throwable, ByteArray] = x.bytes.asRight
+  val EmptyRootHash: Blake2b256Hash            = RadixTree.EmptyRootHash
+  def kCodec: Codec[Blake2b256Hash, ByteArray] = new Codec[Blake2b256Hash, ByteArray] {
+    override def encode(x: Blake2b256Hash): Try[ByteArray] = Try(x.bytes)
 
-    override def decode(x: ByteArray): Either[Throwable, Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
+    override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
   }
-  def vCodec: Codec[ByteArray, ByteArray, Throwable]      = Codec.Identity[ByteArray, Throwable]
+  def vCodec: Codec[ByteArray, ByteArray]      = Codec.Identity[ByteArray]
 
   def apply[F[_]: Sync: Parallel](
     root: Blake2b256Hash,

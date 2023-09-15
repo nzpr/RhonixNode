@@ -8,8 +8,8 @@ import sdk.data.ByteArray
 /// KV typed store that uses ByteArray as a heap object to copy native memory
 class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](
   store: KeyValueStore[F],
-  kCodec: Codec[K, ByteArray, Throwable],
-  vCodec: Codec[V, ByteArray, Throwable],
+  kCodec: Codec[K, ByteArray],
+  vCodec: Codec[V, ByteArray],
 ) extends KeyValueTypedStore[F, K, V] {
 
   def encodeKey(key: K): F[ByteArray]     = kCodec

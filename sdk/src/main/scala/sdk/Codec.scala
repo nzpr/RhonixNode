@@ -1,15 +1,17 @@
 package sdk
 import cats.syntax.all.*
 
+import scala.util.Try
+
 /// Codec that can fail
-trait Codec[A, B, Err] {
-  def encode(x: A): Either[Err, B]
-  def decode(x: B): Either[Err, A]
+trait Codec[A, B] {
+  def encode(x: A): Try[B]
+  def decode(x: B): Try[A]
 }
 
 object Codec {
-  def Identity[A, Err]: Codec[A, A, Err] = new Codec[A, A, Err] {
-    override def encode(x: A): Either[Err, A] = x.asRight[Err]
-    override def decode(x: A): Either[Err, A] = x.asRight[Err]
+  def Identity[A]: Codec[A, A] = new Codec[A, A] {
+    override def encode(x: A): Try[A] = Try(x)
+    override def decode(x: A): Try[A] = Try(x)
   }
 }

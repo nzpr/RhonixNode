@@ -47,8 +47,8 @@ final class KeyValueStoreOps[F[_]](
     contains(Seq(key)).map(_.head)
 
   // From key-value store, with serializers for K and V, typed store can be created
-  def toByteArrayTypedStore[K, V](kCodec: Codec[K, ByteArray, Throwable], vCodec: Codec[V, ByteArray, Throwable])(
-    implicit s: Sync[F],
+  def toByteArrayTypedStore[K, V](kCodec: Codec[K, ByteArray], vCodec: Codec[V, ByteArray])(implicit
+    s: Sync[F],
   ): KeyValueTypedStore[F, K, V] =
     new ByteArrayKeyValueTypedStore[F, K, V](store, kCodec, vCodec)
 }
