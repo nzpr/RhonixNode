@@ -12,30 +12,10 @@ class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](
   vCodec: Codec[V, ByteArray],
 ) extends KeyValueTypedStore[F, K, V] {
 
-  def encodeKey(key: K): F[ByteArray]     = kCodec
-    .encode(key)
-    .fold(
-      err => new Exception(err.getMessage).raiseError[F, ByteArray],
-      _.pure[F],
-    )
-  def decodeKey(bytes: ByteArray): F[K]   = kCodec
-    .decode(bytes)
-    .fold(
-      err => new Exception(err.getMessage).raiseError[F, K],
-      _.pure[F],
-    )
-  def encodeValue(value: V): F[ByteArray] = vCodec
-    .encode(value)
-    .fold(
-      err => new Exception(err.getMessage).raiseError[F, ByteArray],
-      _.pure[F],
-    )
-  def decodeValue(bytes: ByteArray): F[V] = vCodec
-    .decode(bytes)
-    .fold(
-      err => new Exception(err.getMessage).raiseError[F, V],
-      _.pure[F],
-    )
+  private def encodeKey(key: K): F[ByteArray]     = kCodec.encode(key).liftTo[F]
+  private def decodeKey(bytes: ByteArray): F[K]   = kCodec.decode(bytes).liftTo[F]
+  private def encodeValue(value: V): F[ByteArray] = vCodec.encode(value).liftTo[F]
+  private def decodeValue(bytes: ByteArray): F[V] = vCodec.decode(bytes).liftTo[F]
 
   import cats.instances.option.*
   import cats.instances.vector.*
