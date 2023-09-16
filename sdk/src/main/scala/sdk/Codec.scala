@@ -1,7 +1,7 @@
 package sdk
 import cats.syntax.all.*
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /// Codec that can fail
 trait Codec[A, B] {
@@ -11,7 +11,7 @@ trait Codec[A, B] {
 
 object Codec {
   def Identity[A]: Codec[A, A] = new Codec[A, A] {
-    override def encode(x: A): Try[A] = Try(x)
-    override def decode(x: A): Try[A] = Try(x)
+    override def encode(x: A): Try[A] = Success(x)
+    override def decode(x: A): Try[A] = Success(x)
   }
 }

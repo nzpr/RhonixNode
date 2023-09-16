@@ -10,7 +10,7 @@ import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
 import sdk.store.{KeyValueStore, KeyValueTypedStore}
 import sdk.syntax.all.sharedSyntaxKeyValueStore
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /**
   * History implementation with radix tree
@@ -18,7 +18,7 @@ import scala.util.Try
 object RadixHistory {
   val EmptyRootHash: Blake2b256Hash            = RadixTree.EmptyRootHash
   def kCodec: Codec[Blake2b256Hash, ByteArray] = new Codec[Blake2b256Hash, ByteArray] {
-    override def encode(x: Blake2b256Hash): Try[ByteArray] = Try(x.bytes)
+    override def encode(x: Blake2b256Hash): Try[ByteArray] = Success(x.bytes)
 
     override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
   }

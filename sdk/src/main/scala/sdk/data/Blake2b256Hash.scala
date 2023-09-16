@@ -5,7 +5,7 @@ import cats.implicits.catsSyntaxEitherId
 import sdk.Base16
 
 import java.io.OutputStream
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Represents a Blake2b256 Hash
@@ -60,16 +60,12 @@ object Blake2b256Hash {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromByteArray(bytes: ByteArray): Try[Blake2b256Hash] = {
     val lengthOk = bytes.length == Blake2b256Hash.length
-    if (lengthOk) Try(new Blake2b256Hash(bytes))
-    else Try(throw new Exception(s"Expected ${Blake2b256Hash.length} but got ${bytes.length}"))
+    if (lengthOk) Success(new Blake2b256Hash(bytes))
+    else Failure(new Exception(s"Expected ${Blake2b256Hash.length} but got ${bytes.length}"))
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromHex(string: String): Try[Blake2b256Hash] = Base16
-    .decode(string)
-    .fold[Try[Blake2b256Hash]](Try(throw new Exception(s"Invalid hex string $string")))(b =>
-      Try(new Blake2b256Hash(ByteArray(b))),
-    )
+  def fromHex(string: String): Try[Blake2b256Hash] = Base16.decode(string).flatMap(fromByteArray)
 
   def fromByteArray(bytes: Array[Byte]): Try[Blake2b256Hash] =
     fromByteArray(ByteArray(bytes))
