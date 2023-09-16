@@ -58,11 +58,7 @@ object Blake2b256Hash {
     new Blake2b256Hash(ByteArray(Blake2b256.hash(byteArray)(copyToStream)))
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromByteArray(bytes: ByteArray): Try[Blake2b256Hash] = {
-    val lengthOk = bytes.length == Blake2b256Hash.length
-    if (lengthOk) Success(new Blake2b256Hash(bytes))
-    else Failure(new Exception(s"Expected ${Blake2b256Hash.length} but got ${bytes.length}"))
-  }
+  def fromByteArray(bytes: ByteArray): Try[Blake2b256Hash] = Try(new Blake2b256Hash(bytes))
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromHex(string: String): Try[Blake2b256Hash] = Base16.decode(string).flatMap(fromByteArray)

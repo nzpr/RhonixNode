@@ -3,6 +3,7 @@ package sdk.data
 import blakehash.Blake2b256
 import org.scalacheck.Prop
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.scalacheck.Checkers
 
@@ -30,7 +31,8 @@ class Blake2b256HashTests extends AnyFlatSpec with Checkers {
     val arr: Array[Byte] = Array.fill(Blake2b256Hash.length - 1)(0x00.toByte)
     val hashTry          = Blake2b256Hash.fromByteArray(arr)
     val result           = intercept[Exception](hashTry.get)
-    result.getMessage shouldBe s"Expected ${Blake2b256Hash.length} but got ${arr.length}"
+    val expectedMessage  = s"Expected ${Blake2b256Hash.length} but got ${arr.length}"
+    result.getMessage should include(expectedMessage)
   }
 
   // TODO: commented because needs legacy RSpace dependencies
