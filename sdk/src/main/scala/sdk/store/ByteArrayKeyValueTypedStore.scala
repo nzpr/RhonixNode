@@ -4,6 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import sdk.Codec
 import sdk.data.ByteArray
+import sdk.syntax.all.sdkSyntaxTry
 
 /// KV typed store that uses ByteArray as a heap object to copy native memory
 class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](
@@ -51,22 +52,19 @@ class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](
       results       <- store.get(keysBuf, _ => ())
     } yield results.map(_.nonEmpty)
 
-  override def collect[T](pf: PartialFunction[(K, () => V), T]): F[Seq[T]] = ??? // TODO: implement in the future
-//    for {
-//      values <- store.iterate(
-//                  _.map { case (kBuff, vBuff) =>
-//                    val kBytes = BitVector(kBuff)
-//                    // Inside LMDB iterator can only be synchronous operation / unsafe decode
-//                    val k      = kCodec.decodeValue(kBytes).require
-//                    // Lazy evaluate/decode value
-//                    val fv     = () => {
-//                      val vBytes = BitVector(vBuff)
-//                      vCodec.decodeValue(vBytes).require
-//                    }
-//                    (k, fv)
-//                  }.collect(pf).toVector,
-//                )
-//    } yield values
+  override def collect[T](pf: PartialFunction[(K, () => V), T]): F[Seq[T]] = store.iterate(
+    _.map { case (kBuff, vBuff) =>
+      val kBytes = ByteArray(kBuff)
+      // Inside LMDB iterator can only be synchronous operation / unsafe decode
+      val k      = kCodec.decode(kBytes).getUnsafe
+      // Lazy evaluate/decode value
+      val fv     = () => {
+        val vBytes = ByteArray(vBuff)
+        vCodec.decode(vBytes).getUnsafe
+      }
+      (k, fv)
+    }.collect(pf).toVector,
+  )
 
   override def toMap: F[Map[K, V]] =
     for {
