@@ -1,4 +1,4 @@
-package blakehash
+package sdk.hashing
 
 import org.bouncycastle.crypto.digests.Blake2bDigest
 import org.bouncycastle.crypto.io.DigestOutputStream

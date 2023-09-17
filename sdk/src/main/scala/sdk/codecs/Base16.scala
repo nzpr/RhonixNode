@@ -1,9 +1,9 @@
-package sdk
+package sdk.codecs
 
 import sdk.syntax.all.*
 
 import javax.xml.bind.DatatypeConverter
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 object Base16 {
   def encode(input: Array[Byte]): String = bytes2hex(input, None)

@@ -1,7 +1,6 @@
 package sdk.history
 
-import sdk.data.ByteArray
-
+import sdk.primitive.ByteArray
 import scala.annotation.tailrec
 
 final case class KeySegment(value: ByteArray) extends AnyVal {

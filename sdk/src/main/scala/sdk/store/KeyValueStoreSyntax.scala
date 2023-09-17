@@ -3,8 +3,8 @@ package sdk.store
 import cats.Functor
 import cats.effect.Sync
 import cats.syntax.all.*
-import sdk.Codec
-import sdk.data.ByteArray
+import sdk.codecs.Codec
+import sdk.primitive.ByteArray
 
 import java.nio.ByteBuffer
 

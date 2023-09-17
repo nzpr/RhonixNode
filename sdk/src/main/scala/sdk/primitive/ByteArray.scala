@@ -1,11 +1,11 @@
-package sdk.data
+package sdk.primitive
 
-import sdk.{Base16, ByteBufferOps}
+import sdk.ByteBufferOps
+import sdk.codecs.Base16
 
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util
-import java.util.Arrays.compare
 
 /** An immutable array of bytes */
 sealed case class ByteArray private (underlying: Array[Byte]) {

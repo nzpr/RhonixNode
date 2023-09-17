@@ -2,8 +2,8 @@ package sdk.store
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import sdk.Codec
-import sdk.data.ByteArray
+import sdk.codecs.Codec
+import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
 
 /// KV typed store that uses ByteArray as a heap object to copy native memory

@@ -1,4 +1,5 @@
-package sdk
+package sdk.codecs
+
 import scala.util.Try
 
 /// Codec that can fail

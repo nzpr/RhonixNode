@@ -1,16 +1,15 @@
 package sdk.history.instances
 
+import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all.*
-import cats.{Applicative, Parallel}
-import sdk.Codec
-import sdk.data.*
+import sdk.codecs.Codec
+import sdk.hashing.Blake2b256Hash
 import sdk.history.RadixTree.*
 import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
+import sdk.primitive.ByteArray
 import sdk.store.{KeyValueStore, KeyValueTypedStore}
 import sdk.syntax.all.sharedSyntaxKeyValueStore
-
-import scala.util.{Success, Try}
 
 /**
   * History implementation with radix tree

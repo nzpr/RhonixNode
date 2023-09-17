@@ -1,11 +1,12 @@
-package sdk.data
+package sdk.hashing
 
-import blakehash.Blake2b256
 import org.scalacheck.{Arbitrary, Gen, Prop}
 import org.scalacheck.ScalacheckShapeless.arbitrarySingletonType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.scalacheck.Checkers
-import sdk.data.Blake2b256Hash.codec
+import sdk.hashing.{Blake2b256, Blake2b256Hash}
+import sdk.hashing.Blake2b256Hash.codec
+import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
 
 import java.util.Arrays

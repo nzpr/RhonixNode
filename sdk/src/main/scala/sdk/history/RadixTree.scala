@@ -3,8 +3,9 @@ package sdk.history
 import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all.*
-import sdk.data.{Blake2b256Hash, ByteArray}
+import sdk.hashing.Blake2b256Hash
 import sdk.history.KeySegment.*
+import sdk.primitive.ByteArray
 import sdk.store.KeyValueTypedStore
 import sdk.syntax.all.sharedSyntaxKeyValueTypedStore
 

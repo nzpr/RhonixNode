@@ -1,7 +1,7 @@
-package sdk.data
+package sdk.hashing
 
-import blakehash.Blake2b256
-import sdk.{Base16, Codec}
+import sdk.codecs.{Base16, Codec}
+import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
 
 import java.io.OutputStream
