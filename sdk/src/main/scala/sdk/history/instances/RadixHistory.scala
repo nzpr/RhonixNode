@@ -17,11 +17,7 @@ import scala.util.{Success, Try}
   */
 object RadixHistory {
   val EmptyRootHash: Blake2b256Hash            = RadixTree.EmptyRootHash
-  def kCodec: Codec[Blake2b256Hash, ByteArray] = new Codec[Blake2b256Hash, ByteArray] {
-    override def encode(x: Blake2b256Hash): Try[ByteArray] = Success(x.bytes)
-
-    override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
-  }
+  def kCodec: Codec[Blake2b256Hash, ByteArray] = Blake2b256Hash.codec
   def vCodec: Codec[ByteArray, ByteArray]      = Codec.Identity[ByteArray]
 
   def apply[F[_]: Sync: Parallel](
@@ -45,8 +41,6 @@ final case class RadixHistory[F[_]: Sync: Parallel](
   impl: RadixTreeImpl[F],
   store: KeyValueTypedStore[F, Blake2b256Hash, ByteArray],
 ) extends History[F] {
-  override type HistoryF = History[F]
-
   override def root: Blake2b256Hash = rootHash
 
   override def reset(root: Blake2b256Hash): F[History[F]] =

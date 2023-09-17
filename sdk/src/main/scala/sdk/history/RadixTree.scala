@@ -732,10 +732,10 @@ object RadixTree {
             nonEmptyItems.head match {
               case EmptyItem                   => EmptyItem
               case Leaf(leafPrefix, value)     =>
-                val newPrefix = prefix ++ KeySegment(ByteArray(idxItem)) ++ leafPrefix
+                val newPrefix = prefix ++ KeySegment(ByteArray(idxItem.toByte)) ++ leafPrefix
                 Leaf(newPrefix, value)
               case NodePtr(nodePtrPrefix, ptr) =>
-                val newPrefix = prefix ++ KeySegment(ByteArray(idxItem)) ++ nodePtrPrefix
+                val newPrefix = prefix ++ KeySegment(ByteArray(idxItem.toByte)) ++ nodePtrPrefix
                 NodePtr(newPrefix, ptr)
             }
           case 2 =>           // 2 or more items are not empty.

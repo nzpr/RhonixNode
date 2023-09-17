@@ -377,7 +377,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       newBuf.put(arr).rewind()
     }
 
-    val collisionKVPair       = (copyBaToBuf(RadixTree.EmptyRootHash.bytes), ByteArray(0x00))
+    val collisionKVPair       = (copyBaToBuf(RadixTree.EmptyRootHash.bytes), ByteArray(0x00.toByte))
     val referenceErrorMessage = s"1 collisions in KVDB (first collision with key = " +
       s"${RadixTree.EmptyRootHash.bytes.toHex})."
     for {
@@ -581,11 +581,11 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   "function commonPrefix" should "return correct prefixes" in {
-    val v12345 = KeySegment(ByteArray(1, 2, 3, 4, 5))
-    val v1245  = KeySegment(ByteArray(1, 2, 4, 5))
-    val v123   = KeySegment(ByteArray(1, 2, 3))
-    val v12367 = KeySegment(ByteArray(1, 2, 3, 6, 7))
-    val v22345 = KeySegment(ByteArray(2, 2, 3, 4, 5))
+    val v12345 = KeySegment(createBA(1, 2, 3, 4, 5))
+    val v1245  = KeySegment(createBA(1, 2, 4, 5))
+    val v123   = KeySegment(createBA(1, 2, 3))
+    val v12367 = KeySegment(createBA(1, 2, 3, 6, 7))
+    val v22345 = KeySegment(createBA(2, 2, 3, 4, 5))
     val res1   = commonPrefix(v12345, v1245)
     val res2   = commonPrefix(v12345, v123)
     val res3   = commonPrefix(v12345, KeySegment.Empty)
@@ -594,30 +594,30 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val res6   = commonPrefix(KeySegment.Empty, KeySegment.Empty)
 
     val referenceRes1 = (
-      KeySegment(ByteArray(1, 2)),
-      KeySegment(ByteArray(3, 4, 5)),
-      KeySegment(ByteArray(4, 5)),
+      KeySegment(createBA(1, 2)),
+      KeySegment(createBA(3, 4, 5)),
+      KeySegment(createBA(4, 5)),
     )
 
     val referenceRes2 = (
-      KeySegment(ByteArray(1, 2, 3)),
-      KeySegment(ByteArray(4, 5)),
+      KeySegment(createBA(1, 2, 3)),
+      KeySegment(createBA(4, 5)),
       KeySegment.Empty,
     )
 
     val referenceRes3 =
-      (KeySegment.Empty, KeySegment(ByteArray(1, 2, 3, 4, 5)), KeySegment.Empty)
+      (KeySegment.Empty, KeySegment(createBA(1, 2, 3, 4, 5)), KeySegment.Empty)
 
     val referenceRes4 = (
-      KeySegment(ByteArray(1, 2, 3)),
-      KeySegment(ByteArray(4, 5)),
-      KeySegment(ByteArray(6, 7)),
+      KeySegment(createBA(1, 2, 3)),
+      KeySegment(createBA(4, 5)),
+      KeySegment(createBA(6, 7)),
     )
 
     val referenceRes5 = (
       KeySegment.Empty,
-      KeySegment(ByteArray(2, 2, 3, 4, 5)),
-      KeySegment(ByteArray(1, 2, 3, 4, 5)),
+      KeySegment(createBA(2, 2, 3, 4, 5)),
+      KeySegment(createBA(1, 2, 3, 4, 5)),
     )
 
     val referenceRes6 = (KeySegment.Empty, KeySegment.Empty, KeySegment.Empty)
@@ -648,6 +648,20 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   }
 
   def createBA(s: String): ByteArray = ByteArray(Base16.unsafeDecode(s))
+
+  /** Constructs a ByteArray from a list of literal bytes.
+   * Only the least significant byte is used of each integral value. */
+  @SuppressWarnings(Array("org.wartremover.warts.Var"))
+  def createBA[A: Integral](bytes: A*): ByteArray = {
+    val integral = implicitly[Integral[A]]
+    val buf      = new Array[Byte](bytes.size)
+    var i        = 0
+    bytes.foreach { b =>
+      buf(i) = integral.toInt(b).toByte
+      i += 1
+    }
+    ByteArray(buf)
+  }
 
   def createKeySegment(s: String): KeySegment                         = KeySegment(createBA(s))
   def createInsertActions(dataSet: List[radixKV]): List[InsertAction] =

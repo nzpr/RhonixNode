@@ -1,11 +1,11 @@
 package sdk.data
 
 import blakehash.Blake2b256
-import cats.implicits.catsSyntaxEitherId
-import sdk.Base16
+import sdk.{Base16, Codec}
+import sdk.syntax.all.sdkSyntaxTry
 
 import java.io.OutputStream
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Represents a Blake2b256 Hash
@@ -31,6 +31,9 @@ class Blake2b256Hash private (val bytes: ByteArray) {
 }
 
 object Blake2b256Hash {
+
+  implicit val ordering: Ordering[Blake2b256Hash] =
+    (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)
 
   val length: Int = Blake2b256.HashLength
 
@@ -63,19 +66,21 @@ object Blake2b256Hash {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromHex(string: String): Try[Blake2b256Hash] = Base16.decode(string).flatMap(fromByteArray)
 
-  def fromByteArray(bytes: Array[Byte]): Try[Blake2b256Hash] =
-    fromByteArray(ByteArray(bytes))
+  def fromByteArray(bytes: Array[Byte]): Try[Blake2b256Hash] = fromByteArray(ByteArray(bytes))
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromByteArrayUnsafe(bytes: Array[Byte]): Blake2b256Hash =
-    fromByteArray(ByteArray(bytes)).fold(e => throw e, identity)
+  def fromByteArrayUnsafe(bytes: Array[Byte]): Blake2b256Hash = fromByteArray(ByteArray(bytes)).getUnsafe
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def fromByteArrayUnsafe(bytes: ByteArray): Blake2b256Hash =
     fromByteArray(bytes).fold(e => throw e, identity)
 
-  implicit val ordering: Ordering[Blake2b256Hash] =
-    (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)
-
   private def copyToStream(bv: ByteArray, stream: OutputStream): Unit = bv.copyToStream(stream)
+
+  def codec: Codec[Blake2b256Hash, ByteArray] = new Codec[Blake2b256Hash, ByteArray] {
+    override def encode(x: Blake2b256Hash): Try[ByteArray] = Try(x.bytes)
+
+    override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
+  }
+
 }

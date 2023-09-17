@@ -30,7 +30,7 @@ object Base16 {
         else "0" + digitsOnly
       DatatypeConverter.parseHexBinary(padded) // TODO: rewrite to exclude jaxb dependecies
       // e.g.  `padded.sliding(2, 2).toArray.map(Integer.parseInt(_, 16).toByte)`
-    }.transform(Success(_), err => Failure(new Exception(s"Error when decoding Base16 string $input: $err")))
+    }.mapFailure(ex => new Exception(s"Invalid hex string $input", ex))
 
   private def bytes2hex(bytes: Array[Byte], sep: Option[String]): String =
     bytes.map("%02x".format(_)).mkString(sep.getOrElse(""))
