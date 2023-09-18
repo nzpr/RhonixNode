@@ -1,86 +1,54 @@
 package sdk.hashing
 
-import sdk.codecs.{Base16, Codec}
+import sdk.codecs.Codec
 import sdk.primitive.ByteArray
-import sdk.syntax.all.sdkSyntaxTry
 
-import java.io.OutputStream
 import scala.util.Try
 
 /**
- * Represents a Blake2b256 Hash
+ * Represents a Blake2b 256 bit hash
  *
- * The default constructor is private to prevent construction means other than [[Blake2b256Hash$.create(bytes:*]] or [[Blake2b256Hash$.create(ByteArray:*)]]
+ * The default constructor is private to prevent construction of invalid hash, although constructions from
+ * raw bytes are provided, see [[Blake2b256Hash.deserialize]] functions.
  */
-class Blake2b256Hash private (val bytes: ByteArray) {
+final case class Blake2b256Hash private (bytes: ByteArray) {
 
   require(
     bytes.length == Blake2b256Hash.Length,
     s"Expected ${Blake2b256Hash.Length} but got ${bytes.length}",
   )
 
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case b: Blake2b256Hash => b.bytes == bytes
-    case _                 => false
-  }
-
-  override def hashCode(): Int =
-    bytes.hashCode()
-
   override def toString: String = s"Blake(${bytes.toHex})"
 }
 
 object Blake2b256Hash {
 
-  implicit val ordering: Ordering[Blake2b256Hash] =
-    (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)
+  // Ordering for hash uses underlying ordering of ByteArray
+  implicit val ordering: Ordering[Blake2b256Hash] = Ordering.by(_.bytes)
 
-  val Length: Int = Blake2b256.HashLength
+  val Length: Int = Blake2b.Hash256LengthBytes
 
   /**
-   * Constructs a [[Blake2b256Hash]]
+   * Calculates Blake2b hash from bytes and creates [[Blake2b256Hash]] instance.
+   *
+   * To create [[Blake2b256Hash]] instance from raw bytes see [[Blake2b256Hash.deserialize]] functions.
    *
    * @param bytes The bytes to hash
-   * @return The hash
    */
-  def create(bytes: Array[Byte]): Blake2b256Hash =
-    new Blake2b256Hash(ByteArray(Blake2b256.hash(bytes)))
+  def apply(bytes: Array[Byte]): Blake2b256Hash =
+    new Blake2b256Hash(ByteArray(Blake2b.hash256(bytes)))
 
-  /**
-   * Constructs a [[Blake2b256Hash]]
-   *
-   * @param byteArrays sequence of byte vectors,
-   * that will be hashed as a single concatenated
-   * bytes string
-   * @return The hash
-   */
-  def create(byteArrays: Seq[ByteArray]): Blake2b256Hash =
-    new Blake2b256Hash(ByteArray(Blake2b256.hash(byteArrays*)(copyToStream)))
+  // Serialization
 
-  def create(byteArray: ByteArray): Blake2b256Hash =
-    new Blake2b256Hash(ByteArray(Blake2b256.hash(byteArray)(copyToStream)))
+  /** Deserialization from hash as raw bytes */
+  def deserialize(bytes: ByteArray): Try[Blake2b256Hash] = Try(new Blake2b256Hash(bytes))
 
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromByteArray(bytes: ByteArray): Try[Blake2b256Hash] = Try(new Blake2b256Hash(bytes))
-
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromHex(string: String): Try[Blake2b256Hash] = Base16.decode(string).flatMap(fromByteArray)
-
-  def fromByteArray(bytes: Array[Byte]): Try[Blake2b256Hash] = fromByteArray(ByteArray(bytes))
-
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromByteArrayUnsafe(bytes: Array[Byte]): Blake2b256Hash = fromByteArray(ByteArray(bytes)).getUnsafe
-
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  def fromByteArrayUnsafe(bytes: ByteArray): Blake2b256Hash =
-    fromByteArray(bytes).fold(e => throw e, identity)
-
-  private def copyToStream(bv: ByteArray, stream: OutputStream): Unit = bv.copyToStream(stream)
+  /** Deserialization from hash as raw bytes */
+  def deserialize(bytes: Array[Byte]): Try[Blake2b256Hash] = deserialize(ByteArray(bytes))
 
   def codec: Codec[Blake2b256Hash, ByteArray] = new Codec[Blake2b256Hash, ByteArray] {
     override def encode(x: Blake2b256Hash): Try[ByteArray] = Try(x.bytes)
 
-    override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.fromByteArray(x)
+    override def decode(x: ByteArray): Try[Blake2b256Hash] = Blake2b256Hash.deserialize(x)
   }
-
 }

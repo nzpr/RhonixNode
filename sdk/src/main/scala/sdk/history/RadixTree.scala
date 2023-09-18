@@ -7,7 +7,7 @@ import sdk.hashing.Blake2b256Hash
 import sdk.history.KeySegment.*
 import sdk.primitive.ByteArray
 import sdk.store.KeyValueTypedStore
-import sdk.syntax.all.sharedSyntaxKeyValueTypedStore
+import sdk.syntax.all.*
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
@@ -201,8 +201,8 @@ object RadixTree {
           // Decoding type of non-empty item
           val item =
             if (isLeaf(secondByte))
-              Leaf(KeySegment(prefix), Blake2b256Hash.fromByteArrayUnsafe(valOrPtr))
-            else NodePtr(KeySegment(prefix), Blake2b256Hash.fromByteArrayUnsafe(valOrPtr))
+              Leaf(KeySegment(prefix), Blake2b256Hash.deserialize(valOrPtr).getUnsafe)
+            else NodePtr(KeySegment(prefix), Blake2b256Hash.deserialize(valOrPtr).getUnsafe)
 
           val nodeNext = node.updated(idxItem, item)
 
@@ -225,7 +225,7 @@ object RadixTree {
     */
   def hashNode(node: Node): (Blake2b256Hash, ByteArray) = {
     val bytes = Codecs.encode(node)
-    (Blake2b256Hash.create(bytes.toArray), bytes)
+    (Blake2b256Hash(bytes.toArray), bytes)
   }
 
   def byteToInt(b: Byte): Int = b & 0xff

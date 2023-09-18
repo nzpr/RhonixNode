@@ -3,12 +3,11 @@ package sdk.primitive
 import sdk.ByteBufferOps
 import sdk.codecs.Base16
 
-import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util
 
 /** An immutable array of bytes */
-sealed case class ByteArray private (underlying: Array[Byte]) {
+sealed class ByteArray private (underlying: Array[Byte]) {
   def size: Int                = length
   def length: Int              = underlying.length
   def nonEmpty: Boolean        = underlying.nonEmpty
@@ -21,7 +20,7 @@ sealed case class ByteArray private (underlying: Array[Byte]) {
   def apply(i: Int): Byte = underlying(i)
 
   /** Return copy of underlying byte array.
-    * The operation does not clone the output data, changing output array will change instance. */
+    * The operation does not clone the output data, changing output array will change internal array instance. */
   def toArray: Array[Byte] = underlying
 
   /** A copy of this array with one single replaced element. */
@@ -37,8 +36,6 @@ sealed case class ByteArray private (underlying: Array[Byte]) {
   /** Returns a new vector with the specified byte appended. */
   def :+(byte: Byte): ByteArray = ByteArray(underlying :+ byte)
 
-  def copyToStream(s: OutputStream): Unit = s.write(underlying)
-
   /** Converts the contents of this byte vector to a hexadecimal string of size * 2 nibbles. */
   def toHex: String = Base16.encode(underlying)
 
@@ -47,25 +44,21 @@ sealed case class ByteArray private (underlying: Array[Byte]) {
    * array because they are separate copies. */
   def toByteBuffer: ByteBuffer = ByteBufferOps.toByteBuffer(underlying)
 
-  /** Result of comparing `this` with operand `that`.
-   * Implement this method to determine how instances of A will be sorted.
-   * Returns `x` where:
-   *   - `x < 0` when `this < that`
-   *   - `x == 0` when `this == that`
-   *   - `x > 0` when  `this > that`
-   */
-  def compare(that: ByteArray): Int = util.Arrays.compare(this.underlying, that.toArray)
-
   override def equals(other: Any): Boolean = other match {
-    case x: ByteArray if this.eq(x) => true
-    case x: ByteArray               => this.underlying sameElements x.underlying
-    case _                          => false
+    case other: ByteArray => util.Arrays.equals(this.underlying, other.toArray)
+    case _                => false
   }
 
-  override def hashCode(): Int = java.util.Arrays.hashCode(underlying)
+  override def hashCode(): Int = util.Arrays.hashCode(underlying)
 }
 
 object ByteArray {
+
+  // Ordering uses Java comparison of underlying bytes
+  implicit val ordering: Ordering[ByteArray] =
+    (x: ByteArray, y: ByteArray) => util.Arrays.compare(x.toArray, y.toArray)
+
+  val Default: ByteArray = ByteArray(Array[Byte]())
 
   /** Creates a ByteArray instance from a Array[Byte].
    * The operation does not clone input the data, changing the input array will change instance. */
@@ -78,8 +71,5 @@ object ByteArray {
   /** Creates a ByteArray instance from a ByteBuffer. When created, a duplicate of the data is created in memory.
    * This ensures that any changes made to the ByteBuffer won't affect the original
    * array because they are separate copies. */
-  @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def apply(buffer: ByteBuffer): ByteArray = ByteArray(ByteBufferOps.fromByteBuffer(buffer))
-
-  val Default: ByteArray = ByteArray(Array[Byte]())
 }

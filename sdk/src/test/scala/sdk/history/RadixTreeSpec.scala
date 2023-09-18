@@ -13,7 +13,7 @@ import sdk.history.RadixTree.*
 import sdk.history.instances.RadixHistory
 import sdk.primitive.ByteArray
 import sdk.store.{InMemoryKeyValueStore, KeyValueTypedStore}
-import sdk.syntax.all.{sharedSyntaxKeyValueStore, sharedSyntaxKeyValueTypedStore}
+import sdk.syntax.all.*
 
 import java.nio.ByteBuffer
 import scala.concurrent.duration.*
@@ -645,7 +645,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
   def createBlakeHash(s: String): Blake2b256Hash = {
     val notEmptyPart = createBA(s)
     val emptyPart    = List.fill(32 - notEmptyPart.size)(0x00.toByte)
-    Blake2b256Hash.fromByteArrayUnsafe(ByteArray(emptyPart) ++ notEmptyPart)
+    Blake2b256Hash.deserialize(ByteArray(emptyPart) ++ notEmptyPart).getUnsafe
   }
 
   def createBA(s: String): ByteArray = ByteArray(Base16.unsafeDecode(s))
