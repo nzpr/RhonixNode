@@ -25,7 +25,7 @@ object KeySegment {
   }
   def apply(ab: Array[Byte]): KeySegment = KeySegment(ByteArray(ab))
   def apply(sb: Seq[Byte]): KeySegment   = KeySegment(ByteArray(sb))
-  val Empty: KeySegment                  = KeySegment(ByteArray.Empty)
+  val Default: KeySegment                = KeySegment(ByteArray.Default)
 
   /**
     * Find the common part of a and b.
@@ -43,6 +43,6 @@ object KeySegment {
         else (common, l, r)
       }
 
-    go(KeySegment.Empty, a, b)
+    go(KeySegment.Default, a, b)
   }
 }

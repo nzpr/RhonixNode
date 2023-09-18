@@ -32,7 +32,7 @@ class Blake2b256HashTests extends AnyFlatSpec with Checkers {
   }
 
   "Method fromByteArray()" should "create Blake2b256Hash from 32 byte array" in {
-    val byteArrayGen: Gen[Array[Byte]] = Gen.listOfN(Blake2b256Hash.length, Arbitrary.arbitrary[Byte]).map(_.toArray)
+    val byteArrayGen: Gen[Array[Byte]] = Gen.listOfN(Blake2b256Hash.Length, Arbitrary.arbitrary[Byte]).map(_.toArray)
     val propFromByteArray: Prop        = Prop.forAll(byteArrayGen) { (bytes: Array[Byte]) =>
       val hashTry = Blake2b256Hash.fromByteArray(bytes)
       hashTry.get.bytes == ByteArray(bytes)
@@ -42,11 +42,11 @@ class Blake2b256HashTests extends AnyFlatSpec with Checkers {
 
   it should "throw an exception from a 31-byte array" in {
     val byteArrayGen: Gen[Array[Byte]] =
-      Gen.listOfN(Blake2b256Hash.length - 1, Arbitrary.arbitrary[Byte]).map(_.toArray)
+      Gen.listOfN(Blake2b256Hash.Length - 1, Arbitrary.arbitrary[Byte]).map(_.toArray)
     val propFromByteArray: Prop        = Prop.forAll(byteArrayGen) { (bytes: Array[Byte]) =>
       val hashTry         = Blake2b256Hash.fromByteArray(bytes)
       val result          = intercept[Exception](hashTry.getUnsafe)
-      val expectedMessage = s"Expected ${Blake2b256Hash.length} but got ${bytes.length}"
+      val expectedMessage = s"Expected ${Blake2b256Hash.Length} but got ${bytes.length}"
       result.getMessage.contains(expectedMessage)
     }
     check(propFromByteArray)

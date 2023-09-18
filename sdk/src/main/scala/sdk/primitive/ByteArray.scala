@@ -81,5 +81,5 @@ object ByteArray {
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def apply(buffer: ByteBuffer): ByteArray = ByteArray(ByteBufferOps.fromByteBuffer(buffer))
 
-  val Empty: ByteArray = ByteArray(Array[Byte]())
+  val Default: ByteArray = ByteArray(Array[Byte]())
 }

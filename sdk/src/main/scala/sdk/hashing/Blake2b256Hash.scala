@@ -15,8 +15,8 @@ import scala.util.Try
 class Blake2b256Hash private (val bytes: ByteArray) {
 
   require(
-    bytes.length == Blake2b256Hash.length,
-    s"Expected ${Blake2b256Hash.length} but got ${bytes.length}",
+    bytes.length == Blake2b256Hash.Length,
+    s"Expected ${Blake2b256Hash.Length} but got ${bytes.length}",
   )
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -35,7 +35,7 @@ object Blake2b256Hash {
   implicit val ordering: Ordering[Blake2b256Hash] =
     (x: Blake2b256Hash, y: Blake2b256Hash) => x.bytes.compare(y.bytes)
 
-  val length: Int = Blake2b256.HashLength
+  val Length: Int = Blake2b256.HashLength
 
   /**
    * Constructs a [[Blake2b256Hash]]

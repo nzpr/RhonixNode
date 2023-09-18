@@ -589,10 +589,10 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val v22345 = KeySegment(createBA(2, 2, 3, 4, 5))
     val res1   = commonPrefix(v12345, v1245)
     val res2   = commonPrefix(v12345, v123)
-    val res3   = commonPrefix(v12345, KeySegment.Empty)
+    val res3   = commonPrefix(v12345, KeySegment.Default)
     val res4   = commonPrefix(v12345, v12367)
     val res5   = commonPrefix(v22345, v12345)
-    val res6   = commonPrefix(KeySegment.Empty, KeySegment.Empty)
+    val res6   = commonPrefix(KeySegment.Default, KeySegment.Default)
 
     val referenceRes1 = (
       KeySegment(createBA(1, 2)),
@@ -603,11 +603,11 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     val referenceRes2 = (
       KeySegment(createBA(1, 2, 3)),
       KeySegment(createBA(4, 5)),
-      KeySegment.Empty,
+      KeySegment.Default,
     )
 
     val referenceRes3 =
-      (KeySegment.Empty, KeySegment(createBA(1, 2, 3, 4, 5)), KeySegment.Empty)
+      (KeySegment.Default, KeySegment(createBA(1, 2, 3, 4, 5)), KeySegment.Default)
 
     val referenceRes4 = (
       KeySegment(createBA(1, 2, 3)),
@@ -616,12 +616,12 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
     )
 
     val referenceRes5 = (
-      KeySegment.Empty,
+      KeySegment.Default,
       KeySegment(createBA(2, 2, 3, 4, 5)),
       KeySegment(createBA(1, 2, 3, 4, 5)),
     )
 
-    val referenceRes6 = (KeySegment.Empty, KeySegment.Empty, KeySegment.Empty)
+    val referenceRes6 = (KeySegment.Default, KeySegment.Default, KeySegment.Default)
 
     res1 shouldBe referenceRes1
     res2 shouldBe referenceRes2
@@ -774,7 +774,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
       skipSize = 0,
       withSkip,
       initExportData,
-      Option(KeySegment.Empty),
+      Option(KeySegment.Default),
     )
     for {
       allExport       <- initParameters.tailRecM(multipageExport)

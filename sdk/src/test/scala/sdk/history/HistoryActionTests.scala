@@ -196,7 +196,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
     val insertRecord                           = insert(_Zeros) :: Nil
     val deleteRecord                           = delete(_Zeros) :: Nil
     val collisionKVPair                        =
-      (copyBVToBuf(History.emptyRootHash.bytes), randomBlake.bytes)
+      (copyBVToBuf(History.EmptyRootHash.bytes), randomBlake.bytes)
     for {
       emptyHistory <- emptyHistoryF
       newHistory   <- emptyHistory.process(insertRecord)
@@ -207,7 +207,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
       ex shouldBe a[RuntimeException]
       ex.getMessage shouldBe
         s"1 collisions in KVDB (first collision with key = " +
-        s"${History.emptyRootHash.bytes.toHex})."
+        s"${History.EmptyRootHash.bytes.toHex})."
     }
   }
 
@@ -264,7 +264,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   protected def withEmptyHistory(f: IO[History[IO]] => IO[Unit]): Unit = {
-    val emptyHistory = History.create(History.emptyRootHash, InMemoryKeyValueStore[IO]())
+    val emptyHistory = History.create(History.EmptyRootHash, InMemoryKeyValueStore[IO]())
     f(emptyHistory).timeout(1.minute).unsafeRunSync()
   }
 
@@ -272,7 +272,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
     f: (IO[History[IO]], InMemoryKeyValueStore[IO]) => IO[Unit],
   ): Unit = {
     val store        = InMemoryKeyValueStore[IO]()
-    val emptyHistory = History.create(History.emptyRootHash, store)
+    val emptyHistory = History.create(History.EmptyRootHash, store)
     f(emptyHistory, store).timeout(20.seconds).unsafeRunSync()
   }
 

@@ -502,14 +502,14 @@ object RadixTree {
       for {
         rootParams    <- NodePathData(
                            rootHash,
-                           KeySegment.Empty,
-                           lastPrefix.getOrElse(KeySegment.Empty),
+                           KeySegment.Default,
+                           lastPrefix.getOrElse(KeySegment.Default),
                            Vector(),
                          ).pure
         noRootStart    = (emptyExportData, skipSize, takeSize)     // Start from next node after lastPrefix
         skippedStart   = (emptyExportData, skipSize - 1, takeSize) // Skipped node start
         rootExportData = {
-          val newNP = if (settings.flagNodePrefixes) Vector(KeySegment.Empty) else Vector()
+          val newNP = if (settings.flagNodePrefixes) Vector(KeySegment.Default) else Vector()
           val newNK =
             if (settings.flagNodeKeys) Vector(rootHash) else Vector()
           val newNV = if (settings.flagNodeValues) Vector(rootNodeSer) else Vector()
@@ -647,7 +647,7 @@ object RadixTree {
         kvIfAbsent         = kvPairs zip ifAbsent
         kvExist            = kvIfAbsent.filter(_._2).map(_._1)
         valueExistInStore <- store.get(kvExist.map(_._1))
-        kvvExist           = kvExist zip valueExistInStore.map(_.getOrElse(ByteArray.Empty))
+        kvvExist           = kvExist zip valueExistInStore.map(_.getOrElse(ByteArray.Default))
         kvCollision        = kvvExist.filter(kvv => !(kvv._1._2 == kvv._2)).map(_._1)
         _                 <- if (kvCollision.nonEmpty) collisionException(kvCollision) else ().pure
         kvAbsent           = kvIfAbsent.filterNot(_._2).map(_._1)
@@ -667,9 +667,9 @@ object RadixTree {
       type Params = (Node, KeySegment)
       def loop(params: Params): F[Either[Params, Option[Blake2b256Hash]]] =
         params match {
-          case (_, KeySegment.Empty) =>
+          case (_, KeySegment.Default) =>
             Option.empty[Blake2b256Hash].asRight[Params].pure // Not found
-          case (curNode, prefix)     =>
+          case (curNode, prefix)       =>
             curNode(byteToInt(prefix.head)) match {
               case EmptyItem => Option.empty[Blake2b256Hash].asRight[Params].pure // Not found
 
@@ -712,8 +712,8 @@ object RadixTree {
       */
     def constructNodeFromItem(item: Item): F[Node] =
       item match {
-        case NodePtr(KeySegment.Empty, ptr) => loadNode(ptr)
-        case _                              => Sync[F].delay(createNodeFromItem(item))
+        case NodePtr(KeySegment.Default, ptr) => loadNode(ptr)
+        case _                                => Sync[F].delay(createNodeFromItem(item))
       }
 
     /**
@@ -888,7 +888,7 @@ object RadixTree {
           createdNode <- constructNodeFromItem(item)
           newActions   = trimKeys(actions)
           newNodeOpt  <- makeActions(createdNode, newActions)
-          newItem      = newNodeOpt.map(saveNodeAndCreateItem(_, KeySegment.Empty))
+          newItem      = newNodeOpt.map(saveNodeAndCreateItem(_, KeySegment.Default))
         } yield (itemIdx, newItem)
 
       // If we have more than 1 action. We can create more parallel processes.
