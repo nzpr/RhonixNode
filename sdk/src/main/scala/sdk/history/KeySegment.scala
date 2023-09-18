@@ -19,13 +19,14 @@ final case class KeySegment(value: ByteArray) extends AnyVal {
 }
 
 object KeySegment {
+  val Default: KeySegment = KeySegment(ByteArray.Default)
+
   def apply(bv: ByteArray): KeySegment   = {
     require(bv.size <= 127, "Size of key segment is more than 127")
     new KeySegment(bv)
   }
   def apply(ab: Array[Byte]): KeySegment = KeySegment(ByteArray(ab))
   def apply(sb: Seq[Byte]): KeySegment   = KeySegment(ByteArray(sb))
-  val Default: KeySegment                = KeySegment(ByteArray.Default)
 
   /**
     * Find the common part of a and b.
