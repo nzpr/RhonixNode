@@ -1,10 +1,9 @@
 package sdk.hashing
 
-import org.scalacheck.{Arbitrary, Gen, Prop}
 import org.scalacheck.ScalacheckShapeless.arbitrarySingletonType
+import org.scalacheck.{Arbitrary, Gen, Prop}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.scalacheck.Checkers
-import sdk.hashing.{Blake2b256, Blake2b256Hash}
 import sdk.hashing.Blake2b256Hash.codec
 import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
@@ -40,14 +39,12 @@ class Blake2b256HashTests extends AnyFlatSpec with Checkers {
     check(propFromByteArray)
   }
 
-  it should "throw an exception from a 31-byte array" in {
-    val byteArrayGen: Gen[Array[Byte]] =
-      Gen.listOfN(Blake2b256Hash.Length - 1, Arbitrary.arbitrary[Byte]).map(_.toArray)
+  "Object creation when bytes array is not of the correct length" should "fail" in {
+    val byteArrayGen: Gen[Array[Byte]] = Gen.choose(0, 100).filterNot(_ == Blake2b256Hash.Length).flatMap { size =>
+      Gen.listOfN(size, Arbitrary.arbitrary[Byte]).map(_.toArray)
+    }
     val propFromByteArray: Prop        = Prop.forAll(byteArrayGen) { (bytes: Array[Byte]) =>
-      val hashTry         = Blake2b256Hash.fromByteArray(bytes)
-      val result          = intercept[Exception](hashTry.getUnsafe)
-      val expectedMessage = s"Expected ${Blake2b256Hash.Length} but got ${bytes.length}"
-      result.getMessage.contains(expectedMessage)
+      Blake2b256Hash.fromByteArray(bytes).isFailure
     }
     check(propFromByteArray)
   }
