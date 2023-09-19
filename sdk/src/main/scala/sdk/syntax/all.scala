@@ -14,3 +14,4 @@ trait AllSyntax
     with KeyValueTypedStoreSyntax
     with ByteBufferSyntax
     with ArrayByteSyntax
+    with ByteArraySyntax

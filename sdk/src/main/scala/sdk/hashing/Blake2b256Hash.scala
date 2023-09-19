@@ -2,6 +2,7 @@ package sdk.hashing
 
 import sdk.codecs.Codec
 import sdk.primitive.ByteArray
+import sdk.syntax.all.sdkSyntaxByteArray
 
 import scala.util.Try
 

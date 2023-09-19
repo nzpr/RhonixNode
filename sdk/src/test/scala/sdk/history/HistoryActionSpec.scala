@@ -11,6 +11,7 @@ import sdk.hashing.Blake2b256Hash
 import sdk.history.TestData.*
 import sdk.primitive.ByteArray
 import sdk.store.InMemoryKeyValueStore
+import sdk.syntax.all.sdkSyntaxByteArray
 
 import java.nio.ByteBuffer
 import scala.collection.concurrent.TrieMap

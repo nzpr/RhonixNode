@@ -2,6 +2,7 @@ package sdk.store
 
 import cats.effect.Sync
 import sdk.primitive.ByteArray
+import sdk.syntax.all.sdkSyntaxByteArray
 
 import java.nio.ByteBuffer
 import scala.collection.concurrent.TrieMap
