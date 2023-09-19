@@ -168,7 +168,7 @@ object RadixTree {
       */
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def decode(ba: ByteArray): Node = {
-      val arr     = ba.toArray
+      val arr     = ba.bytes
       val maxSize = arr.length
 
       // If first bit 0 - return true, otherwise false.
@@ -225,7 +225,7 @@ object RadixTree {
     */
   def hashNode(node: Node): (Blake2b256Hash, ByteArray) = {
     val bytes = Codecs.encode(node)
-    (Blake2b256Hash(bytes.toArray), bytes)
+    (Blake2b256Hash(bytes.bytes), bytes)
   }
 
   def byteToInt(b: Byte): Int = b & 0xff

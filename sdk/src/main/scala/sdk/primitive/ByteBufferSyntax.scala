@@ -3,17 +3,17 @@ package sdk.primitive
 import java.nio.ByteBuffer
 
 trait ByteBufferSyntax {
-  implicit def sdkSyntaxByteBuffer(bb: ByteBuffer): ByteBufferOps = new ByteBufferOps(bb)
+  implicit def sdkSyntaxByteBuffer(x: ByteBuffer): ByteBufferOps = new ByteBufferOps(x)
 }
 
-final class ByteBufferOps(private val bb: ByteBuffer) extends AnyVal {
+final class ByteBufferOps(private val x: ByteBuffer) extends AnyVal {
 
-  /** Creates a Array[Byte] instance from a [[ByteBuffer]]. When created, a duplicate of the data is created in memory.
-   * This ensures that any changes made to the ByteBuffer won't affect the original
-   * array because they are separate copies. */
+  /**
+   * Allocate new array of bytes and fill with the copy of ByteBuffer.
+   * */
   @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def toArray: Array[Byte] = {
-    val c   = bb.duplicate()
+    val c   = x.duplicate()
     val arr = new Array[Byte](c.remaining)
     c.get(arr)
     arr

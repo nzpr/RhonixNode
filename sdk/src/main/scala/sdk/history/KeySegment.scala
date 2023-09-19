@@ -1,7 +1,7 @@
 package sdk.history
 
 import sdk.primitive.ByteArray
-import sdk.syntax.all.sdkSyntaxByteArray
+import sdk.syntax.all.*
 
 import scala.annotation.tailrec
 

@@ -1,19 +1,20 @@
 package sdk.primitive
 
-import sdk.syntax.all.sdkSyntaxByteBuffer
+import sdk.syntax.all.*
 
 import java.nio.ByteBuffer
 import java.util
 
-/** An immutable array of bytes */
 sealed class ByteArray private (underlying: Array[Byte]) {
 
-  /** Return copy of underlying byte array.
-    * The operation does not clone the output data, changing output array will change internal array instance. */
-  def toArray: Array[Byte] = underlying
+  /**
+   * Array of bytes underlying for this ByteArray.
+   * NOTE: modifying the resulting array will also modify this ByteArray.
+   * */
+  def bytes: Array[Byte] = underlying
 
   override def equals(other: Any): Boolean = other match {
-    case other: ByteArray => util.Arrays.equals(this.underlying, other.toArray)
+    case other: ByteArray => util.Arrays.equals(this.underlying, other.bytes)
     case _                => false
   }
 
@@ -24,20 +25,28 @@ object ByteArray {
 
   // Ordering uses Java comparison of underlying bytes
   implicit val ordering: Ordering[ByteArray] =
-    (x: ByteArray, y: ByteArray) => util.Arrays.compare(x.toArray, y.toArray)
+    (x: ByteArray, y: ByteArray) => util.Arrays.compare(x.bytes, y.bytes)
 
-  val Default: ByteArray = ByteArray(Array[Byte]())
+  val Default: ByteArray = ByteArray(Array.empty[Byte])
 
-  /** Creates a ByteArray instance from a Array[Byte].
-   * The operation does not clone input the data, changing the input array will change instance. */
+  /**
+   * Wrap array of bytes with the ByteArray.
+   * NOTE: modifying the input array will also modify the instance created, since input is not cloned.
+   * */
   def apply(x: Array[Byte]): ByteArray = new ByteArray(x)
 
+  /**
+   * Copy immutable sequence of bytes into ByteArray.
+   * */
   def apply(x: Seq[Byte]): ByteArray = ByteArray(x.toArray)
 
+  /**
+   * Copy byte into ByteArray.
+   * */
   def apply(x: Byte): ByteArray = new ByteArray(Array(x))
 
-  /** Creates a ByteArray instance from a ByteBuffer. When created, a duplicate of the data is created in memory.
-   * This ensures that any changes made to the ByteBuffer won't affect the original
-   * array because they are separate copies. */
+  /**
+   * Copy content of ByteBuffer into ByteArray.
+   * */
   def apply(buffer: ByteBuffer): ByteArray = ByteArray(buffer.toArray)
 }

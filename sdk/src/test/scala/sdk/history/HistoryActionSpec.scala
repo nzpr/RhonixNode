@@ -11,7 +11,7 @@ import sdk.hashing.Blake2b256Hash
 import sdk.history.TestData.*
 import sdk.primitive.ByteArray
 import sdk.store.InMemoryKeyValueStore
-import sdk.syntax.all.sdkSyntaxByteArray
+import sdk.syntax.all.*
 
 import java.nio.ByteBuffer
 import scala.collection.concurrent.TrieMap
@@ -190,7 +190,7 @@ class HistoryActionTests extends AnyFlatSpec with Matchers with EitherValues {
 
   "collision detecting in KVDB" should "works" in withEmptyHistoryAndStore { (emptyHistoryF, inMemoStore) =>
     def copyBVToBuf(ba: ByteArray): ByteBuffer = {
-      val arr    = ba.toArray
+      val arr    = ba.bytes
       val newBuf = ByteBuffer.allocateDirect(arr.length)
       newBuf.put(arr).rewind()
     }

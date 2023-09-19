@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import sdk.codecs.Codec
 import sdk.primitive.ByteArray
-import sdk.syntax.all.{sdkSyntaxByteArray, sdkSyntaxTry}
+import sdk.syntax.all.*
 
 /// KV typed store that uses ByteArray as a heap object to copy native memory
 class ByteArrayKeyValueTypedStore[F[_]: Sync, K, V](

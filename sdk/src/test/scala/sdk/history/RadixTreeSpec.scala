@@ -373,7 +373,7 @@ class RadixTreeSpec extends AnyFlatSpec with Matchers with OptionValues with Eit
 
   "collisions in KVDB" should "be detected" in withImplAndStore { (impl, inMemoStore) =>
     def copyBaToBuf(ba: ByteArray): ByteBuffer = {
-      val arr    = ba.toArray
+      val arr    = ba.bytes
       val newBuf = ByteBuffer.allocateDirect(arr.length)
       newBuf.put(arr).rewind()
     }

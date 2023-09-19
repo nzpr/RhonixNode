@@ -9,7 +9,7 @@ import sdk.history.RadixTree.*
 import sdk.history.{History, HistoryAction, KeySegment, RadixTree}
 import sdk.primitive.ByteArray
 import sdk.store.{KeyValueStore, KeyValueTypedStore}
-import sdk.syntax.all.sharedSyntaxKeyValueStore
+import sdk.syntax.all.*
 
 /**
   * History implementation with radix tree

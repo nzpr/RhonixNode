@@ -1,6 +1,6 @@
 package sdk.error
 
-import sdk.syntax.all._
+import sdk.syntax.all.*
 
 /**
   * Represents the error which should not be handled and should cause the main process to exit.

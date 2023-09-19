@@ -1,53 +1,66 @@
 package sdk.primitive
 
 import sdk.codecs.Base16
-import sdk.syntax.all.sdkSyntaxArrayByte
+import sdk.syntax.all.*
 
 import java.nio.ByteBuffer
 
 trait ByteArraySyntax {
-  implicit def sdkSyntaxByteArray(ba: ByteArray): ByteArrayOps = new ByteArrayOps(ba)
+  implicit def sdkSyntaxByteArray(x: ByteArray): ByteArrayOps = new ByteArrayOps(x)
 }
 
-final class ByteArrayOps(private val ba: ByteArray) extends AnyVal {
-  private def arr: Array[Byte] = ba.toArray
-
+final class ByteArrayOps(private val x: ByteArray) extends AnyVal {
   def size: Int = length
 
-  def length: Int = arr.length
+  def length: Int = x.bytes.length
 
-  def nonEmpty: Boolean = arr.nonEmpty
+  def nonEmpty: Boolean = x.bytes.nonEmpty
 
-  def isEmpty: Boolean = arr.isEmpty
+  def isEmpty: Boolean = x.bytes.isEmpty
 
-  def head: Byte = arr.head
+  def head: Byte = x.bytes.head
 
-  def headOption: Option[Byte] = arr.headOption
+  def headOption: Option[Byte] = x.bytes.headOption
 
-  def tail: ByteArray = ByteArray(arr.tail)
+  /**
+   * Wrap the tail of underlying array of this ByteArray with the new ByteArray.
+   * NOTE: resulting ByteArray shares memory with origin.
+   * */
+  def tail: ByteArray = ByteArray(x.bytes.tail)
 
-  /** The element at given index. */
-  def apply(i: Int): Byte = arr(i)
+  /**
+   * The element at given index.
+   * */
+  def apply(i: Int): Byte = x.bytes(i)
 
-  /** A copy of this array with one single replaced element. */
-  def updated(idx: Int, b: Byte): ByteArray = ByteArray(arr.updated(idx: Int, b: Byte))
+  /**
+   * A copy of this array with one single replaced element.
+   * */
+  def updated(idx: Int, b: Byte): ByteArray = ByteArray(x.bytes.updated(idx: Int, b: Byte))
 
-  /** A copy of this array with all elements of an array appended. */
-  def ++(other: ByteArray): ByteArray =
-    ByteArray(arr ++ other.toArray)
+  /**
+   * Create ByteArray from copy of this array concatenated with the argument.
+   * */
+  def ++(other: ByteArray): ByteArray = ByteArray(x.bytes ++ other.bytes)
 
-  /** Returns a new vector with the specified byte prepended. */
-  def +:(byte: Byte): ByteArray = ByteArray(byte +: arr)
+  /**
+   * Create ByteArray from copy of this array with the argument prepended.
+   * */
+  def +:(byte: Byte): ByteArray = ByteArray(byte +: x.bytes)
 
-  /** Returns a new vector with the specified byte appended. */
-  def :+(byte: Byte): ByteArray = ByteArray(arr :+ byte)
+  /**
+   * Create ByteArray from copy of this array with the argument appended.
+   * */
+  def :+(byte: Byte): ByteArray = ByteArray(x.bytes :+ byte)
 
-  /** Converts the contents of this byte vector to a hexadecimal string of size * 2 nibbles. */
-  def toHex: String = Base16.encode(arr)
+  /**
+   * Converts the content of this byte vector to a hexadecimal string of size * 2 nibbles.
+   * */
+  def toHex: String = Base16.encode(x.bytes)
 
-  /** Creates a ByteBuffer instance from a ByteArray. When created, a duplicate of the data is created in memory.
-   * This ensures that any changes made to the ByteBuffer won't affect the original
-   * array because they are separate copies. */
-  def toByteBuffer: ByteBuffer = arr.toByteBuffer
+  /**
+   * Wrap the copy of underlying array with the ByteBuffer.
+   * */
+  def toByteBuffer: ByteBuffer = x.bytes.toByteBuffer
 
 }
