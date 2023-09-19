@@ -12,3 +12,5 @@ trait AllSyntax
     with ApiFindSyntax
     with KeyValueStoreSyntax
     with KeyValueTypedStoreSyntax
+    with ByteBufferSyntax
+    with ArrayByteSyntax

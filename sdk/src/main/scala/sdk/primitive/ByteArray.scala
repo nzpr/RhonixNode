@@ -1,7 +1,7 @@
 package sdk.primitive
 
-import sdk.ByteBufferOps
 import sdk.codecs.Base16
+import sdk.syntax.all.{sdkSyntaxArrayByte, sdkSyntaxByteBuffer}
 
 import java.nio.ByteBuffer
 import java.util
@@ -42,7 +42,7 @@ sealed class ByteArray private (underlying: Array[Byte]) {
   /** Creates a ByteBuffer instance from a ByteArray. When created, a duplicate of the data is created in memory.
    * This ensures that any changes made to the ByteBuffer won't affect the original
    * array because they are separate copies. */
-  def toByteBuffer: ByteBuffer = ByteBufferOps.toByteBuffer(underlying)
+  def toByteBuffer: ByteBuffer = underlying.toByteBuffer
 
   override def equals(other: Any): Boolean = other match {
     case other: ByteArray => util.Arrays.equals(this.underlying, other.toArray)
@@ -71,5 +71,5 @@ object ByteArray {
   /** Creates a ByteArray instance from a ByteBuffer. When created, a duplicate of the data is created in memory.
    * This ensures that any changes made to the ByteBuffer won't affect the original
    * array because they are separate copies. */
-  def apply(buffer: ByteBuffer): ByteArray = ByteArray(ByteBufferOps.fromByteBuffer(buffer))
+  def apply(buffer: ByteBuffer): ByteArray = ByteArray(buffer.toArray)
 }
