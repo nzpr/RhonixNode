@@ -67,7 +67,7 @@ class GrpcDslSpec extends AnyFlatSpec with Matchers {
       override def findAll(proj: (String, Long) => Boolean): fs2.Stream[IO, (String, Long)] = fs2.Stream.empty
     }
 
-    val clientCall = IO.delay(callServer("doesNotMatter", result = _)) <* IO.sleep(250.millis)
+    val clientCall = IO.delay(callServer("doesNotMatter", result = _)) <* IO.sleep(2.seconds)
 
     grpc.server[IO](serverPort, balancesReader).surround(clientCall).unsafeRunSync()
 
