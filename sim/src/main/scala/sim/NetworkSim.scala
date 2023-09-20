@@ -1,6 +1,5 @@
 package sim
 
-import api.Servers
 import cats.Parallel
 import cats.effect.*
 import cats.effect.kernel.Async
@@ -9,8 +8,9 @@ import cats.syntax.all.*
 import dproc.data.Block
 import fs2.Stream
 import io.rhonix.node.Node
+import io.rhonix.node.api.http
+import io.rhonix.node.api.http.routes.All
 import org.http4s.EntityEncoder
-import rhonix.api.http.routes.All
 import rhonix.execution.OnlyBalancesEngine.Deploy
 import sdk.DagCausalQueue
 import sdk.api.*
@@ -138,7 +138,7 @@ object NetworkSim extends IOApp {
                 override def getByBlock(blockId: Long): F[Seq[BlockDeploys]] = Seq.empty[BlockDeploys].pure[F]
               }
               val routes            = All[F, Long](dummyBlockDBApi, dummyDeploysDbApi, api.balances)
-              Servers.http[F](routes, 8080, "localhost")
+              http.server(routes, 8080, "localhost")
             } else Stream.empty
 
             (run concurrently bootstrap concurrently tpsUpdate concurrently apiServerStream) -> getData

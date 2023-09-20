@@ -3,11 +3,11 @@ import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
 import io.grpc.*
 import io.grpc.netty.NettyChannelBuilder
+import io.rhonix.node.api.grpc
+import io.rhonix.node.api.grpc.methods.Balances
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
-import rhonix.api.grpc.data.*
-import rhonix.api.grpc.methods.Balances
 import sdk.api.FindApi
 
 import scala.util.Random
@@ -25,15 +25,15 @@ class GrpcDslSpec extends AnyFlatSpec with Matchers {
 
     // Creates new object that represents base gRPC API (to send/receive messages)
     val call =
-      channel.newCall[BalanceRequest, BalanceResponse](Balances.balancesMethodDescriptor, CallOptions.DEFAULT)
+      channel.newCall[String, Long](Balances.balancesMethodDescriptor, CallOptions.DEFAULT)
 
     // Listener/callback to handle server responses
-    val callListener = new ClientCall.Listener[BalanceResponse] {
+    val callListener = new ClientCall.Listener[Long] {
       override def onHeaders(headers: Metadata): Unit =
         info(s"CLIENT_ON_HEADERS: $headers")
 
-      override def onMessage(message: BalanceResponse): Unit = {
-        setResult(message.balance)
+      override def onMessage(message: Long): Unit = {
+        setResult(message)
         info(s"CLIENT_ON_MESSAGE: $message")
       }
 
@@ -45,7 +45,7 @@ class GrpcDslSpec extends AnyFlatSpec with Matchers {
     call.start(callListener, /* headers = */ new Metadata())
     // Sends real network request (serialization to InputStream via Marshaller is done here)
     // Can be called multiple times which is "streaming" mode
-    call.sendMessage(BalanceRequest("wallet"))
+    call.sendMessage("wallet")
     info(s"CLIENT_SENT_MSG: $wallet")
     // Number of messages to read next from the response (default is no read at all)
     // CHECK: Where is the buffer, client or server side
@@ -69,7 +69,7 @@ class GrpcDslSpec extends AnyFlatSpec with Matchers {
 
     val clientCall = IO.delay(callServer("doesNotMatter", result = _)) <* IO.sleep(250.millis)
 
-    Servers.rpc[IO](serverPort, balancesReader).surround(clientCall).unsafeRunSync()
+    grpc.server[IO](serverPort, balancesReader).surround(clientCall).unsafeRunSync()
 
     result shouldBe referenceResponse
   }
