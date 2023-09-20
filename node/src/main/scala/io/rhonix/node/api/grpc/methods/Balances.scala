@@ -1,54 +1,51 @@
 package io.rhonix.node.api.grpc.methods
 
 import io.grpc.*
-import io.rhonix.node.api.grpc.data.*
+import io.rhonix.node.api.grpc
 import io.rhonix.node.api.grpc.codecs.protobuf.*
-import rhonix.api.prefix
 
 import java.io.InputStream
 
 object Balances {
 
-  private val methodName = "Balances"
-
-  private val protobufRequestMarshaller = new MethodDescriptor.Marshaller[BalanceRequest] {
-    override def stream(obj: BalanceRequest): InputStream       = writeBalanceRequestProtobuf(obj)
-    override def parse(byteStream: InputStream): BalanceRequest = readBalanceRequestProtobuf(byteStream)
+  private val protobufRequestMarshaller = new MethodDescriptor.Marshaller[String] {
+    override def stream(obj: String): InputStream       = writeBalanceRequestProtobuf(obj)
+    override def parse(byteStream: InputStream): String = readBalanceRequestProtobuf(byteStream)
   }
 
-  private val protobufResponseMarshaller = new MethodDescriptor.Marshaller[BalanceResponse] {
-    override def stream(obj: BalanceResponse): InputStream       = writeBalanceResponseProtobuf(obj)
-    override def parse(byteStream: InputStream): BalanceResponse = readBalanceResponseProtobuf(byteStream)
+  private val protobufResponseMarshaller = new MethodDescriptor.Marshaller[Long] {
+    override def stream(obj: Long): InputStream       = writeBalanceResponseProtobuf(obj)
+    override def parse(byteStream: InputStream): Long = readBalanceResponseProtobuf(byteStream)
   }
 
-  def balancesMethodDescriptor: MethodDescriptor[BalanceRequest, BalanceResponse] = MethodDescriptor
+  def balancesMethodDescriptor: MethodDescriptor[String, Long] = MethodDescriptor
     .newBuilder()
     .setType(MethodDescriptor.MethodType.UNARY)
     // Method name with the namespace prefix
-    .setFullMethodName(s"$prefix/$methodName")
+    .setFullMethodName(s"${grpc.ServiceName}/${sdk.api.BalancesApi.MethodName}")
     // Encoder/decoder for input and output types
     .setRequestMarshaller(protobufRequestMarshaller)
     .setResponseMarshaller(protobufResponseMarshaller)
     .build()
 
-  def balancesServerCallHandler(getBalance: String => Long): ServerCallHandler[BalanceRequest, BalanceResponse] =
-    new ServerCallHandler[BalanceRequest, BalanceResponse] {
+  def balancesServerCallHandler(getBalance: String => Long): ServerCallHandler[String, Long] =
+    new ServerCallHandler[String, Long] {
       override def startCall(
-        call: ServerCall[BalanceRequest, BalanceResponse],
+        call: ServerCall[String, Long],
         headers: Metadata,
-      ): ServerCall.Listener[BalanceRequest] = {
+      ): ServerCall.Listener[String] = {
         // Number of messages to read next from the response (default is no read at all)
         call.request(1)
 
         // Server listener of clients requests
-        new ServerCall.Listener[BalanceRequest] {
+        new ServerCall.Listener[String] {
           // Handle client request message and optionally respond
-          override def onMessage(message: BalanceRequest): Unit = {
-            val balance = getBalance(message.wallet)
+          override def onMessage(wallet: String): Unit = {
+            val balance = getBalance(wallet)
             // Sends headers
             call.sendHeaders(headers)
             // Sends the message
-            call.sendMessage(BalanceResponse(balance))
+            call.sendMessage(balance)
             // Close must be called, but only once to prevent exception
             call.close(Status.OK, headers)
           }

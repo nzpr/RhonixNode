@@ -1,7 +1,7 @@
 package sdk
 
 package object api {
-  private val namespace = "io.rhonix.api"
-  private val version   = "v1"
-  val prefix            = s"$namespace.$version"
+  private val Namespace = List("io", "rhonix", "api")
+  private val Version   = "v1"
+  val Path: Seq[String] = Namespace :+ Version
 }

@@ -2,9 +2,9 @@ package io.rhonix.node.api.http.routes
 
 import cats.effect.Sync
 import cats.implicits.toFlatMapOps
+import io.rhonix.node.api.http.ApiPath
 import org.http4s.{EntityEncoder, HttpRoutes}
-import rhonix.api
-import sdk.api.FindApi
+import sdk.api.{BalancesApi, FindApi}
 import sdk.syntax.all.*
 
 object Balances {
@@ -12,7 +12,7 @@ object Balances {
     val dsl = org.http4s.dsl.Http4sDsl[F]
     import dsl.*
 
-    HttpRoutes.of[F] { case GET -> Root / api.prefix / "balance" / id =>
+    HttpRoutes.of[F] { case GET -> ApiPath / BalancesApi.MethodName / id =>
       balanceApi.get(id).flatMap(x => Ok(x))
     }
   }

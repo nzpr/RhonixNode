@@ -2,7 +2,7 @@ package io.rhonix.node.api.http.routes
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import io.rhonix.node.api.api
+import io.rhonix.node.api.http.ApiPath
 import org.http4s.{EntityEncoder, HttpRoutes}
 import sdk.api.*
 import sdk.syntax.all.*
@@ -19,11 +19,11 @@ object All {
     import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
 
     HttpRoutes.of[F] {
-      case GET -> Root / api.prefix / "balance" / id => balanceApi.get(id).flatMap(x => Ok(x))
-      case GET -> Root / api.prefix / "block" / id   =>
+      case GET -> ApiPath / BalancesApi.MethodName / id       => balanceApi.get(id).flatMap(x => Ok(x))
+      case GET -> ApiPath / BlockDbApi.MethodName / id        =>
         val hash = java.util.Base64.getDecoder.decode(id)
         blockApi.getByHash(hash).flatMap(_.map(Ok(_)).getOrElse(NotFound()))
-      case GET -> Root / api.prefix / "deploys" / id =>
+      case GET -> ApiPath / BlockDeploysDbApi.MethodName / id =>
         deployApi.getByBlock(id.toLong).flatMap(Ok(_))
     }
   }

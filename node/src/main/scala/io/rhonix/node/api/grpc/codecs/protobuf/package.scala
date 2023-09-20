@@ -1,7 +1,6 @@
 package io.rhonix.node.api.grpc.codecs
 
 import com.google.protobuf.{CodedInputStream, CodedOutputStream}
-import io.rhonix.node.api.grpc.data.*
 
 import java.io.{InputStream, PipedInputStream, PipedOutputStream}
 
@@ -22,21 +21,21 @@ package object protobuf {
     pipeInput
   }
 
-  def writeBalanceRequestProtobuf(obj: BalanceRequest): InputStream =
-    writeProtobufBracket(out => out.writeStringNoTag(obj.wallet))
+  def writeBalanceRequestProtobuf(obj: String): InputStream =
+    writeProtobufBracket(out => out.writeStringNoTag(obj))
 
-  def readBalanceRequestProtobuf(in: InputStream): BalanceRequest = {
+  def readBalanceRequestProtobuf(in: InputStream): String = {
     val protoStream = CodedInputStream.newInstance(in)
-    val balance     = protoStream.readString()
-    BalanceRequest(balance)
+    val wallet      = protoStream.readString()
+    wallet
   }
 
-  def writeBalanceResponseProtobuf(obj: BalanceResponse): InputStream =
-    writeProtobufBracket(out => out.writeFixed64NoTag(obj.balance))
+  def writeBalanceResponseProtobuf(obj: Long): InputStream =
+    writeProtobufBracket(out => out.writeFixed64NoTag(obj))
 
-  def readBalanceResponseProtobuf(in: InputStream): BalanceResponse = {
+  def readBalanceResponseProtobuf(in: InputStream): Long = {
     val protoStream = CodedInputStream.newInstance(in)
     val balance     = protoStream.readFixed64()
-    BalanceResponse(balance)
+    balance
   }
 }
