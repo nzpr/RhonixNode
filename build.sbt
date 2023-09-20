@@ -37,7 +37,7 @@ lazy val settingsScala2 = commonSettings ++ Seq(
 
 lazy val rhonix = (project in file("."))
   .settings(commonSettings*)
-  .aggregate(sdk, weaver, dproc, db, node)
+  .aggregate(sdk, weaver, dproc, db, node, sim, diag, execution)
 
 lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
@@ -73,7 +73,7 @@ lazy val node = (project in file("node"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
   .settings(
-    libraryDependencies ++= common ++ Seq(protobuf, grpc, grpcNetty) ++ tests,
+    libraryDependencies ++= common ++ Seq(protobuf, grpc, grpcNetty) ++ tests ++ log ++ http4s,
     resolvers ++=
       // for embedded InfluxDB
       Resolver.sonatypeOssRepos("releases") ++
@@ -101,15 +101,6 @@ lazy val execution = (project in file("execution"))
   )
   .dependsOn(sdk % "compile->compile;test->test")
 
-// API implementations
-lazy val api = (project in file("api"))
-  //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
-  .settings(settingsScala2*)
-  .settings(
-    libraryDependencies ++= common ++ tests ++ diagnostics ++ http4s,
-  )
-  .dependsOn(sdk % "compile->compile;test->test")
-
 // TODO this is commented out since JmhPlugin messes up with compile paths and IDEA doesn't like it
 // lazy val bench = (project in file("bench"))
 //  //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
@@ -134,4 +125,4 @@ lazy val sim = (project in file("sim"))
       case x                             => MergeStrategy.first
     },
   )
-  .dependsOn(node, api, db)
+  .dependsOn(node, db)

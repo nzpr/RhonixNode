@@ -8,11 +8,13 @@ import cats.syntax.all.*
 import dproc.data.Block
 import fs2.Stream
 import io.rhonix.node.Node
+import io.rhonix.node.api.http
+import io.rhonix.node.api.http.routes.All
 import org.http4s.EntityEncoder
-import rhonix.api.HttpApiStream
-import rhonix.api.HttpApiStream.httpRoute
 import rhonix.execution.OnlyBalancesEngine.Deploy
 import sdk.DagCausalQueue
+import sdk.api.*
+import sdk.api.data.{Block as ApiBlock, BlockDeploys}
 import sdk.node.{Processor, Proposer}
 import sdk.syntax.all.*
 import sim.Env.*
@@ -124,7 +126,19 @@ object NetworkSim extends IOApp {
 
             val apiServerStream: Stream[F, ExitCode] = if (idx == 0) {
               implicit val a: EntityEncoder[F, Long] = org.http4s.circe.jsonEncoderOf[F, Long]
-              HttpApiStream[F](httpRoute[F, Long](api.balances), 8080, "localhost")
+
+              val dummyBlockDBApi   = new BlockDbApi[F] {
+                override def insert(block: ApiBlock, senderId: Long): F[Long]           = 1L.pure[F]
+                override def update(id: Long, block: ApiBlock, senderId: Long): F[Unit] = ().pure[F]
+                override def getById(id: Long): F[Option[ApiBlock]]                     = none[ApiBlock].pure[F]
+                override def getByHash(hash: Array[Byte]): F[Option[ApiBlock]]          = none[ApiBlock].pure[F]
+              }
+              val dummyDeploysDbApi = new BlockDeploysDbApi[F] {
+                override def insert(blockDeploys: BlockDeploys): F[Unit]     = ().pure[F]
+                override def getByBlock(blockId: Long): F[Seq[BlockDeploys]] = Seq.empty[BlockDeploys].pure[F]
+              }
+              val routes            = All[F, Long](dummyBlockDBApi, dummyDeploysDbApi, api.balances)
+              http.server(routes, 8080, "localhost")
             } else Stream.empty
 
             (run concurrently bootstrap concurrently tpsUpdate concurrently apiServerStream) -> getData
