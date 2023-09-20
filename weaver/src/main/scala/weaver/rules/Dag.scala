@@ -75,7 +75,7 @@ object Dag {
   ): Iterator[M] = {
     val c = ceil.map(seqWithSender).toList.toMap
     val f = floor.map(seqWithSender).toList.toMap
-    val r = c.iterator.flatMap { case (k, up) => (f.getOrElse(k, 0) to up).reverseIterator.map(k -> _) }
+    val r = c.iterator.flatMap { case (k, up) => (f.getOrElse(k, 0) + 1 to up).reverseIterator.map(k -> _) }
     r.flatMap(lookup.tupled)
   }
 }

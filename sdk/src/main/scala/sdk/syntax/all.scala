@@ -1,6 +1,7 @@
 package sdk.syntax
 
 import sdk.api.syntax.ApiFindSyntax
+import sdk.fs2.Fs2StreamSyntax
 import sdk.store.{KeyValueStoreSyntax, KeyValueTypedStoreSyntax}
 import sdk.primitive.*
 
@@ -15,3 +16,5 @@ trait AllSyntax
     with ByteBufferSyntax
     with ArrayByteSyntax
     with ByteArraySyntax
+    with EffectSyntax
+    with Fs2StreamSyntax

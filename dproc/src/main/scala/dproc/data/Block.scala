@@ -1,5 +1,6 @@
 package dproc.data
 
+import sdk.hashing.Blake2b256Hash
 import weaver.GardState.GardM
 import weaver.data.*
 
@@ -31,12 +32,14 @@ final case class Block[M, S, T](
   bonds: Bonds[S],
   lazTol: Int,
   expThresh: Int,
+  finalStateHash: Blake2b256Hash,
+  postStateHash: Blake2b256Hash,
 )
 
 object Block {
   final case class WithId[M, S, T](id: M, m: Block[M, S, T])
 
-  def toLazoM[M, S, T](m: Block[M, S, T]) = MessageData(
+  def toLazoM[M, S, T](m: Block[M, S, T]): MessageData[M, S] = MessageData(
     m.sender,
     m.minGenJs,
     m.offences,
@@ -44,7 +47,7 @@ object Block {
     FinalData(m.bonds, m.lazTol, m.expThresh),
   )
 
-  def toLazoE[M, S, T](m: Block[M, S, T]) =
+  def toLazoE[M, S, T](m: Block[M, S, T]): FinalData[S] =
     FinalData(m.bonds, m.lazTol, m.expThresh)
 
   def toGardM[M, S, T](m: Block[M, S, T]): GardM[M, T] = GardM(m.txs.toSet, m.finalFringe)
