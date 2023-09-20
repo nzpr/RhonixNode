@@ -1,8 +1,8 @@
-package rhonix.api.grpc.methods
+package io.rhonix.node.api.grpc.methods
 
 import io.grpc.*
-import rhonix.api.grpc.data.*
-import rhonix.api.grpc.codecs.protobuf.*
+import io.rhonix.node.api.grpc.data.*
+import io.rhonix.node.api.grpc.codecs.protobuf.*
 import rhonix.api.prefix
 
 import java.io.InputStream

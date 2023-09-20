@@ -1,7 +1,7 @@
-package rhonix.api.grpc.codecs
+package io.rhonix.node.api.grpc.codecs
 
 import com.google.protobuf.{CodedInputStream, CodedOutputStream}
-import rhonix.api.grpc.data.*
+import io.rhonix.node.api.grpc.data.*
 
 import java.io.{InputStream, PipedInputStream, PipedOutputStream}
 

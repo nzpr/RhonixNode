@@ -1,4 +1,4 @@
-package rhonix.api.http.routes
+package io.rhonix.node.api.http.routes
 
 import cats.effect.Sync
 import cats.implicits.toFlatMapOps
