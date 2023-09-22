@@ -1,11 +1,11 @@
 package io.rhonix.node.api.http.routes
 
 import cats.effect.Sync
-import cats.implicits.toFlatMapOps
 import io.rhonix.node.api.http.ApiPath
 import org.http4s.{EntityEncoder, HttpRoutes}
 import sdk.api.{BalancesApi, FindApi}
 import sdk.syntax.all.*
+import cats.syntax.all.*
 
 object Balances {
   def apply[F[_]: Sync, T](balanceApi: FindApi[F, String, T])(implicit ei: EntityEncoder[F, T]): HttpRoutes[F] = {
