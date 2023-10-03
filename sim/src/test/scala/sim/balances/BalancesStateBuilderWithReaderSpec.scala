@@ -9,14 +9,14 @@ import sdk.hashing.Blake2b256Hash
 import sdk.history.History.EmptyRootHash
 import sdk.store.{ByteArrayKeyValueTypedStore, InMemoryKeyValueStore}
 import sim.balances.BalancesStateBuilderWithReaderSpec.witSut
-import sim.balances.data.BalancesState
+import sim.balances.data.State
 
 class BalancesStateBuilderWithReaderSpec extends AnyFlatSpec with Matchers {
 
   it should "build correct values for final and post state" in {
     witSut { bb =>
-      val toFinalize = new BalancesState(Map(1 -> 10, 2 -> 10, 3 -> 10))
-      val toMerge    = new BalancesState(Map(1 -> 1L, 2 -> 3L))
+      val toFinalize = new State(Map(1 -> 10, 2 -> 10, 3 -> 10))
+      val toMerge    = new State(Map(1 -> 1L, 2 -> 3L))
 
       for {
         h1      <- bb.buildState(EmptyRootHash, toFinalize, toMerge)
@@ -25,16 +25,16 @@ class BalancesStateBuilderWithReaderSpec extends AnyFlatSpec with Matchers {
         finalState = toFinalize.diffs.toList
         postState  = (toFinalize ++ toMerge).diffs.toList
 
-        _ <- finalState.traverse { case (k, v) => bb.readBalance(f1, k).map(_.get shouldBe v) }
-        _ <- postState.traverse { case (k, v) => bb.readBalance(p1, k).map(_.get shouldBe v) }
+        _ <- finalState.traverse { case (k, v) => bb.readState(f1, k).map(_.get shouldBe v) }
+        _ <- postState.traverse { case (k, v) => bb.readState(p1, k).map(_.get shouldBe v) }
       } yield ()
     }
   }
 
   "Attempt to commit negative balance" should "raise an error" in {
     val r = witSut { bb =>
-      val toFinalize = new BalancesState(Map(1 -> -1))
-      bb.buildState(EmptyRootHash, toFinalize, BalancesState.Default).attempt
+      val toFinalize = new State(Map(1 -> -1))
+      bb.buildState(EmptyRootHash, toFinalize, State.Default).attempt
     }
     r.swap.toOption.isDefined shouldBe true
   }
@@ -48,7 +48,7 @@ object BalancesStateBuilderWithReaderSpec {
       new ByteArrayKeyValueTypedStore[IO, Blake2b256Hash, Balance](
         new InMemoryKeyValueStore[IO],
         Blake2b256Hash.codec,
-        balanceCodec,
+        datumCodec,
       )
     }
 

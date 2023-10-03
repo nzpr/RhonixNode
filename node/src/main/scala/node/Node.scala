@@ -37,7 +37,7 @@ object Node {
       Set[T],
       Set[T],
       Set[T],
-    ) => F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))],
+    ) => F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]), Seq[T])],
     saveBlock: Block.WithId[M, S, T] => F[Unit],
     readBlock: M => F[Block[M, S, T]],
   ): F[Node[F, M, S, T]] =
@@ -53,9 +53,9 @@ object Node {
                       fringe: Set[M],
                       toFinalize: Set[T],
                       toMerge: Set[T],
-                      txs: Set[T],
-                    ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))] =
-                      computePreStateWithEffects(base, fringe, toFinalize, toMerge, txs)
+                      txs: List[T],
+                    ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]), Seq[T])] =
+                      computePreStateWithEffects(base, fringe, toFinalize, toMerge, txs.toSet)
 
                     // data read from the final state associated with the final fringe
                     def consensusData(fringe: Set[M]): F[FinalData[S]] = lfs.lazo.trustAssumption.pure[F] // TODO

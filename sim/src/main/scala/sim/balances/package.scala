@@ -5,6 +5,7 @@ import sdk.hashing.Blake2b256Hash
 import sdk.history.KeySegment
 import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
+import sim.balances.data.Datum
 
 import java.nio.ByteBuffer
 import scala.util.Try
@@ -12,25 +13,27 @@ import scala.util.Try
 package object balances {
 
   // types for data stored in the state
-  type Wallet  = Int
+  type Channel = Long
   type Balance = Long
 
   private def longToArray(x: Long): Array[Byte] =
     ByteBuffer.allocate(java.lang.Long.BYTES).putLong(x).array()
 
-  private def intToArray(x: Int): Array[Byte] =
-    ByteBuffer.allocate(java.lang.Integer.BYTES).putInt(x).array()
-
-  private val walletCodec: Codec[Wallet, ByteArray] = new Codec[Wallet, ByteArray] {
-    override def encode(x: Wallet): Try[ByteArray] = Try(ByteArray(intToArray(x)))
-    override def decode(x: ByteArray): Try[Wallet] = Try(ByteBuffer.wrap(x.bytes).getInt())
+  private val channelCodec: Codec[Channel, ByteArray] = new Codec[Channel, ByteArray] {
+    override def encode(x: Channel): Try[ByteArray] = Try(ByteArray(longToArray(x)))
+    override def decode(x: ByteArray): Try[Channel] = Try(ByteBuffer.wrap(x.bytes).getInt())
   }
 
-  val balanceCodec: Codec[Balance, ByteArray] = new Codec[Balance, ByteArray] {
-    override def encode(x: Balance): Try[ByteArray] = Try(ByteArray(longToArray(x)))
-    override def decode(x: ByteArray): Try[Balance] = Try(ByteBuffer.wrap(x.bytes).getLong)
+  val datumCodec: Codec[Datum, ByteArray] = new Codec[Datum, ByteArray] {
+    override def encode(x: Datum): Try[ByteArray] = Try(
+      ByteArray(longToArray(x.balance) ++ longToArray(x.latestNonce)),
+    )
+    override def decode(x: ByteArray): Try[Datum] = Try {
+      val bb = ByteBuffer.wrap(x.bytes)
+      Datum(bb.getLong, bb.getLong)
+    }
   }
 
-  def balanceToHash(balance: Balance): Blake2b256Hash = Blake2b256Hash(longToArray(balance))
-  def walletToKeySegment(wallet: Wallet): KeySegment  = KeySegment(walletCodec.encode(wallet).getUnsafe)
+  def datumToHash(datum: Datum): Blake2b256Hash       = Blake2b256Hash(datumCodec.encode(datum).get)
+  def walletToKeySegment(wallet: Channel): KeySegment = KeySegment(channelCodec.encode(wallet).getUnsafe)
 }

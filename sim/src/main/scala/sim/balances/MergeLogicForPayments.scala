@@ -1,73 +1,46 @@
 package sim.balances
 
+import cats.Monad
 import cats.effect.kernel.Sync
 import cats.syntax.all.*
-import sdk.hashing.Blake2b256Hash
-import sdk.syntax.all.mapSyntax
-import sim.balances.data.{BalancesDeploy, BalancesState}
+import sdk.store.KeyValueTypedStore
+import sdk.store.syntax.all.*
+import sim.balances.data.Deploy
 
 object MergeLogicForPayments {
 
-  /**
-   * Compute final values for records changed by the deploy.
-   *
-   * @return State containing changed values.
-   *         None if negative value or long overflow detected. In this case, deploy should be rejected.
-   * */
-  def attemptCombine(
-    allBalances: BalancesState,
-    deploy: BalancesDeploy,
-  ): Option[BalancesState] =
-    deploy.state.diffs.foldLeft(allBalances.some) { case (acc, (wallet, change)) =>
-      acc match {
-        case None      => acc
-        case Some(acc) =>
-          // Input args should ensure item is present in a map
-          val curV = allBalances.diffs.getUnsafe(wallet)
-          // Overflow should be fatal, since this is related to total supply
-          val newV = Math.addExact(curV, change)
-          Option.unless(newV < 0)(newV).as(new BalancesState(acc.diffs + (wallet -> newV)))
-      }
+  def attemptAdd[F[_]: Sync](
+    balances: Map[Channel, Long],
+    deploy: Deploy,
+  ): F[Boolean] =
+    Deploy.toDiff(deploy).toList.foldLeftM(true) {
+      case (true, (wallet, change)) =>
+        balances.get(wallet) match {
+          case Some(curV) =>
+            val newV = Math.addExact(curV, change)
+            if (newV < 0) false.pure else balances.put(wallet, newV).as(true)
+          case _          => balances.put(wallet, change).as(true)
+        }
+      case (false, _)               => false.pure
     }
 
-  /**
-   * Fold a sequence of items into initial state. Combination of an item with the state can fail.
-   *
-   * @return new state and items that failed to be combined.
-   * */
-  def foldCollectFailures[A, B](z: A, x: Seq[B], attemptCombine: (A, B) => Option[A]): (A, Seq[B]) =
-    x.foldLeft(z, Seq.empty[B]) { case ((acc, rjAcc), x) =>
-      attemptCombine(acc, x).map(_ -> rjAcc).getOrElse(acc -> (x +: rjAcc))
-    }
+  private def attemptAddMany[F[_]: Monad, A, B](z: A, list: Seq[B], attempt: (A, B) => F[Option[A]]): F[Seq[B]] =
+    list.foldLeftM(Seq.empty[B]) { case (acc, x) => attempt(z, x).map(_.map(_ +: acc).getOrElse(acc)) }
 
   /**
    * Merge deploys into the base state rejecting those leading to overflow.
    * */
   def mergeRejectNegativeOverflow[F[_]: Sync](
-    reader: BalancesStateBuilderWithReader[F],
-    baseState: Blake2b256Hash,
-    toFinalize: Set[BalancesDeploy],
-    toMerge: Set[BalancesDeploy],
-  ): F[((BalancesState, Seq[BalancesDeploy]), (BalancesState, Seq[BalancesDeploy]))] = Sync[F].defer {
-    val adjustedInFinal: Set[Wallet] = toFinalize.flatMap(_.state.diffs.keys)
-    val adjustedInMerge: Set[Wallet] = toMerge.flatMap(_.state.diffs.keys)
-    val adjustedAll: Set[Wallet]     = adjustedInFinal ++ adjustedInMerge
+    balances: KeyValueTypedStore[F, Channel, Long],
+    toFinalize: Set[Deploy],
+    toMerge: Set[Deploy],
+  ): F[(Seq[Deploy], Seq[Deploy])] = {
+    def attempt(x: KeyValueTypedStore[F, Channel, Long], d: Deploy): F[Option[Deploy]] =
+      attemptAdd[F](x, d).map(_.guard[Option].as(d))
 
-    val readAllBalances = adjustedAll.toList
-      .traverse(k => reader.readBalance(baseState, k).map(_.getOrElse(0L)).map(k -> _))
-      .map(_.toMap)
-
-    readAllBalances
-      .map { allInitValues =>
-        val initFinal        = new BalancesState(allInitValues.view.filterKeys(adjustedInFinal.contains).toMap)
-        val initAll          = new BalancesState(allInitValues)
-        val toFinalizeSorted = toFinalize.toList.sorted
-        val toMergeSorted    = toMerge.toList.sorted
-
-        val (finChange, finRj)    = foldCollectFailures(initFinal, toFinalizeSorted, attemptCombine)
-        val (mergeChange, provRj) = foldCollectFailures(initAll ++ finChange, toMergeSorted, attemptCombine)
-
-        (finChange, finRj) -> (mergeChange, provRj)
-      }
+    for {
+      fin <- attemptAddMany(balances, toFinalize.toList.sorted, attempt)
+      pre <- attemptAddMany(balances, toMerge.toList.sorted, attempt)
+    } yield fin ++ pre
   }
 }

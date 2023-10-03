@@ -22,9 +22,8 @@ import sdk.history.instances.RadixHistory
 import sdk.store.*
 import sdk.syntax.all.*
 import sim.balances.*
-import sim.balances.MergeLogicForPayments.mergeRejectNegativeOverflow
-import sim.balances.data.BalancesState.Default
-import sim.balances.data.{BalancesDeploy, BalancesState}
+import sim.balances.MergeLogicForPayments.{attemptAdd, mergeRejectNegativeOverflow}
+import sim.balances.data.{Datum, Deploy}
 import weaver.WeaverState
 import weaver.data.*
 
@@ -37,7 +36,7 @@ object NetworkSim extends IOApp {
   // Dummy types for message id, sender id and transaction
   type M = String
   type S = String
-  type T = BalancesDeploy
+  type T = Deploy
   implicit val ordS = new Ordering[String] {
     override def compare(x: S, y: S): Int = x compareTo y
   }
@@ -54,7 +53,7 @@ object NetworkSim extends IOApp {
   final case class NetNode[F[_]](
     id: S,
     node: Node[F, M, S, T],
-    balanceApi: (Blake2b256Hash, Wallet) => F[Option[Long]],
+    balanceApi: (Blake2b256Hash, Channel) => F[Option[Long]],
     fringeMapping: Set[M] => F[Blake2b256Hash],
   )
 
@@ -65,16 +64,16 @@ object NetworkSim extends IOApp {
   ): F[Block.WithId[M, S, T]] = {
     val mkHistory     = sdk.history.History.create(EmptyRootHash, new InMemoryKeyValueStore[F])
     val mkValuesStore = Sync[F].delay {
-      new ByteArrayKeyValueTypedStore[F, Blake2b256Hash, Balance](
+      new ByteArrayKeyValueTypedStore[F, Blake2b256Hash, Datum](
         new InMemoryKeyValueStore[F],
         Blake2b256Hash.codec,
-        balanceCodec,
+        datumCodec,
       )
     }
 
     (mkHistory, mkValuesStore).flatMapN { case history -> valueStore =>
-      val genesisState  = new BalancesState(users.map(_ -> Long.MaxValue / 2).toMap)
-      val genesisDeploy = BalancesDeploy("genesis", genesisState)
+      val genesisState  = new State(users.map(_ -> (Long.MaxValue / 2 -> 0L)).toMap)
+      val genesisDeploy = BalancesDeploy("genesis", genesisState, 0L)
       BalancesStateBuilderWithReader(history, valueStore)
         .buildState(
           baseState = EmptyRootHash,
@@ -106,7 +105,7 @@ object NetworkSim extends IOApp {
   def sim[F[_]: Async: Parallel: Random: Console: KamonContextStore](c: Config): Stream[F, Unit] = {
 
     /// Users (wallets) making transactions
-    val users: Set[Wallet] = (1 to c.usersNum).toSet
+    val users: Set[Channel] = (1 to c.usersNum).toSet
 
     /// Genesis data
     val lazinessTolerance = 1 // c.lazinessTolerance
@@ -125,35 +124,37 @@ object NetworkSim extends IOApp {
     def readBlock(id: M): F[Block[M, S, T]] = blockStore.get.map(_.getUnsafe(id))
 
     // Shared transactions store
-    val txStore: Ref[F, Map[String, BalancesState]]  = Ref.unsafe(Map.empty[String, BalancesState])
-    def saveTx(tx: BalancesDeploy): F[Unit]          = txStore.update(_.updated(tx.id, tx.state))
-    def readTx(id: String): F[Option[BalancesState]] = txStore.get.map(_.get(id))
+    val txStore: Ref[F, Map[String, State]]  = Ref.unsafe(Map.empty[String, State])
+    def saveTx(tx: Deploy): F[Unit]          = txStore.update(_.updated(tx.id, tx.state))
+    def readTx(id: String): F[Option[State]] = txStore.get.map(_.get(id))
 
     def broadcast(
       peers: List[Node[F, M, S, T]],
       time: Duration,
     ): Pipe[F, M, Unit] = _.evalMap(m => Temporal[F].sleep(time) *> peers.traverse(_.dProc.acceptMsg(m)).void)
 
-    def random(users: Set[Wallet]): F[BalancesState] = for {
+    def random(users: Set[Channel]): F[Map[Int, Long]] = for {
       txVal <- Random[F].nextLongBounded(100)
       from  <- Random[F].elementOf(users)
       to    <- Random[F].elementOf(users - from)
-    } yield new BalancesState(Map(from -> -txVal, to -> txVal))
+    } yield Map(from -> -txVal, to -> txVal)
 
     /** Storage resource for on chain storage (history and values) */
     def onChainStoreResource(
       kvStoreManager: KeyValueStoreManager[F],
-    ): Resource[F, (RadixHistory[F], KeyValueTypedStore[F, Blake2b256Hash, Balance])] = kvStoreManager.asResource
-      .flatMap { kvStoreManager =>
-        Resource.eval {
-          for {
-            historyStore <- kvStoreManager.store("history")
-            valuesStore  <- kvStoreManager.store("data")
-            history      <- sdk.history.History.create(EmptyRootHash, historyStore)
-            values        = valuesStore.toByteArrayTypedStore[Blake2b256Hash, Balance](Blake2b256Hash.codec, balanceCodec)
-          } yield history -> values
+    ): Resource[F, (RadixHistory[F], KeyValueTypedStore[F, Blake2b256Hash, (Balance, Long)])] =
+      kvStoreManager.asResource
+        .flatMap { kvStoreManager =>
+          Resource.eval {
+            for {
+              historyStore <- kvStoreManager.store("history")
+              valuesStore  <- kvStoreManager.store("data")
+              history      <- sdk.history.History.create(EmptyRootHash, historyStore)
+              values        =
+                valuesStore.toByteArrayTypedStore[Blake2b256Hash, (Balance, Long)](Blake2b256Hash.codec, datumCodec)
+            } yield history -> values
+          }
         }
-      }
 
     def mkNode(vId: S): Resource[F, NetNode[F]] = {
       val dataPath     = Paths.get(s".lmdb/node-$vId")
@@ -166,7 +167,7 @@ object NetworkSim extends IOApp {
         val txSeqNumRef = Ref.unsafe(0)
         val nextTxs     = txSeqNumRef
           .updateAndGet(_ + 1)
-          .flatMap(idx => random(users).map(st => balances.data.BalancesDeploy(s"$vId-tx-$idx", st)))
+          .flatMap(idx => random(users).map(st => balances.data.BalancesDeploy(s"$vId-tx-$idx", new State(st))))
           .replicateA(c.txPerBlock)
           .flatTap(_.traverse(saveTx))
           .map(_.toSet)
@@ -180,20 +181,26 @@ object NetworkSim extends IOApp {
           toFinalize: Set[T],
           toMerge: Set[T],
           toExecute: Set[T],
-        ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))] =
+        ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]), Seq[T])] =
           for {
             baseState <- fringeMappingRef.get.map(_(baseFringe))
-            r         <- mergeRejectNegativeOverflow(balancesEngine, baseState, toFinalize, toMerge ++ toExecute)
+            r         <- mergeRejectNegativeOverflow(balancesEngine, baseState, toFinalize, toMerge)
             _         <- Async[F].sleep(c.exeDelay).replicateA(toExecute.size)
 
             ((newFinState, finRj), (newMergeState, provRj)) = r
 
             r <- balancesEngine.buildState(baseState, newFinState, newMergeState)
 
-            (finalHash, postHash) = r
+            (finalHash, preState) = r
 
-            _ <- fringeMappingRef.update(_ + (finalFringe -> finalHash))
-          } yield ((finalHash.bytes.bytes, finRj), (postHash.bytes.bytes, provRj))
+            preBalances             <- readState(balancesEngine, preState, toExecute.flatMap(_.state.diffs.keys).toList)
+            (executed, doubleSpends) =
+              foldCollectFailures[State, T](new State(preBalances), toExecute.toList, attemptAdd)
+
+            r1           <- balancesEngine.buildState(preState, State.Default, executed)
+            (_, postHash) = r1
+            _            <- fringeMappingRef.update(_ + (finalFringe -> finalHash))
+          } yield ((finalHash.bytes.bytes, finRj), (postHash.bytes.bytes, provRj), doubleSpends)
 
         val netNode = Node[F, M, S, T](
           vId,
@@ -207,7 +214,7 @@ object NetworkSim extends IOApp {
           NetNode(
             vId,
             _,
-            balancesEngine.readBalance(_: Blake2b256Hash, _: Wallet),
+            balancesEngine.readState(_: Blake2b256Hash, _: Channel),
             (x: Set[M]) => fringeMappingRef.get.map(_.getUnsafe(x)),
           ),
         )
@@ -285,7 +292,7 @@ object NetworkSim extends IOApp {
               implicit val h: EntityEncoder[F, Block[String, String, String]] =
                 jsonEncoderOf[F, Block[String, String, String]]
 
-              implicit val bs: EntityEncoder[F, BalancesState] = jsonEncoderOf[F, BalancesState]
+              implicit val bs: EntityEncoder[F, State] = jsonEncoderOf[F, State]
 
               def blockByHash(x: M): F[Option[Block[M, S, String]]] =
                 blockStore.get
@@ -304,7 +311,7 @@ object NetworkSim extends IOApp {
 
               def latestBlocks: F[Set[M]] = weaverStRef.get.map(_.lazo.latestMessages)
 
-              val routes = PublicApiJson[F, Block[M, S, String], BalancesState](
+              val routes = PublicApiJson[F, Block[M, S, String], State](
                 blockByHash(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
                 readTx(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
                 (h: String, w: String) => {

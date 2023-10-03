@@ -42,8 +42,8 @@ object DProc {
       finalFringe: Set[M],
       toFinalize: Set[T],
       toMerge: Set[T],
-      txs: Set[T],
-    ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))]
+      txs: List[T],
+    ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]), Seq[T])]
 
     // data read from the final state associated with the final fringe
     def consensusData(fringe: Set[M]): F[FinalData[S]]

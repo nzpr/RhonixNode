@@ -1,6 +1,5 @@
 package dproc.data
 
-import weaver.GardState.GardM
 import weaver.data.*
 
 /**
@@ -47,6 +46,4 @@ object Block {
 
   def toLazoE[M, S, T](m: Block[M, S, T]): FinalData[S] =
     FinalData(m.bonds, m.lazTol, m.expThresh)
-
-  def toGardM[M, S, T](m: Block[M, S, T]): GardM[M, T] = GardM(m.txs.toSet, m.finalFringe)
 }
