@@ -1,5 +1,7 @@
 package node.crypto
 
+import org.bouncycastle.util.Pack
+
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays
 
@@ -176,19 +178,19 @@ object Blake2b512Block {
     result
   }
 
-  implicit val typeMapper = TypeMapper { (byteStr: ByteString) =>
-    val result     = new Blake2b512Block
-    val longBuffer = byteStr.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
-    longBuffer.get(result.chainValue, 0, CHAIN_VALUE_LENGTH)
-    result.t0 = longBuffer.get()
-    result.t1 = longBuffer.get()
-    result
-  } { (block: Blake2b512Block) =>
-    val result: ByteBuffer = ByteBuffer.allocateDirect(80)
-    fillByteBuffer(block, result)
-    result.rewind()
-    ByteString.copyFrom(result)
-  }
+//  implicit val typeMapper = TypeMapper { (byteStr: ByteString) =>
+//    val result     = new Blake2b512Block
+//    val longBuffer = byteStr.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
+//    longBuffer.get(result.chainValue, 0, CHAIN_VALUE_LENGTH)
+//    result.t0 = longBuffer.get()
+//    result.t1 = longBuffer.get()
+//    result
+//  } { (block: Blake2b512Block) =>
+//    val result: ByteBuffer = ByteBuffer.allocateDirect(80)
+//    fillByteBuffer(block, result)
+//    result.rewind()
+//    ByteString.copyFrom(result)
+//  }
 
   def fillByteBuffer(block: Blake2b512Block, buf: ByteBuffer): Unit = {
     val view = buf.duplicate().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
@@ -234,17 +236,17 @@ object Blake2b512Block {
   def tweakT0(src: Blake2b512Block): Unit =
     src.t0 = -1
 
-  implicit val arbitrary: Arbitrary[Blake2b512Block] = Arbitrary(for {
-    chainValue <- Gen.containerOfN[Array, Long](8, Arbitrary.arbitrary[Long])
-    t0         <- Arbitrary.arbitrary[Long]
-    t1         <- Arbitrary.arbitrary[Long]
-  } yield {
-    val result = new Blake2b512Block
-    Array.copy(chainValue, 0, result.chainValue, 0, CHAIN_VALUE_LENGTH)
-    result.t0 = t0
-    result.t1 = t1
-    result
-  })
+//  implicit val arbitrary: Arbitrary[Blake2b512Block] = Arbitrary(for {
+//    chainValue <- Gen.containerOfN[Array, Long](8, Arbitrary.arbitrary[Long])
+//    t0         <- Arbitrary.arbitrary[Long]
+//    t1         <- Arbitrary.arbitrary[Long]
+//  } yield {
+//    val result = new Blake2b512Block
+//    Array.copy(chainValue, 0, result.chainValue, 0, CHAIN_VALUE_LENGTH)
+//    result.t0 = t0
+//    result.t1 = t1
+//    result
+//  })
 
   def debugStr(b: Blake2b512Block): String =
     s"chainValue: ${b.chainValue.mkString(", ")}\n" +
