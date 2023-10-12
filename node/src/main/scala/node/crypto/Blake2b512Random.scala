@@ -1,4 +1,6 @@
-package sdk.crypto
+package node.crypto
+
+import sdk.crypto.SplittablePrng
 
 import java.nio.{ByteBuffer, ByteOrder, LongBuffer}
 import java.security.SecureRandom
@@ -70,13 +72,13 @@ class Blake2b512Random private (
       hashArray.slice(32, 64)
     }
 
-  def splitByte(index: Byte): Blake2b512Random = {
+  override def splitByte(index: Byte): Blake2b512Random = {
     val split = copy()
     split.addByte(index)
     split
   }
 
-  def splitShort(index: Short): Blake2b512Random = {
+  override def splitShort(index: Short): Blake2b512Random = {
     val split  = copy()
     val packed = new Array[Byte](2)
     Pack.shortToLittleEndian(index, packed, 0)

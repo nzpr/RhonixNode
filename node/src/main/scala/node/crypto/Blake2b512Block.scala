@@ -1,4 +1,4 @@
-package sdk.crypto
+package node.crypto
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays
