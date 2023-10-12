@@ -1,5 +1,8 @@
 package sdk.crypto.blake2rnd
 
+import sdk.primitive.ByteArray
+import sdk.syntax.all.sdkSyntaxByteArray
+
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays
 
@@ -176,19 +179,21 @@ object Blake2b512Block {
     result
   }
 
-//  implicit val typeMapper = TypeMapper { (byteStr: ByteString) =>
-//    val result     = new Blake2b512Block
-//    val longBuffer = byteStr.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
-//    longBuffer.get(result.chainValue, 0, CHAIN_VALUE_LENGTH)
-//    result.t0 = longBuffer.get()
-//    result.t1 = longBuffer.get()
-//    result
-//  } { (block: Blake2b512Block) =>
-//    val result: ByteBuffer = ByteBuffer.allocateDirect(80)
-//    fillByteBuffer(block, result)
-//    result.rewind()
-//    ByteString.copyFrom(result)
-//  }
+  def apply(byteStr: ByteArray) = {
+    val result     = new Blake2b512Block
+    val longBuffer = byteStr.toByteBuffer.order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
+    longBuffer.get(result.chainValue, 0, CHAIN_VALUE_LENGTH)
+    result.t0 = longBuffer.get()
+    result.t1 = longBuffer.get()
+    result
+  }
+
+  def unapply(block: Blake2b512Block): ByteArray = {
+    val result = ByteBuffer.allocateDirect(80)
+    fillByteBuffer(block, result)
+    result.rewind()
+    ByteArray(result)
+  }
 
   def fillByteBuffer(block: Blake2b512Block, buf: ByteBuffer): Unit = {
     val view = buf.duplicate().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()

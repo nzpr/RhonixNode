@@ -1,6 +1,8 @@
 package sdk.crypto.blake2rnd
 
 import sdk.crypto.SplittablePrng
+import sdk.primitive.ByteArray
+import sdk.syntax.all.sdkSyntaxByteArray
 
 import java.nio.{ByteBuffer, ByteOrder, LongBuffer}
 import java.security.SecureRandom
@@ -178,61 +180,56 @@ object Blake2b512Random {
     internalMerge(children.toVector)
   }
 
-//  implicit val typeMapper = TypeMapper { (byteStr: ByteString) =>
-//    if (byteStr.isEmpty)
-//      Blake2b512Random(new Array[Byte](0))
-//    else {
-//      val digestSize             = 80
-//      val buffer                 = byteStr.asReadOnlyByteBuffer()
-//      val digest                 = Blake2b512Block.typeMapper.toCustom(byteStr.substring(16, 16 + digestSize))
-//      val result                 = new Blake2b512Random(digest, ByteBuffer.allocate(128))
-//      val countSrc               = {
-//        val bufDuplicate = buffer.duplicate()
-//        bufDuplicate.limit(16)
-//        bufDuplicate.slice().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
-//      }
-//      result.countView.duplicate().put(countSrc)
-//      buffer.position(digestSize + 16)
-//      val pathPosition: Int      = buffer.get().toInt
-//      val remainderPosition: Int = buffer.get().toInt
-//      val pathSrc                = {
-//        val bufDuplicate = buffer.duplicate()
-//        bufDuplicate.limit(bufDuplicate.position() + pathPosition)
-//        bufDuplicate.slice()
-//      }
-//      result.pathView.put(pathSrc)
-//      buffer.position(buffer.position() + pathSrc.capacity())
-//      if (remainderPosition != 0)
-//        buffer.get(result.hashArray, remainderPosition, 64 - remainderPosition)
-//      result.position = remainderPosition
-//      result
-//    }
-//  } { (rand: Blake2b512Random) =>
-//    val remainderSize =
-//      if (rand.position == 0)
-//        0
-//      else
-//        64 - rand.position
-//    val digestSize    = 80
-//    // 128-bit rand count, digest, 2 positions, partial path, and remainder
-//    val totalSize     = 16 + digestSize + 2 + rand.pathView.position() + remainderSize
-//    val result        = ByteBuffer.allocate(totalSize)
-//    result.order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().put(rand.countView.asReadOnlyBuffer())
-//    result.position(16)
-//    Blake2b512Block.fillByteBuffer(rand.digest, result)
-//    result.put(rand.pathView.position().toByte)
-//    result.put(rand.position.toByte)
-//    val pathCopy      = rand.pathView.duplicate
-//    pathCopy.flip()
-//    result.put(pathCopy)
-//    if (remainderSize != 0) {
-//      result.put(rand.hashArray, rand.position, 64 - rand.position)
-//    }
-//    result.rewind()
-//    ByteString.copyFrom(result)
-//  }
-//
-//
+  def apply(bytes: ByteArray): Blake2b512Random = if (bytes.isEmpty)
+    Blake2b512Random(new Array[Byte](0))
+  else {
+    val digestSize             = 80
+    val buffer                 = bytes.toDirectByteBuffer
+    val digest                 = Blake2b512Block(ByteArray(bytes.bytes.drop(16).take(digestSize)))
+    val result                 = new Blake2b512Random(digest, ByteBuffer.allocate(128))
+    val countSrc               = {
+      val bufDuplicate = buffer.duplicate()
+      bufDuplicate.limit(16)
+      bufDuplicate.slice().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer()
+    }
+    result.countView.duplicate().put(countSrc)
+    buffer.position(digestSize + 16)
+    val pathPosition: Int      = buffer.get().toInt
+    val remainderPosition: Int = buffer.get().toInt
+    val pathSrc                = {
+      val bufDuplicate = buffer.duplicate()
+      bufDuplicate.limit(bufDuplicate.position() + pathPosition)
+      bufDuplicate.slice()
+    }
+    result.pathView.put(pathSrc)
+    buffer.position(buffer.position() + pathSrc.capacity())
+    if (remainderPosition != 0)
+      buffer.get(result.hashArray, remainderPosition, 64 - remainderPosition)
+    result.position = remainderPosition
+    result
+  }
+
+  def unapply(rand: Blake2b512Random): ByteArray = {
+    val remainderSize = if (rand.position == 0) 0 else 64 - rand.position
+    val digestSize    = 80
+    // 128-bit rand count, digest, 2 positions, partial path, and remainder
+    val totalSize     = 16 + digestSize + 2 + rand.pathView.position() + remainderSize
+    val result        = ByteBuffer.allocate(totalSize)
+    result.order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().put(rand.countView.asReadOnlyBuffer())
+    result.position(16)
+    Blake2b512Block.fillByteBuffer(rand.digest, result)
+    result.put(rand.pathView.position().toByte)
+    result.put(rand.position.toByte)
+    val pathCopy      = rand.pathView.duplicate
+    pathCopy.flip()
+    result.put(pathCopy)
+    if (remainderSize != 0) {
+      result.put(rand.hashArray, rand.position, 64 - rand.position)
+    }
+    result.rewind()
+    ByteArray(result)
+  }
+
 //  // For testing only, will result in incorrect results otherwise
 //  def tweakLength0(rand: Blake2b512Random): Unit =
 //    rand.countView.put(0, -1)
