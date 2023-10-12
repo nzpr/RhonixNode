@@ -1,6 +1,5 @@
 package node.crypto
 
-import org.bouncycastle.util.Pack
 import sdk.crypto.SplittablePrng
 
 import java.nio.{ByteBuffer, ByteOrder, LongBuffer}

@@ -1,7 +1,5 @@
 package node.crypto
 
-import org.bouncycastle.util.Pack
-
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays
 
