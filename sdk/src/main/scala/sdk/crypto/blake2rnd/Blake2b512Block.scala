@@ -1,4 +1,4 @@
-package node.crypto
+package sdk.crypto.blake2rnd
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays

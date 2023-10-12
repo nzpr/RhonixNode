@@ -1,7 +1,9 @@
-package node.crypto;
+package sdk.crypto.blake2rnd;
 
 /**
  * Utility methods for converting byte arrays into ints and longs, and back again.
+ * <p>
+ * This is straight copy of org.bouncycastle.util.Pack
  */
 public abstract class Pack {
     public static short bigEndianToShort(byte[] bs, int off) {

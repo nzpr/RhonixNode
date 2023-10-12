@@ -1,4 +1,4 @@
-package node.crypto
+package sdk.crypto.blake2rnd
 
 import sdk.crypto.SplittablePrng
 
