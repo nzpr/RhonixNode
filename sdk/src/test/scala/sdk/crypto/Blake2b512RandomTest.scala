@@ -5,9 +5,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.Configuration
 import org.scalatestplus.scalacheck.Checkers
+import sdk.codecs.Base16
+import sdk.crypto.blake2rnd.Blake2b512Random
+import sdk.syntax.all.sdkSyntaxByteArray
 
 import java.nio.charset.StandardCharsets
-import java.util.Arrays
+import java.util
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
@@ -24,33 +27,32 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
 
   "An arbitrary random-state" should "survive serialization round-tripping" in {
     val propRoundTripTypeMapper: Prop = Prop.forAll { (rand: Blake2b512Random) =>
-      val tm          = Blake2b512Random.typeMapper
-      val half        = tm.toBase(rand)
-      val result      = tm.toCustom(half)
-      val onceAndHalf = tm.toBase(result)
-      val repeat      = tm.toBase(rand)
+      val half        = Blake2b512Random.unapply(rand)
+      val result      = Blake2b512Random(half)
+      val onceAndHalf = Blake2b512Random.unapply(result)
+      val repeat      = Blake2b512Random.unapply(rand)
 
       (rand == result || { println("not same"); false }) &&
       (half == repeat || {
         println("not repeatable encoding.")
-        println(s"halfEncode:   ${Base16.encode(half.toByteArray)}")
-        println(s"repeatEncode: ${Base16.encode(repeat.toByteArray)}")
+        println(s"halfEncode:   ${half.toHex}")
+        println(s"repeatEncode: ${repeat.toHex}")
         false
       }) &&
       (half == onceAndHalf || {
         println("not same encoding.")
-        println(s"halfEncode:        ${Base16.encode(half.toByteArray)}")
-        println(s"onceAndHalfEncode: ${Base16.encode(onceAndHalf.toByteArray)}")
+        println(s"halfEncode:        ${half.toHex}")
+        println(s"onceAndHalfEncode: ${onceAndHalf.toHex}")
         false
       }) && {
-        val baseNext   = rand.next()
-        val resultNext = result.next()
-        if (Arrays.equals(baseNext, resultNext))
+        val baseNext   = rand.next
+        val resultNext = result.next
+        if (util.Arrays.equals(baseNext, resultNext))
           true
         else {
           println("not same next.")
-          println(s"randEncode:   ${Base16.encode(tm.toBase(rand).toByteArray)}")
-          println(s"resultEncode: ${Base16.encode(tm.toBase(result).toByteArray)}")
+          println(s"randEncode:   ${Blake2b512Random.unapply(rand).toHex}")
+          println(s"resultEncode: ${Blake2b512Random.unapply(result).toHex}}")
           println(s"baseNext:   ${Base16.encode(baseNext)}")
           println(s"resultNext: ${Base16.encode(resultNext)}")
           false
@@ -62,33 +64,31 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
 
     val zeroPositionRand      = Arbitrary.arbitrary[Blake2b512Random] suchThat (_.getPosition == 0)
     val propNextNotSame: Prop = Prop.forAll(zeroPositionRand) { (rand: Blake2b512Random) =>
-      val tm       = Blake2b512Random.typeMapper
-      val randCopy = rand.copy()
-      randCopy.next()
-      tm.toBase(randCopy) != tm.toBase(rand) || {
-        println("next1")
-        println(s"randEncode: ${Base16.encode(tm.toBase(rand).toByteArray)}")
-        println(s"randCopyEncode: ${Base16.encode(tm.toBase(randCopy).toByteArray)}")
-        false
-      }
-      randCopy.next()
-      tm.toBase(randCopy) != tm.toBase(rand) || {
-        println("next2")
-        println(s"randEncode: ${Base16.encode(tm.toBase(rand).toByteArray)}")
-        println(s"randCopyEncode: ${Base16.encode(tm.toBase(randCopy).toByteArray)}")
-        false
-      }
+      val randCopy = rand.copy
+      randCopy.next
+    Blake2b512Random.unapply(randCopy) != Blake2b512Random.unapply(rand) || {
+      println("next1")
+      println(s"randEncode: ${Blake2b512Random.unapply(rand).toHex}")
+      println(s"randCopyEncode: ${Blake2b512Random.unapply(randCopy).toHex}")
+      false
+    }
+    randCopy.next
+    Blake2b512Random.unapply(randCopy) != Blake2b512Random.unapply(rand) || {
+      println("next2")
+      println(s"randEncode: ${Blake2b512Random.unapply(rand).toHex}")
+      println(s"randCopyEncode: ${Blake2b512Random.unapply(randCopy).toHex}")
+      false
+    }
     }
 
     check(propNextNotSame)
 
     val propSplitNotSame: Prop = Prop.forAll(zeroPositionRand) { (rand: Blake2b512Random) =>
-      val tm       = Blake2b512Random.typeMapper
       val randCopy = rand.splitByte(0)
-      tm.toBase(randCopy) != tm.toBase(rand) || {
+      Blake2b512Random.unapply(randCopy) != Blake2b512Random.unapply(rand) || {
         println("split")
-        println(s"randEncode: ${Base16.encode(tm.toBase(rand).toByteArray)}")
-        println(s"randCopyEncode: ${Base16.encode(tm.toBase(randCopy).toByteArray)}")
+        println(s"randEncode: ${Blake2b512Random.unapply(rand).toHex}")
+        println(s"randCopyEncode: ${Blake2b512Random.unapply(randCopy).toHex}")
         false
       }
     }
@@ -99,8 +99,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
   val emptyMsg: Array[Byte] = new Array[Byte](0)
   "Empty" should "give a predictable result" in {
     val b2Random = Blake2b512Random(emptyMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "52884e9cfaf738709d271e9c0268f05964395678d9ccd61b187d67224a464230",
     )
@@ -111,8 +111,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
   it should "handle splitShort as well." in {
     val b2Random = Blake2b512Random(emptyMsg)
     val split    = b2Random.splitShort(0x6487)
-    val res1     = split.next()
-    val res2     = split.next()
+    val res1     = split.next
+    val res2     = split.next
     Base16.encode(res1) should be(
       "745ce0f59aa7ebadc31c097126ac85870c3364b561d1d81935eb01ef5968d4b3",
     )
@@ -123,10 +123,10 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
   it should "correctly implement wraparound." in {
     val b2Random = Blake2b512Random(emptyMsg)
     Blake2b512Random.tweakLength0(b2Random)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
-    val res3     = b2Random.next()
-    val res4     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
+    val res3     = b2Random.next
+    val res4     = b2Random.next
     Base16.encode(res1) should be(
       "b63ea0e23d853977e02707364c753bd414c4828e294c1b0c39d046bacf18f5cf",
     )
@@ -146,8 +146,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
     val rollover = 0.to(112).foldLeft(b2Random) { (rand, n) =>
       rand.splitByte(n.toByte)
     }
-    val res1     = rollover.next()
-    val res2     = rollover.next()
+    val res1     = rollover.next
+    val res2     = rollover.next
     Base16.encode(res1) should be(
       "0f6ccee70daf946d23361a92e672515898a287456c38517bd92bb0925ee18103",
     )
@@ -157,12 +157,12 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
   }
   it should "correctly handle nexts that are then rolled over" in {
     val b2Random = Blake2b512Random(emptyMsg)
-    b2Random.next()
+    b2Random.next
     val rollover = 0.to(112).foldLeft(b2Random) { (rand, n) =>
       rand.splitByte(n.toByte)
     }
-    val res1     = rollover.next()
-    val res2     = rollover.next()
+    val res1     = rollover.next
+    val res2     = rollover.next
 
     Base16.encode(res1) should be(
       "1fa2af2fdc0521dacc1b06d0dc9ee729075283c7e2ba8df7b637bd05134e2d30",
@@ -174,8 +174,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
   val partialMsg: Array[Byte]              = "Hello, World!".getBytes(StandardCharsets.UTF_8)
   "Partial" should "give a predictable result" in {
     val b2Random = Blake2b512Random(partialMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "34c06b6f6907595709c44a1c2f4940210d99b04302937a88e14a5c5e2d439221",
     )
@@ -188,8 +188,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       .getBytes(StandardCharsets.UTF_8)
   "Single block prefix" should "give a predictable result" in {
     val b2Random = Blake2b512Random(singleBlockMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "459691c149f10c8cf45a4f84421d89e97228b91e046f7afbcf3a4131216c538b",
     )
@@ -202,8 +202,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       .getBytes(StandardCharsets.UTF_8)
   "Single block and additional partial prefix" should "give a predictable result" in {
     val b2Random = Blake2b512Random(blockAndPartMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "c27d88a63898e9f593ae34439112572feedd241c4223e6c62e997e45267b285d",
     )
@@ -216,8 +216,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       .getBytes(StandardCharsets.UTF_8)
   "Multi block prefix" should "give a predictable result" in {
     val b2Random = Blake2b512Random(multiBlockMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "07ac715093bb984b8f9364b6ccdf89ca63dbdcc164000d115ee333d6566b3e87",
     )
@@ -230,8 +230,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       .getBytes(StandardCharsets.UTF_8)
   "Multi block and partial prefix" should "give a predictable result" in {
     val b2Random = Blake2b512Random(multiBlockAndPartialMsg)
-    val res1     = b2Random.next()
-    val res2     = b2Random.next()
+    val res1     = b2Random.next
+    val res2     = b2Random.next
     Base16.encode(res1) should be(
       "828f766bc845c41944f1a9933b0835afabf636abd93f8bd986db7a73c7de056c",
     )
@@ -266,8 +266,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
     val b2Random0         = b2RandomBase.splitByte(0)
     val b2Random1         = b2RandomBase.splitByte(1)
     val singleMergeRandom = Blake2b512Random.merge(List(b2Random0, b2Random1))
-    val res1              = singleMergeRandom.next()
-    val res2              = singleMergeRandom.next()
+    val res1              = singleMergeRandom.next
+    val res2              = singleMergeRandom.next
     Base16.encode(res1) should be(
       "ce190f4283d4b11653cb78ee8fbc68a5b8cb62511a1f2ed3e836400e62144fa9",
     )
@@ -290,8 +290,8 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       }
     }
     val merged = Blake2b512Random.merge(builder.result())
-    val res1 = merged.next()
-    val res2 = merged.next()
+    val res1 = merged.next
+    val res2 = merged.next
     Base16.encode(res1) should be(
       "ceff4f6065e6b508b46f4c7b687c3b67eb3bcdcbb52a4ad098e481876b745156",
     )
@@ -341,7 +341,7 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
 
     def run(size: Int) =
       (0 until size).foldLeft((List[Array[Byte]](), baseRnd)) { case ((acc, rnd), _) =>
-        val nextValue = rnd.next()
+        val nextValue = rnd.next
         (nextValue +: acc, rnd)
       }
 
@@ -369,7 +369,7 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
     }
 
     def serialize(rnds: List[Blake2b512Random]) =
-      rnds foreach Blake2b512Random.typeMapper.toBase
+      rnds foreach Blake2b512Random
 
     def runChunks(size: Int) = {
       // Generate new set of random generators
