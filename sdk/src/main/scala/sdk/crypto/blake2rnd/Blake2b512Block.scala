@@ -1,5 +1,6 @@
 package sdk.crypto.blake2rnd
 
+import sdk.crypto.blake2rnd.Blake2b512Block.CHAIN_VALUE_LENGTH
 import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxByteArray
 
@@ -31,11 +32,15 @@ This class is an abbreviated version of Blake2bDigest.java from BouncyCastle
 https://github.com/bcgit/bc-java/blob/master/core/src/main/java/org/bouncycastle/crypto/digests/Blake2bDigest.java
   */
 @SuppressWarnings(Array("org.wartremover.warts.Var"))
-class Blake2b512Block {
+class Blake2b512Block(
+  chainValueInit: Array[Long] = new Array[Long](CHAIN_VALUE_LENGTH),
+  t0Init: Long = 0,
+  t1Init: Long = 0,
+) {
   import Blake2b512Block.*
-  private val chainValue: Array[Long] = new Array[Long](CHAIN_VALUE_LENGTH)
-  private var t0: Long                = 0
-  private var t1: Long                = 0
+  private val chainValue: Array[Long] = chainValueInit
+  private var t0: Long                = t0Init
+  private var t1: Long                = t1Init
 
   // block must be 128 bytes long
   def update(block: Array[Byte], offset: Int): Unit =
@@ -238,18 +243,6 @@ object Blake2b512Block {
   // This will give invalid results and is for testing only.
   def tweakT0(src: Blake2b512Block): Unit =
     src.t0 = -1
-
-//  implicit val arbitrary: Arbitrary[Blake2b512Block] = Arbitrary(for {
-//    chainValue <- Gen.containerOfN[Array, Long](8, Arbitrary.arbitrary[Long])
-//    t0         <- Arbitrary.arbitrary[Long]
-//    t1         <- Arbitrary.arbitrary[Long]
-//  } yield {
-//    val result = new Blake2b512Block
-//    Array.copy(chainValue, 0, result.chainValue, 0, CHAIN_VALUE_LENGTH)
-//    result.t0 = t0
-//    result.t1 = t1
-//    result
-//  })
 
   def debugStr(b: Blake2b512Block): String =
     s"chainValue: ${b.chainValue.mkString(", ")}\n" +

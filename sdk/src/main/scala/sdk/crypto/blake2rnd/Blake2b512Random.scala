@@ -109,6 +109,9 @@ class Blake2b512Random private (
 
   override def hashCode(): Int =
     ((digest.hashCode * 31 + pathView.position()) * 31 + position) * 31 + lastBlock.hashCode
+
+  /// For testing only, will result in incorrect results otherwise
+  def tweakLength0Unsafe(): Unit = countView.put(0, -1)
 }
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
@@ -147,6 +150,7 @@ object Blake2b512Random {
 
   def defaultRandom: Blake2b512Random = Blake2b512Random(128)
 
+  @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
   def merge(children: Seq[Blake2b512Random]): Blake2b512Random = {
     @tailrec
     def internalMerge(children: Vector[Blake2b512Random]): Blake2b512Random = {
@@ -230,29 +234,6 @@ object Blake2b512Random {
     ByteArray(result)
   }
 
-//  // For testing only, will result in incorrect results otherwise
-//  def tweakLength0(rand: Blake2b512Random): Unit =
-//    rand.countView.put(0, -1)
-//
-//  implicit val arbitrary: Arbitrary[Blake2b512Random] = Arbitrary(for {
-//    digest       <- Arbitrary.arbitrary[Blake2b512Block]
-//    position     <- Gen.oneOf[Int](0, 32)
-//    // This only works at 0 and 32.
-//    remainder    <- Gen.containerOfN[Array, Byte](position, Arbitrary.arbitrary[Byte])
-//    countLow     <- Arbitrary.arbitrary[Long]
-//    countHigh    <- Arbitrary.arbitrary[Long]
-//    pathPosition <- Gen.choose[Int](0, 112)
-//    path         <- Gen.containerOfN[Array, Byte](pathPosition, Arbitrary.arbitrary[Byte])
-//  } yield {
-//    val result = new Blake2b512Random(digest, ByteBuffer.allocate(128))
-//    result.countView.put(0, countLow)
-//    result.countView.put(1, countHigh)
-//    result.pathView.put(path)
-//    if (position != 0)
-//      Array.copy(remainder, 0, result.hashArray, position, 64 - position)
-//    result.position = position
-//    result
-//  })
 //
 //  def debugStr(rand: Blake2b512Random): String = {
 //    val rotPosition = ((rand.position - 1) & 0x3f) + 1

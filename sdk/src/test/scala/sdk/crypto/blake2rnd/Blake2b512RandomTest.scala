@@ -1,4 +1,4 @@
-package sdk.crypto
+package sdk.crypto.blake2rnd
 
 import org.scalacheck.{Arbitrary, Prop}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.Configuration
 import org.scalatestplus.scalacheck.Checkers
 import sdk.codecs.Base16
-import sdk.crypto.blake2rnd.Blake2b512Random
 import sdk.syntax.all.sdkSyntaxByteArray
 
 import java.nio.charset.StandardCharsets
@@ -120,9 +119,10 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
       "2d7bd219e4ce1e18e38c06eecdf17098ed49d66890086d19543a84fe88d80d67",
     )
   }
+
   it should "correctly implement wraparound." in {
     val b2Random = Blake2b512Random(emptyMsg)
-    Blake2b512Random.tweakLength0(b2Random)
+    b2Random.tweakLength0Unsafe()
     val res1     = b2Random.next
     val res2     = b2Random.next
     val res3     = b2Random.next
@@ -369,7 +369,7 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
     }
 
     def serialize(rnds: List[Blake2b512Random]) =
-      rnds foreach Blake2b512Random
+      rnds foreach Blake2b512Random.unapply
 
     def runChunks(size: Int) = {
       // Generate new set of random generators
@@ -394,14 +394,13 @@ class Blake2b512RandomTest extends AnyFlatSpec with Matchers with Checkers with 
     val results = iterate(rounds)(taskChunk(perChunk))
 
     val totalTime = results.reduce(_ + _)
-    val timeStr   = Stopwatch.showTime(totalTime)
 
     val totalSize = rounds * perChunk
 
     val totalMillis = totalTime.toNanos.toFloat / (1000 * 1000)
     val perSec      = totalSize.toFloat / totalMillis
 
-    println(s"$tag $totalSize, per ms: $perSec, total: $timeStr")
+    println(s"$tag $totalSize, per ms: $perSec, total: ${totalTime.toMillis} ms")
   }
 
   private def iterate[A](count: Int)(task: => A) =
