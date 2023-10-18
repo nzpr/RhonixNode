@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 class Blake2b512Random private (
   private val digest: Blake2b512Block,
   private val lastBlock: ByteBuffer,
-) extends SplittablePrng {
+) {
   private val pathView: ByteBuffer  = lastBlock.duplicate()
   pathView.limit(112)
   private val countView: LongBuffer = {
@@ -43,7 +43,7 @@ class Blake2b512Random private (
     pathView.put(index)
   }
 
-  override def copy: Blake2b512Random = {
+  def copy: Blake2b512Random = {
     val cloneBlock = ByteBuffer.allocate(128)
     cloneBlock.put(lastBlock.asReadOnlyBuffer())
     cloneBlock.rewind()
@@ -64,7 +64,7 @@ class Blake2b512Random private (
     }
   }
 
-  override def next: Array[Byte] =
+  def next: Array[Byte] =
     if (position == 0) {
       hash()
       position = 32
@@ -74,13 +74,13 @@ class Blake2b512Random private (
       hashArray.slice(32, 64)
     }
 
-  override def splitByte(index: Byte): Blake2b512Random = {
+  def splitByte(index: Byte): Blake2b512Random = {
     val split = copy
     split.addByte(index)
     split
   }
 
-  override def splitShort(index: Short): Blake2b512Random = {
+  def splitShort(index: Short): Blake2b512Random = {
     val split  = copy
     val packed = new Array[Byte](2)
     Pack.shortToLittleEndian(index, packed, 0)
@@ -233,6 +233,14 @@ object Blake2b512Random {
     result.rewind()
     ByteArray(result)
   }
+
+  implicit val splittablePrngForBlake2b512Random: SplittablePrng[Blake2b512Random] =
+    new SplittablePrng[Blake2b512Random] {
+      override def splitByte(x: Blake2b512Random, index: Byte): Blake2b512Random   = x.splitByte(index)
+      override def splitShort(x: Blake2b512Random, index: Short): Blake2b512Random = x.splitShort(index)
+      override def next(x: Blake2b512Random): Array[Byte]                          = x.next
+      override def copy(x: Blake2b512Random): Blake2b512Random                     = x.copy
+    }
 
 //
 //  def debugStr(rand: Blake2b512Random): String = {
