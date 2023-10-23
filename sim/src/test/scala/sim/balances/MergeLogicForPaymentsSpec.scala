@@ -14,37 +14,25 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
     val initBalances = Map(1 -> 4L, 2 -> 1L)
     val change       = Map(1 -> -1L)
     val reference    = Map(1 -> 3L, 2 -> 1L)
-
-    val b   = new BalancesState(initBalances)
-    val neg = BalancesDeploy("0", new BalancesState(change))
-    attemptCombine(b, neg).map(_.diffs) shouldBe new BalancesState(reference).diffs.some
+    attemptCombineNonNegative(initBalances, change) shouldBe new BalancesState(reference).diffs.some
   }
 
   it should "handle edge case" in {
     val initBalances = Map(1 -> 1L)
     val zero         = Map(1 -> -1L)
-
-    val b        = new BalancesState(initBalances)
-    val zeroCase = BalancesDeploy("0", new BalancesState(zero))
-    attemptCombine(b, zeroCase).map(_.diffs).isDefined shouldBe true
+    attemptCombineNonNegative(initBalances, zero).isDefined shouldBe true
   }
 
   it should "reject deploy if leads negative" in {
     val initBalances = Map(1 -> 1L)
     val changeNeg    = Map(1 -> -2L)
-
-    val b   = new BalancesState(initBalances)
-    val neg = BalancesDeploy("0", new BalancesState(changeNeg))
-    attemptCombine(b, neg) shouldBe None
+    attemptCombineNonNegative(initBalances, changeNeg) shouldBe None
   }
 
   it should "throw exception on Long overflow" in {
     val initBalances = Map(1 -> Long.MaxValue)
     val changeNeg    = Map(1 -> 1L)
-
-    val b   = new BalancesState(initBalances)
-    val neg = BalancesDeploy("0", new BalancesState(changeNeg))
-    intercept[Exception](attemptCombine(b, neg))
+    intercept[Exception](attemptCombineNonNegative(initBalances, changeNeg))
   }
 
   behavior of "foldCollectFailures"

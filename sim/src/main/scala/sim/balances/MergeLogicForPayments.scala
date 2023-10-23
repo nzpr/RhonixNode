@@ -2,7 +2,6 @@ package sim.balances
 
 import cats.effect.kernel.Sync
 import cats.syntax.all.*
-import diagnostics.syntax.all.kamonSyntax
 import sdk.diag.Metrics
 import sdk.hashing.Blake2b256Hash
 import sdk.syntax.all.{effectSyntax, mapSyntax}
@@ -11,30 +10,24 @@ import sim.balances.data.{BalancesDeploy, BalancesState}
 object MergeLogicForPayments {
 
   /**
-   * Compute final values for records changed by the deploy.
-   *
-   * @return State containing changed values.
-   *         None if negative value or long overflow detected. In this case, deploy should be rejected.
+   * Attempt to combine two maps.
+   * @return combined map or None if combination leads to negative value on any key.
    * */
-  def attemptCombine(
-    allBalances: BalancesState,
-    deploy: BalancesDeploy,
-  ): Option[BalancesState] =
-    deploy.state.diffs.foldLeft(allBalances.some) { case (acc, (wallet, change)) =>
+  def attemptCombineNonNegative[K](x: Map[K, Long], y: Map[K, Long]): Option[Map[K, Long]] =
+    y.foldLeft(x.some) { case (acc, (wallet, change)) =>
       acc match {
         case None      => acc
         case Some(acc) =>
           // Input args should ensure item is present in a map
-          val curV = allBalances.diffs.getUnsafe(wallet)
+          val curV = x.getUnsafe(wallet)
           // Overflow should be fatal, since this is related to total supply
           val newV = Math.addExact(curV, change)
-          Option.unless(newV < 0)(newV).as(new BalancesState(acc.diffs + (wallet -> newV)))
+          Option.unless(newV < 0)(newV).as(acc + (wallet -> newV))
       }
     }
 
   /**
    * Fold a sequence of items into initial state. Combination of an item with the state can fail.
-   *
    * @return new state and items that failed to be combined.
    * */
   def foldCollectFailures[A, B](z: A, x: Seq[B], attemptCombine: (A, B) => Option[A]): (A, Seq[B]) =
@@ -66,11 +59,14 @@ object MergeLogicForPayments {
         val toFinalizeSorted = toFinalize.toList.sorted
         val toMergeSorted    = toMerge.toList.sorted
 
+        def combineStateWithDeploy(s: BalancesState, d: BalancesDeploy) =
+          attemptCombineNonNegative(s.diffs, d.state.diffs).map(new BalancesState(_))
+
         Sync[F]
-          .delay(foldCollectFailures(initFinal, toFinalizeSorted, attemptCombine))
+          .delay(foldCollectFailures(initFinal, toFinalizeSorted, combineStateWithDeploy))
           .timedM("buildFinalState")
           .map { case (finChange, finRj) =>
-            val (mergeChange, provRj) = foldCollectFailures(initAll ++ finChange, toMergeSorted, attemptCombine)
+            val (mergeChange, provRj) = foldCollectFailures(initAll ++ finChange, toMergeSorted, combineStateWithDeploy)
             (finChange, finRj) -> (mergeChange, provRj)
           }
       }
