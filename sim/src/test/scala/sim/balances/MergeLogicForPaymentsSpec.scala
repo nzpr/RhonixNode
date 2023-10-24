@@ -1,10 +1,14 @@
 package sim.balances
 
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import sim.balances.MergeLogicForPayments.*
-import sim.balances.data.{BalancesDeploy, BalancesState}
+import sim.balances.data.BalancesState
+
+import scala.concurrent.duration.DurationInt
 
 class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
 
@@ -39,7 +43,7 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
 
   it should "output correct combination result and failures" in {
     val state = 4
-    val items = Seq(1, 2, 3)
+    val items = List(1, 2, 3)
 
     def attemptCombine(state: Int, item: Int): Option[Int] = item match {
       case 3 => none[Int]
