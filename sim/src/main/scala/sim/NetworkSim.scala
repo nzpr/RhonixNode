@@ -186,7 +186,9 @@ object NetworkSim extends IOApp {
           val txSeqNumRef = Ref.unsafe(0)
           val nextTxs     = txSeqNumRef
             .updateAndGet(_ + 1)
-            .flatMap(idx => random(users).map(st => balances.data.BalancesDeploy(s"$vId-tx-$idx", st)))
+            .flatMap(idx =>
+              random(users).map { case (w, st) => balances.data.BalancesDeploy(s"$vId-tx-$idx", w, st, idx.toLong) },
+            )
             .replicateA(netCfg.txPerBlock)
             .flatTap(_.traverse(saveTx))
             .map(_.toSet)
