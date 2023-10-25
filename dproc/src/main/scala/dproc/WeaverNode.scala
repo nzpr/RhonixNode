@@ -5,7 +5,6 @@ import cats.effect.Ref
 import cats.effect.kernel.{Async, Sync}
 import cats.syntax.all.*
 import cats.{Applicative, Monad}
-import diagnostics.syntax.all.kamonSyntax
 import dproc.DProc.ExeEngine
 import dproc.WeaverNode.{validateExeData, ReplayResult}
 import dproc.data.Block
@@ -15,7 +14,6 @@ import sdk.merging.{DagMerge, Relation, Resolve}
 import sdk.node.Processor
 import sdk.syntax.all.*
 import weaver.*
-import weaver.GardState.GardM
 import weaver.LazoState.isSynchronous
 import weaver.Offence.*
 import weaver.data.*
@@ -59,8 +57,7 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
       r         <- resolver.resolve(toResolve)
     } yield ConflictResolution(r._1, r._2)
 
-  def computeGard(txs: List[T], fFringe: Set[M], expT: Int): List[T] =
-    txs.filterNot(state.gard.isDoubleSpend(_, fFringe, expT))
+  def computeGard(txs: List[T], fFringe: Set[M], expT: Int): List[T] = txs
 
   def computeCsResolve(minGenJs: Set[M], fFringe: Set[M]): F[ConflictResolution[T]] = for {
     toResolve <- dag.between(minGenJs, fFringe).map(_.filterNot(state.lazo.offences).flatMap(state.meld.txsMap))
@@ -212,9 +209,9 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
       val offOptT = validateMessage(m.m, exeEngine).swap.toOption
 
       // invalid messages do not participate in merge and are not accounted for double spend guard
-      val offCase   = offOptT.map(off => ReplayResult(lazoME, none[MergingData[T]], none[GardM[M, T]], off.some))
+      val offCase   = offOptT.map(off => ReplayResult(lazoME, none[MergingData[T]], off.some))
       // if msg is valid - Meld state and Gard state should be updated
-      val validCase = mkMeld.map(_.some).map(ReplayResult(lazoME, _, Block.toGardM(m.m).some, none[Offence]))
+      val validCase = mkMeld.map(_.some).map(ReplayResult(lazoME, _, none[Offence]))
 
       offCase.getOrElseF(validCase)
     }
@@ -232,7 +229,6 @@ object WeaverNode {
   final case class ReplayResult[M, S, T](
     lazoME: MessageData.Extended[M, S],
     meldMOpt: Option[MergingData[T]],
-    gardMOpt: Option[GardM[M, T]],
     offenceOpt: Option[Offence],
   )
 
@@ -254,7 +250,7 @@ object WeaverNode {
     for {
       w  <- weaverStRef.get
       br <- WeaverNode(w).replay(b, exeEngine, relation)
-      r  <- weaverStRef.modify(_.add(b.id, br.lazoME, br.meldMOpt, br.gardMOpt, br.offenceOpt)).timedM("state-add")
+      r  <- weaverStRef.modify(_.add(b.id, br.lazoME, br.meldMOpt, br.offenceOpt)).timedM("state-add")
       _  <- new Exception(s"Add failed after replay which should not be possible.").raiseError.unlessA(r._2)
     } yield AddEffect(r._1, b.m.finalized, br.offenceOpt)
 
