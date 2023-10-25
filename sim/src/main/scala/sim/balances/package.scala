@@ -1,9 +1,11 @@
 package sim
 
+import node.hashing.Blake2b
 import sdk.codecs.Codec
 import sdk.history.{ByteArray32, KeySegment}
 import sdk.primitive.ByteArray
 import sdk.syntax.all.sdkSyntaxTry
+import sim.balances.data.Account
 
 import java.nio.ByteBuffer
 import scala.util.Try
@@ -30,8 +32,17 @@ package object balances {
     override def decode(x: ByteArray): Try[Balance] = Try(ByteBuffer.wrap(x.bytes).getLong)
   }
 
-  def balanceToHash(balance: Balance)(implicit hash32: Array[Byte] => ByteArray32): ByteArray32 =
-    hash32(longToArray(balance))
+  val accountCodec: Codec[Account, ByteArray] = new Codec[Account, ByteArray] {
+    override def encode(x: Account): Try[ByteArray] = Try(ByteArray(longToArray(x.balance) ++ longToArray(x.nonce)))
+    override def decode(x: ByteArray): Try[Account] = Try {
+      val buf = ByteBuffer.wrap(x.bytes)
+      Account(buf.getLong, buf.getLong)
+    }
+  }
 
+  def balanceToHash(balance: Balance): ByteArray32   = ByteArray32.convert(longToArray(balance)).getUnsafe
   def walletToKeySegment(wallet: Wallet): KeySegment = KeySegment(walletCodec.encode(wallet).getUnsafe)
+
+  def accountToHash(x: Account): ByteArray32 =
+    ByteArray32.convert(Blake2b.hash256(longToArray(x.balance) ++ longToArray(x.nonce))).getUnsafe
 }

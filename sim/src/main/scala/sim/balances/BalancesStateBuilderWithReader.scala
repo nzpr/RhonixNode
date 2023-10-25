@@ -4,11 +4,10 @@ import cats.Parallel
 import cats.effect.kernel.{Async, Sync}
 import cats.syntax.all.*
 import sdk.diag.Metrics
-import sdk.diag.Metrics.{Field, Tag}
 import sdk.history.{ByteArray32, History, InsertAction}
 import sdk.store.KeyValueTypedStore
 import sdk.syntax.all.*
-import sim.balances.data.BalancesState
+import sim.balances.data.Account
 
 /**
  * Builds blockchain state storing balances and provides reading the data.
@@ -16,11 +15,11 @@ import sim.balances.data.BalancesState
 trait BalancesStateBuilderWithReader[F[_]] {
   def buildState(
     baseState: ByteArray32,
-    toFinalize: BalancesState,
-    toMerge: BalancesState,
+    toFinalize: Map[Wallet, Account],
+    toMerge: Map[Wallet, Account],
   ): F[(ByteArray32, ByteArray32)]
 
-  def readBalance(state: ByteArray32, wallet: Wallet): F[Option[Balance]]
+  def readAccount(state: ByteArray32, wallet: Wallet): F[Option[Account]]
 }
 
 object BalancesStateBuilderWithReader {
@@ -31,8 +30,8 @@ object BalancesStateBuilderWithReader {
 
   def apply[F[_]: Async: Parallel: Metrics](
     history: History[F],
-    valueStore: KeyValueTypedStore[F, ByteArray32, Balance],
-  )(implicit hash32: Array[Byte] => ByteArray32): BalancesStateBuilderWithReader[F] = {
+    valueStore: KeyValueTypedStore[F, ByteArray32, Account],
+  ): BalancesStateBuilderWithReader[F] = {
 
     /**
      * Create action for history and persist hash -> value relation.
@@ -40,43 +39,44 @@ object BalancesStateBuilderWithReader {
      * Thought the second is not necessary, value type for RadixHistory is hardcoded with Blake hash,
      * so cannot just place Balance as a value there.
      */
-    def createHistoryActionAndStoreData(wallet: Wallet, balance: Balance): F[InsertAction] =
+    def createHistoryActionAndStoreData(wallet: Wallet, value: Account): F[InsertAction] =
       for {
-        _    <- Sync[F].raiseError(negativeBalanceException(wallet, balance)).whenA(balance < 0)
-        vHash = balanceToHash(balance)
-        _    <- valueStore.put(vHash, balance)
+        _    <- Sync[F].raiseError(negativeBalanceException(wallet, value.balance)).whenA(value.balance < 0)
+        vHash = accountToHash(value)
+        _    <- valueStore.put(vHash, value)
       } yield InsertAction(walletToKeySegment(wallet), vHash)
 
     def applyActions(
       root: ByteArray32,
-      setBalanceActions: List[(Wallet, Balance)],
+      actions: Map[Wallet, Account],
     ): F[ByteArray32] =
       for {
         h       <- history.reset(root)
-        actions <- setBalanceActions.traverse { case (w, b) => createHistoryActionAndStoreData(w, b) }
+        actions <- actions.toList.traverse { case (w, b) => createHistoryActionAndStoreData(w, b) }
         root    <- h.process(actions).map(_.root)
       } yield root
 
     new BalancesStateBuilderWithReader[F] {
       override def buildState(
         baseState: ByteArray32,
-        toFinalize: BalancesState,
-        toMerge: BalancesState,
+        toFinalize: Map[Wallet, Account],
+        toMerge: Map[Wallet, Account],
       ): F[(ByteArray32, ByteArray32)] = for {
         // merge final state
-        finalHash <- applyActions(baseState, toFinalize.diffs.toList).timedM("commit-final-state")
+        finalHash <- applyActions(baseState, toFinalize).timedM("commit-final-state")
         _         <- Metrics[F].gauge("final-hash", finalHash.bytes.toHex)
         // merge pre state, apply tx on top top get post state
         postState  = toFinalize ++ toMerge
         // merge post state
-        postHash  <- applyActions(finalHash, postState.diffs.toList)
+        postHash  <- applyActions(finalHash, postState)
       } yield finalHash -> postHash
 
-      override def readBalance(state: ByteArray32, wallet: Wallet): F[Option[Balance]] = for {
+      override def readAccount(state: ByteArray32, wallet: Wallet): F[Option[Account]] = for {
         h    <- history.reset(state)
         bOpt <- h.read(walletToKeySegment(wallet))
         r    <- bOpt.flatTraverse(hash => valueStore.get1(hash))
       } yield r
+
     }
   }
 }

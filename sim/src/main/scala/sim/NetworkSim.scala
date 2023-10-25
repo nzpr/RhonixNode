@@ -32,7 +32,7 @@ import sim.NetworkSnapshot.{reportSnapshot, NodeSnapshot}
 import sim.balances.*
 import sim.balances.MergeLogicForPayments.mergeRejectNegativeOverflow
 import sim.balances.data.BalancesState.Default
-import sim.balances.data.{BalancesDeploy, BalancesState}
+import sim.balances.data.{Account, BalancesDeploy, BalancesState}
 import weaver.WeaverState
 import weaver.data.*
 
@@ -61,7 +61,7 @@ object NetworkSim extends IOApp {
   final case class NetNode[F[_]](
     id: S,
     node: Node[F, M, S, T],
-    balanceApi: (ByteArray32, Wallet) => F[Option[Long]],
+    balanceApi: (ByteArray32, Wallet) => F[Option[Account]],
     getData: F[NodeSnapshot[M, S, T]],
   )
 
@@ -72,20 +72,21 @@ object NetworkSim extends IOApp {
   ): F[Block.WithId[M, S, T]] = {
     val mkHistory     = sdk.history.History.create(EmptyRootHash, new InMemoryKeyValueStore[F])
     val mkValuesStore = Sync[F].delay {
-      new ByteArrayKeyValueTypedStore[F, ByteArray32, Balance](
+      new ByteArrayKeyValueTypedStore[F, ByteArray32, Account](
         new InMemoryKeyValueStore[F],
         ByteArray32.codec,
-        balanceCodec,
+        accountCodec,
       )
     }
 
     (mkHistory, mkValuesStore).flatMapN { case history -> valueStore =>
-      val genesisState  = new BalancesState(users.map(_ -> Long.MaxValue / 2).toMap)
-      val genesisDeploy = BalancesDeploy("genesis", genesisState)
+      val genesisState  = users.map(_ -> Account.Default.copy(balance = Long.MaxValue / 2, nonce = 0)).toMap
+      val genesisDeploy =
+        BalancesDeploy("genesis", 1, new BalancesState(genesisState.view.mapValues(_.balance).toMap), 0)
       BalancesStateBuilderWithReader(history, valueStore)
         .buildState(
           baseState = EmptyRootHash,
-          toFinalize = Default,
+          toFinalize = Map.empty[Wallet, Account],
           toMerge = genesisState,
         )
         .map { case _ -> postState =>
@@ -145,23 +146,23 @@ object NetworkSim extends IOApp {
       time: Duration,
     ): Pipe[F, M, Unit] = _.evalMap(m => Temporal[F].sleep(time) *> peers.traverse(_.dProc.acceptMsg(m)).void)
 
-    def random(users: Set[Wallet]): F[BalancesState] = for {
+    def random(users: Set[Wallet]): F[(Wallet, BalancesState)] = for {
       txVal <- Random[F].nextLongBounded(100)
       from  <- Random[F].elementOf(users)
       to    <- Random[F].elementOf(users - from)
-    } yield new BalancesState(Map(from -> -txVal, to -> txVal))
+    } yield from -> new BalancesState(Map(from -> -txVal, to -> txVal))
 
     /** Storage resource for on chain storage (history and values) */
     def onChainStoreResource(
       kvStoreManager: KeyValueStoreManager[F],
-    ): Resource[F, (RadixHistory[F], KeyValueTypedStore[F, ByteArray32, Balance])] = kvStoreManager.asResource
+    ): Resource[F, (RadixHistory[F], KeyValueTypedStore[F, ByteArray32, Account])] = kvStoreManager.asResource
       .flatMap { kvStoreManager =>
         Resource.eval {
           for {
             historyStore <- kvStoreManager.store("history")
             valuesStore  <- kvStoreManager.store("data")
             history      <- sdk.history.History.create(EmptyRootHash, historyStore)
-            values        = valuesStore.toByteArrayTypedStore[ByteArray32, Balance](ByteArray32.codec, balanceCodec)
+            values        = valuesStore.toByteArrayTypedStore[ByteArray32, Account](ByteArray32.codec, accountCodec)
           } yield history -> values
         }
       }
@@ -270,7 +271,7 @@ object NetworkSim extends IOApp {
                       SystemReporter[F]() concurrently animateDiag,
                   ),
               ),
-              balancesEngine.readBalance(_: ByteArray32, _: Wallet),
+              balancesEngine.readAccount(_: ByteArray32, _: Wallet),
               getData,
             )
           }
@@ -290,7 +291,7 @@ object NetworkSim extends IOApp {
           case NetNode(
                 self,
                 Node(weaverStRef, _, _, _, dProc),
-                getBalance,
+                getAccount,
                 getData,
               ) -> idx =>
             val bootstrap = {
@@ -354,7 +355,7 @@ object NetworkSim extends IOApp {
                   val longW  = Try(w.toInt)
                   (blakeH, longW)
                     .traverseN { case (hash, wallet) =>
-                      getBalance(hash, wallet).flatMap(_.liftTo(new Exception(s"Not Found")))
+                      getAccount(hash, wallet).map(_.map(_.balance)).flatMap(_.liftTo(new Exception(s"Not Found")))
                     }
                     .flatMap(_.liftTo[F])
                 },
