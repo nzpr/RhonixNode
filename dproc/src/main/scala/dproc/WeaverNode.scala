@@ -57,8 +57,6 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
       r         <- resolver.resolve(toResolve)
     } yield ConflictResolution(r._1, r._2)
 
-  def computeGard(txs: List[T], fFringe: Set[M], expT: Int): List[T] = txs
-
   def computeCsResolve(minGenJs: Set[M], fFringe: Set[M]): F[ConflictResolution[T]] = for {
     toResolve <- dag.between(minGenJs, fFringe).map(_.filterNot(state.lazo.offences).flatMap(state.meld.txsMap))
     r         <- resolver.resolve(toResolve)
@@ -84,11 +82,6 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
     })
   }
 
-  def validateGard(m: Block[M, S, T], expT: Int): EitherT[F, InvalidDoubleSpend[T], Unit] =
-    EitherT(WeaverNode(state).computeGard(m.txs, m.finalFringe, expT).pure.map { txToPut =>
-      (txToPut != m.txs).guard[Option].as(InvalidDoubleSpend(m.txs.toSet -- txToPut)).toLeft(())
-    })
-
   def validateCsResolve(m: Block[M, S, T]): EitherT[F, InvalidResolution[T], Set[T]] =
     EitherT(WeaverNode(state).computeCsResolve(m.minGenJs, m.finalFringe).map { merge =>
       (merge.accepted != m.merge).guard[Option].as(InvalidResolution(merge.accepted)).toLeft(merge.accepted)
@@ -108,21 +101,20 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
       newF     = (lazoF.fFringe neqv state.lazo.latestFringe(mgjs).fFringe).guard[Option]
       fin     <- newF.traverse(_ => WeaverNode(state).computeFsResolve(lazoF.fFringe, mgjs))
       lazoE   <- exeEngine.consensusData(lazoF.fFringe)
-      txToPut  = WeaverNode(state).computeGard(txs, lazoF.fFringe, lazoE.expirationThreshold)
       toMerge <- WeaverNode(state).computeCsResolve(mgjs, lazoF.fFringe)
       r       <- exeEngine.execute(
                    state.lazo.latestFringe(mgjs).fFringe,
                    lazoF.fFringe,
                    fin.map(_.accepted).getOrElse(Set()),
                    toMerge.accepted,
-                   txToPut.toSet,
+                   txs.toSet,
                  )
 
       ((finalStateHash, finRj), (postStateHash, provRj)) = r
     } yield Block(
       sender = sender,
       minGenJs = mgjs,
-      txs = txToPut,
+      txs = txs,
       offences = offences,
       finalFringe = lazoF.fFringe,
       // TODO add rejections due to negative balance overflow
@@ -146,7 +138,6 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
       _  <- WeaverNode(state).validateFsResolve(m)
       lE <- EitherT.liftF(exeEngine.consensusData(fr))
       _  <- validateExeData(lE, Block.toLazoE(m))
-      _  <- validateGard(m, lE.expirationThreshold)
       _  <- validateCsResolve(m)
 
       toResolve <- EitherT.liftF(finalizedSet(m.minGenJs, m.finalFringe).map(_.toSet))
