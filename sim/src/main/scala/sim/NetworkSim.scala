@@ -205,14 +205,22 @@ object NetworkSim extends IOApp {
           ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))] =
             for {
               baseState <- fringeMappingRef.get.map(_(baseFringe))
-              r         <- mergeRejectNegativeOverflow(balancesEngine, baseState, toFinalize, toMerge ++ toExecute)
-              _         <- Async[F].sleep(netCfg.exeDelay).replicateA(toExecute.size)
 
-              ((newFinState, finRj), (newMergeState, provRj)) = r
+              // Merge pre state
+              r <- mergeRejectNegativeOverflow(balancesEngine, baseState, toFinalize, toMerge).flatMap {
+                     case ((newFinState, finRj), (newMergeState, provRj)) =>
+                       balancesEngine.buildState(baseState, newFinState, newMergeState).map((_, finRj, provRj))
+                   }
 
-              r <- balancesEngine.buildState(baseState, newFinState, newMergeState)
+              ((finalHash, preHash), finRj, provRj) = r
 
-              (finalHash, postHash) = r
+              // Execute: in case of of deploy changing the balance is just a merge
+              r1 <- mergeRejectNegativeOverflow(balancesEngine, preHash, Set(), toExecute).flatMap {
+                      case (_, (diff, _)) => balancesEngine.buildState(preHash, Map(), diff)
+                    }
+              _  <- Async[F].sleep(netCfg.exeDelay).replicateA(toExecute.size)
+
+              (_, postHash) = r1
 
               _ <- fringeMappingRef.update(_ + (finalFringe -> finalHash))
             } yield ((finalHash.bytes.bytes, finRj), (postHash.bytes.bytes, provRj))
