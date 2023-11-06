@@ -12,7 +12,7 @@ import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import node.api.web
-import node.api.web.{PublicDocs, RoutesJsonPublic}
+import node.api.web.RoutesJsonPublic
 import node.api.web.https4s.RouterFix
 import node.hashing.Blake2b
 import node.lmdb.LmdbStoreManager
@@ -374,7 +374,7 @@ object NetworkSim extends IOApp {
                 override def visualizeDag(depth: Wallet, showJustificationLines: Boolean): F[Vector[S]] = ???
               }
 
-              val routes = RoutesJsonPublic[F](extApiImpl).routes <+> PublicDocs[F]().publicRoutes
+              val routes = RoutesJsonPublic[F](extApiImpl).routes
 
               val allRoutes = RouterFix(s"/${sdk.api.RootPath.mkString("/")}" -> routes)
 

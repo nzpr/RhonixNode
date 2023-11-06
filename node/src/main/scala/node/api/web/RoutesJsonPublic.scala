@@ -8,6 +8,8 @@ import sdk.api.ExternalApi
 import sdk.api.data.Balance
 import sdk.codecs.Base16
 
+import scala.Function.const
+
 /** Public JSON API routes. */
 final case class RoutesJsonPublic[F[_]: Concurrent](api: ExternalApi[F])
     extends Endpoints[F]
@@ -25,8 +27,9 @@ final case class RoutesJsonPublic[F[_]: Concurrent](api: ExternalApi[F])
       getBlock.implementedByEffect(Base16.decode(_).toOption.flatTraverse(api.getBlockByHash)),
       getDeploy.implementedByEffect(Base16.decode(_).toOption.flatTraverse(api.getDeployByHash)),
       getBalance.implementedByEffect(getBalanceByStrings.tupled),
-      getLatest.implementedByEffect(_ => api.getLatestMessages),
-      getStatus.implementedByEffect(_ => api.status),
+      getLatest.implementedByEffect(const(api.getLatestMessages)),
+      getStatus.implementedByEffect(const(api.status)),
+      DocsJsonRoutes().public,
     ),
   )
 }
