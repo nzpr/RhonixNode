@@ -14,7 +14,7 @@ trait JsonSchemasPretty extends endpoints4s.generic.JsonSchemas {
   }
 
   // for traits
-  def genericTaggedPretty[A: TypeTag: GenericJsonSchema.GenericTagged]: Tagged[A] = {
+  def genericTagged[A: TypeTag: GenericJsonSchema.GenericTagged]: Tagged[A] = {
     val tpeName = universe.typeOf[A].typeSymbol.name.decodedName.toString
     super.genericTagged[A].named(tpeName)
   }
