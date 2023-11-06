@@ -12,13 +12,15 @@ import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import node.api.web
-import node.api.web.PublicApiJson
+import node.api.web.{PublicDocs, RoutesJsonPublic}
 import node.api.web.https4s.RouterFix
 import node.hashing.Blake2b
 import node.lmdb.LmdbStoreManager
 import node.{Config as NodeConfig, Node}
 import org.http4s.EntityEncoder
 import pureconfig.generic.ProductHint
+import sdk.api.data.{Deploy, Status}
+import sdk.api.{data, ExternalApi}
 import sdk.codecs.Base16
 import sdk.diag.{Metrics, SystemReporter}
 import sdk.history.ByteArray32
@@ -346,21 +348,33 @@ object NetworkSim extends IOApp {
 
               def latestBlocks: F[Set[M]] = weaverStRef.get.map(_.lazo.latestMessages)
 
-              val routes = PublicApiJson[F, Block[M, S, String], BalancesState](
-                blockByHash(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
-                readTx(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
-                (h: String, w: String) => {
-                  val blakeH = Base16.decode(h).flatMap(ByteArray32.convert)
-                  val longW  = Try(w.toInt)
-                  (blakeH, longW)
-                    .traverseN { case (hash, wallet) =>
-                      getBalance(hash, wallet).flatMap(_.liftTo(new Exception(s"Not Found")))
-                    }
-                    .flatMap(_.liftTo[F])
-                },
-                latestBlocks,
-                getData.map(_.show),
-              ).routes
+//              val routes = PublicApiRoutes[F, Block[M, S, String], BalancesState](
+//                blockByHash(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
+//                readTx(_).flatMap(_.liftTo(new Exception(s"Not Found"))),
+//                (h: String, w: String) => {
+//                  val blakeH = Base16.decode(h).flatMap(ByteArray32.convert)
+//                  val longW  = Try(w.toInt)
+//                  (blakeH, longW)
+//                    .traverseN { case (hash, wallet) =>
+//                      getBalance(hash, wallet).flatMap(_.liftTo(new Exception(s"Not Found")))
+//                    }
+//                    .flatMap(_.liftTo[F])
+//                },
+//                latestBlocks,
+//                getData.map(_.show),
+//              ).routes
+//              val extApiImpl = new ExternalApiSlick[F]
+              val extApiImpl: ExternalApi[F] = new ExternalApi[F] {
+                override def getBlockByHash(hash: Array[Byte]): F[Option[data.Block]]                   = ???
+                override def getDeployByHash(hash: Array[Byte]): F[Option[Deploy]]                      = ???
+                override def getDeploysByBlockHash(hash: Array[Byte]): F[Option[Seq[Deploy]]]           = ???
+                override def getBalance(state: Array[Byte], wallet: Array[Byte]): F[Option[Balance]]    = ???
+                override def getLatestMessages: F[List[Array[Byte]]]                                    = ???
+                override def status: F[Status]                                                          = ???
+                override def visualizeDag(depth: Wallet, showJustificationLines: Boolean): F[Vector[S]] = ???
+              }
+
+              val routes = RoutesJsonPublic[F](extApiImpl).routes <+> PublicDocs[F]().publicRoutes
 
               val allRoutes = RouterFix(s"/${sdk.api.RootPath.mkString("/")}" -> routes)
 
