@@ -1,6 +1,5 @@
 package sdk.syntax
 
-import sdk.api.syntax.ApiFindSyntax
 import sdk.diag.MetricsWriterSdkSyntax
 import sdk.fs2.Fs2StreamSyntax
 import sdk.primitive.*
@@ -11,7 +10,6 @@ trait AllSyntax
     with TrySyntax
     with VoidSyntax
     with MapSyntax
-    with ApiFindSyntax
     with KeyValueStoreSyntax
     with KeyValueTypedStoreSyntax
     with KeyValueStoreManagerSyntax

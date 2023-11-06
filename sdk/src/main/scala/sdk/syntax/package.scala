@@ -1,6 +1,5 @@
 package sdk
 
-import sdk.api.syntax.ApiFindSyntax
 import sdk.primitive.*
 
 // Definitions of syntax pattern follows cats library as an example
@@ -11,6 +10,4 @@ package object syntax {
 
   // Scala builtin/primitive types extensions
   object primitive extends ThrowableSyntax with TrySyntax with VoidSyntax
-
-  object api extends ApiFindSyntax
 }
