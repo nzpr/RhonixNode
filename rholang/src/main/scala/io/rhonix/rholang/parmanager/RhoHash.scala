@@ -4,7 +4,7 @@ import cats.Eval
 import cats.syntax.all.*
 import io.rhonix.rholang.*
 import io.rhonix.rholang.parmanager.Constants.*
-import io.rhonix.rholang.parmanager.protobuf.ProtoBlakeHashing.*
+import sdk.hashing.ProtoBlakeHashing.*
 
 object RhoHash {
 

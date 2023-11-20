@@ -1,8 +1,8 @@
-package io.rhonix.rholang.parmanager.protobuf
+package sdk.codecs.protobuf
 
 import cats.Eval
 import com.google.protobuf.CodedOutputStream
-import io.rhonix.rholang.parmanager.primitive.PrimitiveWriter
+import sdk.codecs.PrimitiveWriter
 
 /** Wrapper for protobuf serialization of primitive types. */
 object ProtoPrimitiveWriter {

@@ -1,4 +1,4 @@
-package io.rhonix.rholang.parmanager.primitive
+package sdk.codecs
 
 trait PrimitiveWriter[F[_]] {
   def write(x: Byte): F[Unit]

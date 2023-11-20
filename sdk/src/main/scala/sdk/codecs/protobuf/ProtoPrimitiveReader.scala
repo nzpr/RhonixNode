@@ -1,15 +1,15 @@
-package io.rhonix.rholang.parmanager.protobuf
+package sdk.codecs.protobuf
 
 import cats.Eval
 import com.google.protobuf.CodedInputStream
-import io.rhonix.rholang.parmanager.primitive.PrimitiveReader
+import sdk.codecs.PrimitiveReader
 
 import java.io.InputStream
 
 object ProtoPrimitiveReader {
 
   /** Wrapper for protobuf de-serialization of primitive types. */
-  def apply(input: InputStream) = {
+  def apply(input: InputStream): PrimitiveReader[Eval] = {
     val cis = CodedInputStream.newInstance(input)
 
     new PrimitiveReader[Eval] {

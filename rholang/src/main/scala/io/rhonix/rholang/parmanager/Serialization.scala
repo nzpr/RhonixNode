@@ -3,8 +3,8 @@ package io.rhonix.rholang.parmanager
 import cats.Eval
 import cats.syntax.all.*
 import io.rhonix.rholang.*
-import io.rhonix.rholang.parmanager.Constants._
-import io.rhonix.rholang.parmanager.primitive.{PrimitiveReader, PrimitiveWriter}
+import io.rhonix.rholang.parmanager.Constants.*
+import sdk.codecs.{PrimitiveReader, PrimitiveWriter}
 
 object Serialization {
 

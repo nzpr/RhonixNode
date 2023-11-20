@@ -1,9 +1,9 @@
 package io.rhonix.rholang.parmanager
 
 import cats.Applicative
-import cats.syntax.all._
+import cats.syntax.all.*
 import io.rhonix.rholang.RhoTypeN
-import io.rhonix.rholang.parmanager.primitive.PrimitiveWriter
+import sdk.codecs.PrimitiveWriter
 
 object RhoRecWriter {
   def apply[F[_]: Applicative](

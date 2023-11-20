@@ -1,4 +1,4 @@
-package io.rhonix.rholang.parmanager.primitive
+package sdk.codecs
 
 trait PrimitiveReader[F[_]] {
   def readByte: F[Byte]

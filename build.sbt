@@ -44,7 +44,7 @@ lazy val all = (project in file("."))
 lazy val sdk = (project in file("sdk"))
 //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
-  .settings(libraryDependencies ++= common ++ dbLibs ++ tests)
+  .settings(libraryDependencies ++= common ++ dbLibs ++ tests :+ protobuf :+ bouncyProvCastle)
 
 // Database interfaces implementation
 lazy val db = (project in file("db"))

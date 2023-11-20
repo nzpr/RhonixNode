@@ -3,7 +3,8 @@ package io.rhonix.rholang.parmanager
 import cats.Eval
 import com.google.protobuf.CodedOutputStream
 import io.rhonix.rholang.*
-import io.rhonix.rholang.parmanager.protobuf.{ProtoCodec, ProtoPrimitiveReader, ProtoPrimitiveWriter}
+import sdk.codecs.protobuf
+import sdk.codecs.protobuf.{ProtoCodec, ProtoPrimitiveReader, ProtoPrimitiveWriter}
 
 import java.io.InputStream
 
@@ -43,7 +44,8 @@ object Manager {
   def rhoHashFn(p: RhoTypeN): Eval[Array[Byte]]                              = RhoHash.calcHash(p)
   def serializedSizeFn(p: RhoTypeN): Eval[Int]                               = SerializedSize.calcSerSize(p)
   def serializedFn(p: RhoTypeN, memoizeChildren: Boolean): Eval[Array[Byte]] = {
-    val write = (out: CodedOutputStream) => Serialization.serialize(p, ProtoPrimitiveWriter(out), memoizeChildren)
+    val write = (out: CodedOutputStream) =>
+      Serialization.serialize(p, protobuf.ProtoPrimitiveWriter(out), memoizeChildren)
     p.serializedSize.flatMap(size => ProtoCodec.encode(size, write))
   }
   def connectiveUsedFn(p: RhoTypeN): Eval[Boolean]                           = ConnectiveUsed.connectiveUsedFn(p)

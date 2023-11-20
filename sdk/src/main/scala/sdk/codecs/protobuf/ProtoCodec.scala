@@ -1,7 +1,7 @@
-package io.rhonix.rholang.parmanager.protobuf
+package sdk.codecs.protobuf
 
 import cats.Applicative
-import cats.syntax.all._
+import cats.syntax.all.*
 import com.google.protobuf.CodedOutputStream
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}

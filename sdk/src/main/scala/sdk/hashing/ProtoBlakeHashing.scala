@@ -1,13 +1,12 @@
-package io.rhonix.rholang.parmanager.protobuf
+package sdk.hashing
 
 import cats.Eval
 import cats.syntax.all.*
-import io.rhonix.rholang.ParN.*
-import io.rhonix.rholang.parmanager.blake2.Blake2Hash
-import io.rhonix.rholang.parmanager.protobuf.ProtoPrimitiveWriter.*
+import sdk.codecs.protobuf.ProtoPrimitiveWriter.*
 
 import java.io.ByteArrayOutputStream
 import scala.util.Using
+import sdk.syntax.all.*
 
 /** Hashing functions of primitive types using protobuf encoder and Blake2Hash */
 object ProtoBlakeHashing {
@@ -29,7 +28,7 @@ object ProtoBlakeHashing {
   /** Concatenates bytes arrays using [[ByteArrayOutputStream]] to minimize Array resizing. */
   // TODO: Properly handle errors
   @SuppressWarnings(Array("org.wartremover.warts.TryPartial"))
-  def concatSeq(seq: Seq[Array[Byte]]): Array[Byte] =
+  private def concatSeq(seq: Seq[Array[Byte]]): Array[Byte] =
     Using(new ByteArrayOutputStream(512)) { out =>
       seq.foreach(out.write)
       out.flush()

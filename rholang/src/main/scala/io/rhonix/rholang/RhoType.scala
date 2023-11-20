@@ -3,9 +3,7 @@ package io.rhonix.rholang
 import cats.Eval
 import cats.syntax.all.*
 import io.rhonix.rholang.parmanager.Manager.*
-
-import java.util
-import scala.math.Ordered.orderingToOrdered
+import sdk.syntax.all.*
 
 /** Base trait for Rholang elements in the Reducer */
 sealed trait RhoTypeN {
@@ -42,7 +40,6 @@ sealed trait RhoTypeN {
 sealed trait ParN extends RhoTypeN
 
 object ParN {
-  implicit val o: Ordering[Array[Byte]] = (a: Array[Byte], b: Array[Byte]) => util.Arrays.compare(a, b)
 
   /**
    * Create a flatten parallel Par (ParProc) from par sequence.
@@ -53,7 +50,7 @@ object ParN {
   /** Combine two pars for their parallel execution */
   def combine(p1: ParN, p2: ParN): ParN = combinePars(p1, p2)
 
-  def compare(p1: ParN, p2: ParN): Int = p1.rhoHash.value compare p2.rhoHash.value
+  def compare(p1: ParN, p2: ParN): Int = java.util.Arrays.compare(p1.rhoHash.value, p2.rhoHash.value)
   val ordering: Ordering[ParN]         = (p1: ParN, p2: ParN) => compare(p1, p2)
 
   implicit class SequenceHelpers[T](val seq: Seq[T]) extends AnyVal {

@@ -4,7 +4,6 @@ private[parmanager] object Constants {
   final val intSize     = 4
   final val longSize    = 8
   final val booleanSize = 1
-  final val hashSize    = 32 // for Blake2b256
 
   final val tagSize = 1
 
