@@ -34,7 +34,7 @@ import sim.NetworkSnapshot.{reportSnapshot, NodeSnapshot}
 import sim.balances.*
 import sim.balances.MergeLogicForPayments.mergeRejectNegativeOverflow
 import sim.balances.data.BalancesState.Default
-import sim.balances.data.{BalancesDeploy, BalancesState}
+import sim.balances.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
 import weaver.WeaverState
 import weaver.data.*
 
@@ -88,7 +88,7 @@ object NetworkSim extends IOApp {
 
     (mkHistory, mkValuesStore).flatMapN { case history -> valueStore =>
       val genesisState  = new BalancesState(users.map(_ -> Long.MaxValue / 2).toMap)
-      val genesisDeploy = BalancesDeploy(genesisState, 0)
+      val genesisDeploy = BalancesDeploy(BalancesDeployBody(genesisState, 0))
       BalancesStateBuilderWithReader(history, valueStore)
         .buildState(
           baseState = EmptyRootHash,
@@ -111,8 +111,7 @@ object NetworkSim extends IOApp {
             postStateHash = postState.bytes.bytes,
           )
 
-          val digest = ByteArray(Blake2b.hash256(JavaSerialization.serialize(block)))
-          Block.WithId(digest, block)
+          Block.WithId(blockBodyDigest.digest(block), block)
         }
     }
   }
@@ -145,7 +144,7 @@ object NetworkSim extends IOApp {
 
     // Shared transactions store
     val txStore: Ref[F, Map[ByteArray, BalancesState]]  = Ref.unsafe(Map.empty[ByteArray, BalancesState])
-    def saveTx(tx: BalancesDeploy): F[Unit]             = txStore.update(_.updated(tx.id, tx.state))
+    def saveTx(tx: BalancesDeploy): F[Unit]             = txStore.update(_.updated(tx.id, tx.body.state))
     def readTx(id: ByteArray): F[Option[BalancesState]] = txStore.get.map(_.get(id))
 
     def broadcast(

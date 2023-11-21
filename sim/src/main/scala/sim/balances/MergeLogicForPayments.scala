@@ -2,7 +2,6 @@ package sim.balances
 
 import cats.effect.kernel.Sync
 import cats.syntax.all.*
-import diagnostics.syntax.all.kamonSyntax
 import sdk.diag.Metrics
 import sdk.history.ByteArray32
 import sdk.syntax.all.{effectSyntax, mapSyntax}
@@ -20,7 +19,7 @@ object MergeLogicForPayments {
     allBalances: BalancesState,
     deploy: BalancesDeploy,
   ): Option[BalancesState] =
-    deploy.state.diffs.foldLeft(allBalances.some) { case (acc, (wallet, change)) =>
+    deploy.body.state.diffs.foldLeft(allBalances.some) { case (acc, (wallet, change)) =>
       acc match {
         case None      => acc
         case Some(acc) =>
@@ -51,8 +50,8 @@ object MergeLogicForPayments {
     toFinalize: Set[BalancesDeploy],
     toMerge: Set[BalancesDeploy],
   ): F[((BalancesState, Seq[BalancesDeploy]), (BalancesState, Seq[BalancesDeploy]))] = Sync[F].defer {
-    val adjustedInFinal: Set[Wallet] = toFinalize.flatMap(_.state.diffs.keys)
-    val adjustedInMerge: Set[Wallet] = toMerge.flatMap(_.state.diffs.keys)
+    val adjustedInFinal: Set[Wallet] = toFinalize.flatMap(_.body.state.diffs.keys)
+    val adjustedInMerge: Set[Wallet] = toMerge.flatMap(_.body.state.diffs.keys)
     val adjustedAll: Set[Wallet]     = adjustedInFinal ++ adjustedInMerge
 
     val readAllBalances = adjustedAll.toList
