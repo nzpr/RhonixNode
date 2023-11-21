@@ -11,7 +11,7 @@ import scala.util.Try
 package object balances {
 
   // types for data stored in the state
-  type Wallet  = Int
+  type Wallet  = ByteArray
   type Balance = Long
 
   private def longToArray(x: Long): Array[Byte] =
@@ -20,10 +20,7 @@ package object balances {
   private def intToArray(x: Int): Array[Byte] =
     ByteBuffer.allocate(java.lang.Integer.BYTES).putInt(x).array()
 
-  val walletCodec: Codec[Wallet, ByteArray] = new Codec[Wallet, ByteArray] {
-    override def encode(x: Wallet): Try[ByteArray] = Try(ByteArray(intToArray(x)))
-    override def decode(x: ByteArray): Try[Wallet] = Try(ByteBuffer.wrap(x.bytes).getInt())
-  }
+  val walletCodec: Codec[Wallet, ByteArray] = Codec.Identity
 
   val balanceCodec: Codec[Balance, ByteArray] = new Codec[Balance, ByteArray] {
     override def encode(x: Balance): Try[ByteArray] = Try(ByteArray(longToArray(x)))

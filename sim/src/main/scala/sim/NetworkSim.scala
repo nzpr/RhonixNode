@@ -83,7 +83,7 @@ object NetworkSim extends IOApp {
   def genesisBlock[F[_]: Async: Parallel: Metrics](
     sender: S,
     genesisExec: FinalData[S],
-    users: Set[Int],
+    users: Set[ByteArray],
   ): F[Block.WithId[M, S, T]] = {
     val mkHistory     = sdk.history.History.create(EmptyRootHash, new InMemoryKeyValueStore[F])
     val mkValuesStore = Sync[F].delay {
@@ -131,7 +131,8 @@ object NetworkSim extends IOApp {
   ): Stream[F, Unit] = {
 
     /// Users (wallets) making transactions
-    val users: Set[Wallet] = (1 to netCfg.usersNum).toSet
+    val users: Set[Wallet] =
+      (1 to netCfg.usersNum).map(x => Array(x.toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
 
     /// Genesis data
     val lazinessTolerance = 1 // c.lazinessTolerance
@@ -382,7 +383,19 @@ object NetworkSim extends IOApp {
 
                 override def getDeployByHash(hash: Array[Byte]): F[Option[Deploy]] =
                   readTx(ByteArray(hash)).map(
-                    _.map(x => Deploy(Array.empty[Byte], Array.empty[Byte], "root", s"${x.diffs}", 0L, 0L, 0L, 0L, 0L)),
+                    _.map(x =>
+                      Deploy(
+                        Array.empty[Byte],
+                        Array.empty[Byte],
+                        "root",
+                        s"${x.diffs.map { case k -> v => k.toHex -> v }}",
+                        0L,
+                        0L,
+                        0L,
+                        0L,
+                        0L,
+                      ),
+                    ),
                   )
 
                 override def getDeploysByHash(hash: Array[Byte]): F[Option[Seq[Array[Byte]]]]        = ???
@@ -391,7 +404,7 @@ object NetworkSim extends IOApp {
                   val longW  = walletCodec.decode(ByteArray(wallet))
                   (blakeH, longW)
                     .traverseN { case (hash, wallet) =>
-                      readBalance(hash.bytes.bytes, wallet)
+                      readBalance(hash, wallet)
                     }
                     .flatMap(_.liftTo[F])
                 }
