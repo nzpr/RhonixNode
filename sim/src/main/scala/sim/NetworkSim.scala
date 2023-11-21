@@ -1,10 +1,10 @@
 package sim
 
-import cats.Parallel
 import cats.effect.*
 import cats.effect.kernel.{Async, Temporal}
 import cats.effect.std.{Console, Random}
 import cats.syntax.all.*
+import cats.{Eval, Parallel}
 import diagnostics.KamonContextStore
 import diagnostics.metrics.{Config as InfluxDbConfig, InfluxDbBatchedMetrics}
 import dproc.data.Block
@@ -20,7 +20,8 @@ import pureconfig.generic.ProductHint
 import sdk.api
 import sdk.api.data.{Bond, Deploy, Status}
 import sdk.api.{data, ExternalApi}
-import sdk.codecs.{Digest, JavaSerialization}
+import sdk.codecs.Digest
+import sdk.codecs.protobuf.ProtoPrimitiveWriter
 import sdk.diag.{Metrics, SystemReporter}
 import sdk.history.ByteArray32
 import sdk.history.History.EmptyRootHash
@@ -45,12 +46,19 @@ object NetworkSim extends IOApp {
 
   implicit def blake2b256Hash(x: Array[Byte]): ByteArray32 = ByteArray32.convert(Blake2b.hash256(x)).getUnsafe
 
-  implicit val javaSerializeWithBlakeDigest: Digest[(BalancesState, Balance)] =
-    new sdk.codecs.Digest[(BalancesState, Long)] {
-      override def digest(x: (BalancesState, Long)): ByteArray = {
-        val (state, nonce) = x
-        val bytes          = JavaSerialization.serialize((state.diffs, nonce).asInstanceOf[Serializable])
-        ByteArray(Blake2b.hash256(bytes))
+  implicit val balancesDeployBodyDigest: Digest[BalancesDeployBody] =
+    new sdk.codecs.Digest[BalancesDeployBody] {
+      override def digest(x: BalancesDeployBody): ByteArray = {
+        val bytes = ProtoPrimitiveWriter.encodeWith(Serialization.balancesDeployBodySerialize[Eval].write(x))
+        ByteArray(Blake2b.hash256(bytes.value))
+      }
+    }
+
+  implicit val blockBodyDigest: Digest[Block[M, S, T]] =
+    new sdk.codecs.Digest[Block[M, S, T]] {
+      override def digest(x: Block[M, S, T]): ByteArray = {
+        val bytes = ProtoPrimitiveWriter.encodeWith(Serialization.blockSerialize[Eval].write(x))
+        ByteArray(Blake2b.hash256(bytes.value))
       }
     }
 
@@ -189,13 +197,15 @@ object NetworkSim extends IOApp {
           val blockSeqNumRef = Ref.unsafe(0)
           val assignBlockId  = (b: Block[M, S, T]) =>
             blockSeqNumRef.updateAndGet(_ + 1).map { seqNum =>
-              ByteArray(Blake2b.hash256(JavaSerialization.serialize((b, seqNum).asInstanceOf[Serializable])))
+              ByteArray(Blake2b.hash256(blockBodyDigest.digest(b).bytes))
             }
 
           val txSeqNumRef = Ref.unsafe(0)
           val nextTxs     = txSeqNumRef
             .updateAndGet(_ + 1)
-            .flatMap(idx => random(users).map(st => balances.data.BalancesDeploy(st, idx.longValue)))
+            .flatMap { idx =>
+              random(users).map(st => balances.data.BalancesDeploy(BalancesDeployBody(st, idx.longValue)))
+            }
             .replicateA(netCfg.txPerBlock)
             .flatTap(_.traverse(saveTx))
             .map(_.toSet)
