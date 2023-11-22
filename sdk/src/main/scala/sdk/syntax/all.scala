@@ -1,5 +1,6 @@
 package sdk.syntax
 
+import sdk.codecs.syntax.DigestSyntax
 import sdk.diag.MetricsWriterSdkSyntax
 import sdk.fs2.Fs2StreamSyntax
 import sdk.primitive.*
@@ -19,3 +20,4 @@ trait AllSyntax
     with EffectSyntax
     with Fs2StreamSyntax
     with MetricsWriterSdkSyntax
+    with DigestSyntax

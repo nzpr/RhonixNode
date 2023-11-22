@@ -38,6 +38,7 @@ import sim.balances.data.BalancesState.Default
 import sim.balances.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
 import weaver.WeaverState
 import weaver.data.*
+import Hashing.*
 
 import java.nio.file.Files
 import scala.concurrent.duration.{Duration, DurationInt}
@@ -45,22 +46,6 @@ import scala.concurrent.duration.{Duration, DurationInt}
 object NetworkSim extends IOApp {
 
   implicit def blake2b256Hash(x: Array[Byte]): ByteArray32 = ByteArray32.convert(Blake2b.hash256(x)).getUnsafe
-
-  implicit val balancesDeployBodyDigest: Digest[BalancesDeployBody] =
-    new sdk.codecs.Digest[BalancesDeployBody] {
-      override def digest(x: BalancesDeployBody): ByteArray = {
-        val bytes = ProtoPrimitiveWriter.encodeWith(Serialization.balancesDeployBodySerialize[Eval].write(x))
-        ByteArray(Blake2b.hash256(bytes.value))
-      }
-    }
-
-  implicit val blockBodyDigest: Digest[Block[M, S, T]] =
-    new sdk.codecs.Digest[Block[M, S, T]] {
-      override def digest(x: Block[M, S, T]): ByteArray = {
-        val bytes = ProtoPrimitiveWriter.encodeWith(Serialization.blockSerialize[Eval].write(x))
-        ByteArray(Blake2b.hash256(bytes.value))
-      }
-    }
 
   // Dummy types for message id, sender id and transaction
   type M = ByteArray
@@ -119,7 +104,7 @@ object NetworkSim extends IOApp {
             postStateHash = postState.bytes.bytes,
           )
 
-          Block.WithId(blockBodyDigest.digest(block), block)
+          Block.WithId(block.digest, block)
         }
     }
   }
@@ -199,7 +184,7 @@ object NetworkSim extends IOApp {
           val blockSeqNumRef = Ref.unsafe(0)
           val assignBlockId  = (b: Block[M, S, T]) =>
             blockSeqNumRef.updateAndGet(_ + 1).map { seqNum =>
-              ByteArray(Blake2b.hash256(blockBodyDigest.digest(b).bytes))
+              ByteArray(Blake2b.hash256(b.digest.bytes))
             }
 
           val txSeqNumRef = Ref.unsafe(0)

@@ -6,3 +6,7 @@ import sdk.primitive.ByteArray
 trait Digest[A] {
   def digest(x: A): ByteArray
 }
+
+object Digest {
+  def apply[A](implicit ev: Digest[A]): Digest[A] = ev
+}
