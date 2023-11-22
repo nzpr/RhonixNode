@@ -129,14 +129,15 @@ object NetworkSim extends IOApp {
     nodeCfg: NodeConfig,
     ifxDbCfg: InfluxDbConfig,
   ): Stream[F, Unit] = {
-
+    val rnd                = new scala.util.Random()
     /// Users (wallets) making transactions
     val users: Set[Wallet] =
-      (1 to netCfg.usersNum).map(x => Array(x.toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
+      (1 to netCfg.usersNum).map(_ => Array(rnd.nextInt().toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
 
     /// Genesis data
     val lazinessTolerance = 1 // c.lazinessTolerance
-    val senders           = Iterator.range(0, netCfg.size).map(n => ByteArray(s"s$n".getBytes)).toList
+    val senders           =
+      Iterator.range(0, netCfg.size).map(_ => Array(rnd.nextInt().toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
     // Create lfs message, it has no parents, sees no offences and final fringe is empty set
     val genesisBonds      = Bonds(senders.map(_ -> 100L).toMap)
     val genesisExec       = FinalData(genesisBonds, lazinessTolerance, 10000)
@@ -402,11 +403,7 @@ object NetworkSim extends IOApp {
                 override def getBalance(state: Array[Byte], wallet: Array[Byte]): F[Option[Balance]] = {
                   val blakeH = ByteArray32.convert(state)
                   val longW  = walletCodec.decode(ByteArray(wallet))
-                  (blakeH, longW)
-                    .traverseN { case (hash, wallet) =>
-                      readBalance(hash, wallet)
-                    }
-                    .flatMap(_.liftTo[F])
+                  (blakeH, longW).traverseN(readBalance).flatMap(_.liftTo[F])
                 }
 
                 override def getLatestMessages: F[List[Array[Byte]]] = latestBlocks.map(_.toList.map(_.bytes))
