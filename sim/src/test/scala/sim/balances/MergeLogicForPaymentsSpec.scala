@@ -12,9 +12,9 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
   behavior of "attemptCombine"
 
   it should "compute valid output" in {
-    val initBalances = Map(1 -> 4L, 2 -> 1L)
-    val change       = Map(1 -> -1L)
-    val reference    = Map(1 -> 3L, 2 -> 1L)
+    val initBalances = Map(ByteArray(Array(1.byteValue)) -> 4L, ByteArray(Array(2.byteValue)) -> 1L)
+    val change       = Map(ByteArray(Array(1.byteValue)) -> -1L)
+    val reference    = Map(ByteArray(Array(1.byteValue)) -> 3L, ByteArray(Array(2.byteValue)) -> 1L)
 
     val b   = new BalancesState(initBalances)
     val neg = BalancesDeploy(ByteArray(List()), BalancesDeployBody(new BalancesState(change), 0))
@@ -22,8 +22,8 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "handle edge case" in {
-    val initBalances = Map(1 -> 1L)
-    val zero         = Map(1 -> -1L)
+    val initBalances = Map(ByteArray(Array(1.byteValue)) -> 1L)
+    val zero         = Map(ByteArray(Array(1.byteValue)) -> -1L)
 
     val b        = new BalancesState(initBalances)
     val zeroCase = BalancesDeploy(ByteArray(List()), BalancesDeployBody(new BalancesState(zero), 0))
@@ -31,8 +31,8 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject deploy if leads negative" in {
-    val initBalances = Map(1 -> 1L)
-    val changeNeg    = Map(1 -> -2L)
+    val initBalances = Map(ByteArray(Array(1.byteValue)) -> 1L)
+    val changeNeg    = Map(ByteArray(Array(1.byteValue)) -> -2L)
 
     val b   = new BalancesState(initBalances)
     val neg = BalancesDeploy(ByteArray(List()), new BalancesDeployBody(BalancesState(changeNeg), 0))
@@ -40,8 +40,8 @@ class MergeLogicForPaymentsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "throw exception on Long overflow" in {
-    val initBalances = Map(1 -> Long.MaxValue)
-    val changeNeg    = Map(1 -> 1L)
+    val initBalances = Map(ByteArray(Array(1.byteValue)) -> Long.MaxValue)
+    val changeNeg    = Map(ByteArray(Array(1.byteValue)) -> 1L)
 
     val b   = new BalancesState(initBalances)
     val neg = BalancesDeploy(ByteArray(List()), new BalancesDeployBody(BalancesState(changeNeg), 0))

@@ -7,7 +7,7 @@ import sdk.codecs.Digest
 import sdk.codecs.protobuf.ProtoPrimitiveWriter
 import sdk.primitive.ByteArray
 import sim.NetworkSim.*
-import sim.balances.data.BalancesDeployBody
+import data.BalancesDeployBody
 
 object Hashing {
   implicit val balancesDeployBodyDigest: Digest[BalancesDeployBody] =

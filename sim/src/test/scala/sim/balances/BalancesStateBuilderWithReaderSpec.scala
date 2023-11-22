@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import sdk.diag.Metrics
 import sdk.history.ByteArray32
 import sdk.history.History.EmptyRootHash
+import sdk.primitive.ByteArray
 import sdk.store.{ByteArrayKeyValueTypedStore, InMemoryKeyValueStore}
 import sdk.syntax.all.sdkSyntaxTry
 import sim.balances.BalancesStateBuilderWithReaderSpec.*
@@ -18,8 +19,14 @@ class BalancesStateBuilderWithReaderSpec extends AnyFlatSpec with Matchers {
 
   it should "build correct values for final and post state" in {
     witSut { bb =>
-      val toFinalize = new BalancesState(Map(1 -> 10, 2 -> 10, 3 -> 10))
-      val toMerge    = new BalancesState(Map(1 -> 1L, 2 -> 3L))
+      val toFinalize = new BalancesState(
+        Map(
+          ByteArray(Array(1.byteValue)) -> 10,
+          ByteArray(Array(2.byteValue)) -> 10,
+          ByteArray(Array(3.byteValue)) -> 10,
+        ),
+      )
+      val toMerge    = new BalancesState(Map(ByteArray(Array(1.byteValue)) -> 1L, ByteArray(Array(2.byteValue)) -> 3L))
 
       for {
         h1      <- bb.buildState(EmptyRootHash, toFinalize, toMerge)
@@ -36,7 +43,7 @@ class BalancesStateBuilderWithReaderSpec extends AnyFlatSpec with Matchers {
 
   "Attempt to commit negative balance" should "raise an error" in {
     val r = witSut { bb =>
-      val toFinalize = new BalancesState(Map(1 -> -1))
+      val toFinalize = new BalancesState(Map(ByteArray(Array(1.byteValue)) -> -1))
       bb.buildState(EmptyRootHash, toFinalize, BalancesState.Default).attempt
     }
     r.swap.toOption.isDefined shouldBe true

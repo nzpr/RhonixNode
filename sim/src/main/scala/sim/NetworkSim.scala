@@ -1,10 +1,10 @@
 package sim
 
+import cats.Parallel
 import cats.effect.*
 import cats.effect.kernel.{Async, Temporal}
 import cats.effect.std.{Console, Random}
 import cats.syntax.all.*
-import cats.{Eval, Parallel}
 import diagnostics.KamonContextStore
 import diagnostics.metrics.{Config as InfluxDbConfig, InfluxDbBatchedMetrics}
 import dproc.data.Block
@@ -20,8 +20,6 @@ import pureconfig.generic.ProductHint
 import sdk.api
 import sdk.api.data.{Bond, Deploy, Status}
 import sdk.api.{data, ExternalApi}
-import sdk.codecs.Digest
-import sdk.codecs.protobuf.ProtoPrimitiveWriter
 import sdk.diag.{Metrics, SystemReporter}
 import sdk.history.ByteArray32
 import sdk.history.History.EmptyRootHash
@@ -33,12 +31,12 @@ import sdk.syntax.all.*
 import sim.Config as SimConfig
 import sim.NetworkSnapshot.{reportSnapshot, NodeSnapshot}
 import sim.balances.*
+import sim.balances.Hashing.*
 import sim.balances.MergeLogicForPayments.mergeRejectNegativeOverflow
 import sim.balances.data.BalancesState.Default
 import sim.balances.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
 import weaver.WeaverState
 import weaver.data.*
-import Hashing.*
 
 import java.nio.file.Files
 import scala.concurrent.duration.{Duration, DurationInt}
