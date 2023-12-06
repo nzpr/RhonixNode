@@ -87,7 +87,7 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
     def test(api: SlickApi[IO]): IO[Assertion] =
       deploys.parTraverse_(api.deployInsert).map(_ shouldBe an[Unit])
 
-    EmbeddedH2SlickDb[IO]
+    EmbeddedPgSqlSlickDb[IO]
       .evalMap(SlickApi[IO])
       .use(test)
       .unsafeRunSync()
