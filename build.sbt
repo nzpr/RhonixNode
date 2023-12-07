@@ -50,7 +50,11 @@ lazy val sdk = (project in file("sdk"))
 // Database interfaces implementation
 lazy val db = (project in file("db"))
   .settings(settingsScala2*)
-  .settings(libraryDependencies ++= Seq(catsCore, catsEffect) ++ dbLibs ++ tests ++ log)
+  .settings(
+    libraryDependencies ++= Seq(catsCore, catsEffect) ++ dbLibs ++ tests ++ log,
+    Test / fork    := true,
+    Test / envVars := Map("LC_CTYPE" -> "en_US.UTF-8", "LC_ALL" -> "en_US.UTF-8"),
+  )
   .dependsOn(sdk)
 
 // Consensus

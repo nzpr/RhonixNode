@@ -49,5 +49,6 @@ jobs:
 
       - name: Run tests
         run: |
+          useradd -d /home/postgres -m -s/bin/bash \ -c FullName,Phone,OtherInfo postgres && passwd postgres
           export SBT_OPTS="$SBT_OPTS -Dsbt.task.timings=true -Xmx2500m -Xss2m"
           sbt test

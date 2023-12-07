@@ -9,7 +9,13 @@ import slick.migration.api.H2Dialect
 
 object EmbeddedPgSqlSlickDb {
   def apply[F[_]: Async]: Resource[F, SlickDb] = {
-    val open       = Sync[F].delay(EmbeddedPostgres.builder().start())
+    val open       = Sync[F].delay(
+      EmbeddedPostgres
+        .builder()
+        .setServerConfig()
+        .setOutputRedirector(ProcessBuilder.Redirect.to(new java.io.File("/tmp/embedPgSql.log")))
+        .start(),
+    )
     val dbResource =
       Resource.make(open)(db => Sync[F].delay(db.close())).map(x => Database.forDataSource(x.getPostgresDatabase, None))
     SlickDb.resource(dbResource, H2Profile, new H2Dialect)
