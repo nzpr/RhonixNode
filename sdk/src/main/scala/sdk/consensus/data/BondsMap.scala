@@ -26,4 +26,9 @@ object BondsMap {
     val targetStake = bondsMap.bonds.view.filterKeys(target).values.sum
     totalStake.toFloat / targetStake > 2f / 3
   }
+
+  def activeSet[A](bondsMap: BondsMap[A]): Set[A] = bondsMap.bonds.keySet
+
+  def allAcross[A](bondsMap: BondsMap[A], target: Set[A]): Boolean = BondsMap.activeSet(bondsMap) == target
+
 }
