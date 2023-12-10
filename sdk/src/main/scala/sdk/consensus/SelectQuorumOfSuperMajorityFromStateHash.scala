@@ -1,5 +1,6 @@
 package sdk.consensus
 
+import sdk.consensus.data.BondsMap
 import sdk.primitive.ByteArray
 
 object SelectQuorumOfSuperMajorityFromStateHash {
@@ -22,11 +23,11 @@ object SelectQuorumOfSuperMajorityFromStateHash {
    * @tparam A type of a sender
    * @return
    */
-  def apply[A: Ordering](bondsMap: Map[A, Long]): SelectQuorum[ByteArray, A] =
+  def apply[A: Ordering](bondsMap: BondsMap[A]): SelectQuorum[ByteArray, A] =
     new SelectQuorum[ByteArray, A] {
       override def next(x: ByteArray): Set[A] = {
         // Sort bonds map from current state
-        val sorted  = bondsMap.toVector.sorted
+        val sorted  = bondsMap.bonds.toVector.sorted
         // Options are rotated bonds map
         val options = LazyList.iterate(sorted) {
           case head +: tail => tail :+ head
