@@ -24,7 +24,7 @@ object BondsMap {
   def isSuperMajority[A](bondsMap: BondsMap[A], target: Set[A]): Boolean = {
     val totalStake  = BondsMap.totalStake(bondsMap)
     val targetStake = bondsMap.bonds.view.filterKeys(target).values.sum
-    totalStake.toFloat / targetStake > 2f / 3
+    targetStake.toFloat / totalStake > 2f / 3
   }
 
   def activeSet[A](bondsMap: BondsMap[A]): Set[A] = bondsMap.bonds.keySet
