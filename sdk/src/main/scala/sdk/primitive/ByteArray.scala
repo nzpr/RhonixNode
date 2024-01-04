@@ -19,6 +19,8 @@ sealed class ByteArray private (underlying: Array[Byte]) {
   }
 
   override def hashCode(): Int = util.Arrays.hashCode(underlying)
+
+  override def toString: String = this.toHex
 }
 
 object ByteArray {

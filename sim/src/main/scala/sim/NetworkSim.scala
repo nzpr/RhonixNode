@@ -123,13 +123,14 @@ object NetworkSim extends IOApp {
       (1 to netCfg.usersNum).map(_ => Array(rnd.nextInt().toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
 
     /// Genesis data
-    val lazinessTolerance = 1 // c.lazinessTolerance
-    val senders           =
+    val lazinessTolerance   = 0 // c.lazinessTolerance
+    val expirationThreshold = 0 // c.expirationThreshold
+    val senders             =
       Iterator.range(0, netCfg.size).map(_ => Array(rnd.nextInt().toByte)).map(Blake2b.hash256).map(ByteArray(_)).toSet
     // Create lfs message, it has no parents, sees no offences and final fringe is empty set
-    val genesisBonds      = Bonds(senders.map(_ -> 100L).toMap)
-    val genesisExec       = FinalData(genesisBonds, lazinessTolerance, 10000)
-    val lfs               = MessageData[M, S](ByteArray("s0".getBytes), Set(), Set(), FringeData(Set()), genesisExec)
+    val genesisBonds        = Bonds(senders.map(_ -> 100L).toMap)
+    val genesisExec         = FinalData(genesisBonds, lazinessTolerance, expirationThreshold)
+    val lfs                 = MessageData[M, S](ByteArray("s0".getBytes), Set(), Set(), FringeData(Set()), genesisExec)
 
     // Shared transactions store
     val txStore: Ref[F, Map[ByteArray, BalancesState]]  = Ref.unsafe(Map.empty[ByteArray, BalancesState])

@@ -1,7 +1,7 @@
 package slick.api
 
-import cats.effect.Async
-import cats.implicits.toFunctorOps
+import cats.effect.{Async, Sync}
+import cats.implicits.{toFlatMapOps, toFunctorOps}
 import sdk.primitive.ByteArray
 import slick.syntax.all.*
 import slick.{SlickDb, SlickQuery}
@@ -33,7 +33,7 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
   def deployGetAll: F[Set[ByteArray]] = queries.deployGetAll.run.map(_.map(ByteArray(_)).toSet)
 
   def deployGet(sig: ByteArray): F[Option[sdk.data.Deploy]] = queries
-    .deployGetData(sig.bytes)
+    .getDeployData(sig.bytes)
     .run
     .map(
       _.map(d =>
@@ -49,7 +49,7 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
       ),
     )
 
-  def deployDelete(sig: ByteArray): F[Int] = queries.deployDeleteAndCleanUp(sig.bytes).run
+  def deployDelete(sig: ByteArray): F[Int] = queries.deleteDeploy(sig.bytes).run
 
   /** DeploySet */
   def deploySetInsert(deploySetHash: ByteArray, deploySigs: Set[ByteArray]): F[Unit] =
@@ -74,8 +74,10 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
     .map(_.map(_.map(ByteArray(_)).toSet))
 
   /** BondsMap */
-  def bondsMapInsert(bondsMapHash: ByteArray, bMap: Map[ByteArray, Long]): F[Unit] =
+  def bondsMapInsert(bondsMapHash: ByteArray, bMap: Map[ByteArray, Long]): F[Unit] = Sync[F].defer {
+    println(s"bondsMapInsert: $bondsMapHash, $bMap")
     queries.bondsMapInsertIfNot(bondsMapHash.bytes, bMap.toSeq.map(x => (x._1.bytes, x._2))).run.void
+  }
 
   def bondsMapGetAll: F[Set[ByteArray]] = queries.bondsMapGetAll.run.map(_.map(ByteArray(_)).toSet)
 
@@ -83,6 +85,7 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
     .bondsMapGetData(hash.bytes)
     .run
     .map(_.map(_.map(x => (ByteArray(x._1), x._2)).toMap))
+    .flatTap(x => Sync[F].delay(println(s"bondsMapGet: $hash, $x")))
 
   def blockInsert(b: sdk.data.Block)(
     justificationSetHash: Option[ByteArray],

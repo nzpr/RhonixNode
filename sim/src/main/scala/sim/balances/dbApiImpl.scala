@@ -3,6 +3,7 @@ package sim.balances
 import cats.data.OptionT
 import cats.effect.{Async, Sync}
 import cats.syntax.all.*
+import dproc.data.Block
 import sdk.primitive.ByteArray
 import sim.balances.Hashing.bondsMapDigest
 import sim.balances.dbApiImpl.*
@@ -59,7 +60,7 @@ class dbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
 
   def readBlock(id: ByteArray): F[Option[dproc.data.Block[ByteArray, ByteArray, BalancesDeploy]]] = {
 
-    def decode(b: sdk.data.Block) =
+    def decode(b: sdk.data.Block): F[Block[Wallet, Wallet, BalancesDeploy]] =
       for {
         txsOpt      <- b.execDeploySet.toSeq.traverse(readBalancesDeploy)
         mergeOpt    <- b.mergeDeploySet.toSeq.traverse(readBalancesDeploy)

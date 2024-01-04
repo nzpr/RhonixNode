@@ -164,7 +164,7 @@ final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, 
           (java.util.Arrays.equals(finalState, m.finalStateHash) &&
             java.util.Arrays.equals(postState, m.postStateHash))
             .guard[Option],
-          Offence.iexec,
+          Offence.iexec(finalState, m.finalStateHash),
         )
     } yield ()
 
@@ -227,7 +227,7 @@ object WeaverNode {
     x: FinalData[?],
     ref: FinalData[?],
   ): EitherT[F, InvalidFringeState, Unit] =
-    EitherT.fromOption((x == ref).guard[Option], InvalidFringeState())
+    EitherT.fromOption((x == ref).guard[Option], InvalidFringeState(x, ref))
 
   final case class ReplayResult[M, S, T](
     lazoME: MessageData.Extended[M, S],
