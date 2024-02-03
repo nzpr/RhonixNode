@@ -1,15 +1,16 @@
 package coop.rchain.rholang.interpreter.compiler
 
 import cats.effect.Sync
-import cats.syntax.all._
+import cats.syntax.all.*
 import coop.rchain.models.Connective.ConnectiveInstance
 import coop.rchain.models.Par
 import coop.rchain.models.rholang.sorter.Sortable
-import io.rhonix.rholang.Bindings._
-import io.rhonix.rholang._
+import io.rhonix.rholang.Bindings.*
+import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.Proc
 import io.rhonix.rholang.ast.rholang.{parser, Yylex}
-import coop.rchain.rholang.interpreter.errors._
+import coop.rchain.rholang.interpreter.errors.*
+import io.rhonix.rholang.normalizer.NormalizerRecImpl
 
 import java.io.{Reader, StringReader}
 
