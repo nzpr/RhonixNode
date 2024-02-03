@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer.dsl
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.syntax.*
 import io.rhonix.rholang.normalizer.envimpl.HistoryChain
+import io.rhonix.rholang.normalizer.syntax.all.normalizerSyntaxHistoryChain
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

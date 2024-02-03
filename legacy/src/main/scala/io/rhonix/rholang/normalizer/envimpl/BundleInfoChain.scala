@@ -1,7 +1,7 @@
 package io.rhonix.rholang.normalizer.envimpl
 
 import cats.effect.Sync
-import coop.rchain.rholang.syntax.*
+import io.rhonix.rholang.normalizer.syntax.all.*
 
 /**
  * Represents a chain of bundle information.

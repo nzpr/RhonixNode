@@ -3,8 +3,8 @@ package io.rhonix.rholang.normalizer.envimpl
 import cats.effect.Sync
 import cats.implicits.toFoldableOps
 import coop.rchain.rholang.interpreter.compiler.SourcePosition
-import coop.rchain.rholang.syntax.*
 import io.rhonix.rholang.normalizer.env.VarContext
+import io.rhonix.rholang.normalizer.syntax.all.*
 
 /**
  * Represents a chain of variable maps.
