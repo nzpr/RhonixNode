@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.SourcePosition
 import coop.rchain.rholang.interpreter.errors.{InterpreterError, UnexpectedBundleContent}
-import coop.rchain.rholang.syntax.*
+import io.rhonix.rholang.normalizer.syntax.all.*
 import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.NestingInfoWriter

@@ -4,8 +4,8 @@ import cats.Functor
 import cats.effect.Sync
 import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.{FreeContext, IdContext}
-import coop.rchain.rholang.syntax.rholangNormalizerSyntax
 import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.normalizer.syntax.all.*
 
 trait NormalizerSyntax {
   implicit def rholangNormalizerSyntax[F[_], A](f: F[A]): NormalizerOps[F, A] = new NormalizerOps[F, A](f)
