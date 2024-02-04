@@ -2,7 +2,7 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.errors.NormalizerError
+import io.rhonix.rholang.interpreter.errors.NormalizerError
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.*
 import org.scalatest.flatspec.AnyFlatSpec

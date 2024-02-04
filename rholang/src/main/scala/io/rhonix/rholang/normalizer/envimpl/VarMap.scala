@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.envimpl
 
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import io.rhonix.rholang.normalizer.env.VarContext
 
 /** Map that associates variable names with their context, including de Bruijn index, type, and source position. */

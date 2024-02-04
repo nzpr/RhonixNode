@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.util
 
-import coop.rchain.rholang.interpreter.compiler.FreeContext
+import io.rhonix.rholang.interpreter.compiler.FreeContext
 import Mock.DefPosition
 import io.rhonix.rholang.normalizer.env.FreeVarReader
 

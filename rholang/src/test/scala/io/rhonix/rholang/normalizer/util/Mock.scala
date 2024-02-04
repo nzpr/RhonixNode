@@ -1,7 +1,7 @@
 package io.rhonix.rholang.normalizer.util
 
 import cats.effect.Sync
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import io.rhonix.rholang.ast.rholang.Absyn.{Name, NameRemainder, Proc, ProcRemainder}
 
 object Mock {

@@ -2,10 +2,11 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.*
-import coop.rchain.rholang.interpreter.errors.*
 import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.interpreter.SourcePosition
+import io.rhonix.rholang.interpreter.compiler.{NameSort, VarSort}
+import io.rhonix.rholang.interpreter.errors.UnrecognizedNormalizerError
 import io.rhonix.rholang.normalizer.env.*
 import sdk.syntax.all.*
 

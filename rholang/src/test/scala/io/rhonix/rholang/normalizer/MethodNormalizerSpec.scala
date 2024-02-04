@@ -2,7 +2,7 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.compiler.VarSort
+import io.rhonix.rholang.interpreter.compiler.VarSort
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.mockADT
 import io.rhonix.rholang.{EMethodN, ParProcN}

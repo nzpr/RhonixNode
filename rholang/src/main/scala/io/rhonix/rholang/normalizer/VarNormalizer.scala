@@ -2,11 +2,12 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.*
-import coop.rchain.rholang.interpreter.errors.*
-import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.*
-import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.interpreter.SourcePosition
+import io.rhonix.rholang.interpreter.compiler.{BoundContext, FreeContext, NameSort, ProcSort, VarSort}
+import io.rhonix.rholang.interpreter.errors._
+import io.rhonix.rholang.normalizer.env.{BoundVarReader, FreeVarReader, FreeVarWriter, NestingInfoReader}
 
 object VarNormalizer {
   def normalizeVar[F[_]: Sync, T >: VarSort: BoundVarReader: FreeVarReader: FreeVarWriter](

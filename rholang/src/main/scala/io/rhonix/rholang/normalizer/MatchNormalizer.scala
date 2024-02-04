@@ -2,10 +2,10 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.errors.UnrecognizedNormalizerError
 import io.rhonix.rholang.normalizer.syntax.all.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.*
+import io.rhonix.rholang.interpreter.errors.UnrecognizedNormalizerError
 import io.rhonix.rholang.normalizer.env.*
 
 import scala.jdk.CollectionConverters.*

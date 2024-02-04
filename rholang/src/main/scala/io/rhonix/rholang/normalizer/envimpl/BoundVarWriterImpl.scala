@@ -1,6 +1,7 @@
 package io.rhonix.rholang.normalizer.envimpl
 
-import coop.rchain.rholang.interpreter.compiler.{IdContext, SourcePosition}
+import io.rhonix.rholang.interpreter.SourcePosition
+import io.rhonix.rholang.interpreter.compiler.IdContext
 import io.rhonix.rholang.normalizer.env.BoundVarWriter
 
 final case class BoundVarWriterImpl[T](private val putFn: (String, T, SourcePosition) => Int)

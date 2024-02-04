@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.util
 
-import coop.rchain.rholang.interpreter.compiler.IdContext
+import io.rhonix.rholang.interpreter.compiler.IdContext
 import Mock.{DefFreeVarIndex, FreeVarWriterData}
 import io.rhonix.rholang.normalizer.env.FreeVarWriter
 

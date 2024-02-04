@@ -1,7 +1,7 @@
 package io.rhonix.rholang.normalizer.envimpl
 
-import coop.rchain.rholang.interpreter.compiler.BoundContext
-import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.interpreter.compiler.BoundContext
+import io.rhonix.rholang.normalizer.env.{BoundVarReader, VarContext}
 
 final case class BoundVarReaderImpl[T](
   private val getFn: String => Option[VarContext[T]],

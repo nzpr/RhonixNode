@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.util
 
-import coop.rchain.rholang.interpreter.compiler.BoundContext
+import io.rhonix.rholang.interpreter.compiler.BoundContext
 import Mock.DefPosition
 import io.rhonix.rholang.normalizer.env.BoundVarReader
 

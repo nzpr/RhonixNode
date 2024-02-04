@@ -2,11 +2,11 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
-import coop.rchain.rholang.interpreter.errors.{InterpreterError, UnexpectedBundleContent}
 import io.rhonix.rholang.normalizer.syntax.all.*
 import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.interpreter.SourcePosition
+import io.rhonix.rholang.interpreter.errors.*
 import io.rhonix.rholang.normalizer.env.NestingInfoWriter
 
 object BundleNormalizer {

@@ -3,7 +3,7 @@ package io.rhonix.rholang.normalizer.syntax
 import cats.Functor
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.{FreeContext, IdContext}
+import io.rhonix.rholang.interpreter.compiler.{FreeContext, IdContext}
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
 

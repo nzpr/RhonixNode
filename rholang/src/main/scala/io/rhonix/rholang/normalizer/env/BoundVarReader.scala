@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.env
 
-import coop.rchain.rholang.interpreter.compiler.BoundContext
+import io.rhonix.rholang.interpreter.compiler.BoundContext
 
 trait BoundVarReader[T] {
 

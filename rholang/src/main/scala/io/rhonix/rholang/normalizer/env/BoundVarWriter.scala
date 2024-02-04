@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.env
 
-import coop.rchain.rholang.interpreter.compiler.IdContext
+import io.rhonix.rholang.interpreter.compiler.IdContext
 
 trait BoundVarWriter[T] {
 

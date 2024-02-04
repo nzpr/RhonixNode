@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.dsl
 
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import io.rhonix.rholang.normalizer.env.VarContext
 import io.rhonix.rholang.normalizer.envimpl.VarMap
 import org.scalatest.flatspec.AnyFlatSpec

@@ -2,10 +2,9 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.normalizer.GroundNormalizeMatcher.{stripString, stripUri}
-import coop.rchain.rholang.interpreter.errors.NormalizerError
 import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.interpreter.errors.NormalizerError
 
 object GroundNormalizer {
   def normalizeGround[F[_]: Sync](p: PGround): F[ExprN] = Sync[F].defer {
@@ -28,5 +27,18 @@ object GroundNormalizer {
       case gs: GroundString  => Sync[F].delay(GStringN(stripString(gs.stringliteral_)))
       case gu: GroundUri     => Sync[F].delay(GUriN(stripUri(gu.uriliteral_)))
     }
+  }
+
+  // This is necessary to remove the backticks. We don't use a regular
+  // expression because they're always there.
+  def stripUri(raw: String): String    = {
+    require(raw.length >= 2)
+    raw.substring(1, raw.length - 1)
+  }
+  // Similarly, we need to remove quotes from strings, since we are using
+  // a custom string token
+  def stripString(raw: String): String = {
+    require(raw.length >= 2)
+    raw.substring(1, raw.length - 1)
   }
 }

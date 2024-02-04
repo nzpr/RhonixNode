@@ -2,7 +2,7 @@ package io.rhonix.rholang.normalizer.envimpl
 
 import cats.effect.Sync
 import cats.implicits.toFoldableOps
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import io.rhonix.rholang.normalizer.env.VarContext
 import io.rhonix.rholang.normalizer.syntax.all.*
 

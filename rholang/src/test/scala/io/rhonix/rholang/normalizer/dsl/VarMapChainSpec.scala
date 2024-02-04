@@ -2,7 +2,7 @@ package io.rhonix.rholang.normalizer.dsl
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import VarMapChainSpec.*
 import io.rhonix.rholang.normalizer.envimpl.{VarMap, VarMapChain}
 import org.scalatest.flatspec.AnyFlatSpec

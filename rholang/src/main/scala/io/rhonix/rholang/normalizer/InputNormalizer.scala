@@ -2,11 +2,10 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.models.ReceiveBind
-import coop.rchain.rholang.interpreter.errors.ReceiveOnSameChannelsError
 import io.rhonix.rholang.*
 import io.rhonix.rholang.Bindings.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.interpreter.errors.ReceiveOnSameChannelsError
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
 

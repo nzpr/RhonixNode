@@ -2,11 +2,12 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.normalizer.GroundNormalizeMatcher
-import coop.rchain.rholang.interpreter.compiler.{NameSort, SourcePosition, VarSort}
 import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.interpreter.SourcePosition
+import io.rhonix.rholang.interpreter.compiler.{NameSort, VarSort}
+import io.rhonix.rholang.normalizer.GroundNormalizer.stripUri
+import io.rhonix.rholang.normalizer.env.{BoundVarScope, BoundVarWriter, *}
 import io.rhonix.rholang.normalizer.syntax.all.*
 
 import scala.jdk.CollectionConverters.*
@@ -21,7 +22,7 @@ object NewNormalizer {
       val sortedUrnData = p.listnamedecl_.asScala.toSeq
         .collect { case n: NameDeclUrn =>
           (
-            GroundNormalizeMatcher.stripUri(n.uriliteral_),
+            stripUri(n.uriliteral_),
             (n.var_, NameSort, SourcePosition(n.line_num, n.col_num)),
           )
         }

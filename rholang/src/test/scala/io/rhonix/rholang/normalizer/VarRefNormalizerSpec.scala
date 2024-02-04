@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
-import coop.rchain.rholang.interpreter.errors.{InterpreterError, UnboundVariableRef}
+import io.rhonix.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
+import io.rhonix.rholang.interpreter.errors.{InterpreterError, UnboundVariableRef}
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.ConnVarRefN
 import io.rhonix.rholang.ast.rholang.Absyn.*

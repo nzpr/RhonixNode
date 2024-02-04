@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
-import coop.rchain.rholang.interpreter.errors.{
+import io.rhonix.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
+import io.rhonix.rholang.interpreter.errors.{
   TopLevelFreeVariablesNotAllowedError,
   TopLevelWildcardsNotAllowedError,
   UnexpectedProcContext,

@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.dsl
 
-import coop.rchain.rholang.interpreter.compiler.SourcePosition
+import io.rhonix.rholang.interpreter.SourcePosition
 import BoundVarWriterImplSpec.*
 import io.rhonix.rholang.normalizer.envimpl.BoundVarWriterImpl
 import org.scalatest.flatspec.AnyFlatSpec

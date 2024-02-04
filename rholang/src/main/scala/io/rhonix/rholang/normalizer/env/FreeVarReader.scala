@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer.env
 
-import coop.rchain.rholang.interpreter.compiler.FreeContext
+import io.rhonix.rholang.interpreter.compiler.FreeContext
 
 trait FreeVarReader[T] {
 
