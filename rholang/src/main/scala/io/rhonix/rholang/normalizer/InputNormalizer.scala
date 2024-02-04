@@ -2,8 +2,7 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import io.rhonix.rholang.*
-import io.rhonix.rholang.Bindings.*
+import io.rhonix.rholang.{ReceiveBindN, *}
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.interpreter.errors.ReceiveOnSameChannelsError
 import io.rhonix.rholang.normalizer.env.*
@@ -181,25 +180,12 @@ object InputNormalizer {
               } yield ReceiveBindN(rbNames, source, rbRemainder, freeCount)
             }
 
-        def sortBinds(binds: Seq[ReceiveBindN]): F[Seq[ReceiveBindN]] = {
-          import coop.rchain.models.rholang.sorter.ReceiveSortMatcher.sortBind
-          def from(x: ReceiveBind): ReceiveBindN =
-            ReceiveBindN(fromProto(x.patterns), fromProto(x.source), x.remainder.map(fromProtoVar), x.freeCount)
-          def to(x: ReceiveBindN): ReceiveBind   =
-            ReceiveBind(toProto(x.patterns), toProto(x.source), x.remainder.map(toProtoVar), x.freeCount)
-          binds.traverse(b => sortBind(to(b))).map(_.sorted.map(x => from(x.term)))
-        }
-
         for {
           processedSources <- names.traverse(NormalizerRec[F].normalize)
 
           patternTuple <- createBinds(patterns, processedSources).withinPatternGetFreeVars(withinReceive = true)
 
-          (unsortedBinds, freeVars) = patternTuple
-
-          // TODO: The sorting will be removed after the old Rholang types are removed.
-          //  With the new types, sorting is unnecessary as they are always sorted by hash.
-          binds <- sortBinds(unsortedBinds)
+          (binds, freeVars) = patternTuple
 
           thereAreDuplicatesInSources = processedSources.distinct.size != processedSources.size
           _                          <- ReceiveOnSameChannelsError(p.line_num, p.col_num)
