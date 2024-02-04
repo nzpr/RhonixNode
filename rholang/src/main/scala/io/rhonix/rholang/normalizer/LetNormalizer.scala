@@ -11,6 +11,7 @@ import sdk.syntax.all.*
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
 
+@SuppressWarnings(Array("org.wartremover.warts.SeqApply")) // to make procs(1) work on line 69
 object LetNormalizer {
   def normalizeLet[
     F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingInfoWriter,
