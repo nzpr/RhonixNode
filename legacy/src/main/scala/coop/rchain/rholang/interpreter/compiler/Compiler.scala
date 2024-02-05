@@ -2,14 +2,16 @@ package coop.rchain.rholang.interpreter.compiler
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.models.Connective.ConnectiveInstance
 import coop.rchain.models.Par
 import coop.rchain.models.rholang.sorter.Sortable
+import coop.rchain.rholang.interpreter.errors.*
 import io.rhonix.rholang.Bindings.*
 import io.rhonix.rholang.ast.rholang.Absyn.Proc
 import io.rhonix.rholang.ast.rholang.{parser, Yylex}
-import coop.rchain.rholang.interpreter.errors.*
-import io.rhonix.rholang.types.{ConnAndN, ConnNotN, ConnOrN, ConnectiveN, NilN}
+import io.rhonix.rholang.normalizer.NormalizerRecImpl
+import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.normalizer.envimpl.*
+import io.rhonix.rholang.types.ParN
 
 import java.io.{Reader, StringReader}
 
@@ -75,44 +77,41 @@ object Compiler {
                   }
       } yield proc
 
-    private def normalizeTerm(term: Proc)(implicit normalizerEnv: Map[String, Par]): F[Par] =
-      ProcNormalizeMatcher
-        .normalizeMatch[F](
-          term,
-          ProcVisitInputs(NilN, BoundMapChain.empty, FreeMap.empty),
+    private def normalizeTerm(term: Proc)(implicit normalizerEnv: Map[String, Par]): F[Par] = {
+
+      // TODO: The normalizerEnv should be utilized for creating injections during the New normalization process,
+      //  although it is currently unused.
+      val _ = normalizerEnv
+
+      val boundMapChain                                    = VarMapChain.empty[F, VarSort]
+      implicit val boundVarWriter: BoundVarWriter[VarSort] = BoundVarWriterImpl(boundMapChain.putVar)
+      implicit val boundVarReader: BoundVarReader[VarSort] =
+        BoundVarReaderImpl(boundMapChain.getVar, boundMapChain.getFirstVarInChain)
+      implicit val boundVarScope: BoundVarScope[F]         = BoundVarScopeImpl(boundMapChain)
+
+      val freeMapChain                                   = VarMapChain.empty[F, VarSort]
+      implicit val freeVarWriter: FreeVarWriter[VarSort] = FreeVarWriterImpl(freeMapChain.putVar)
+      implicit val freeVarReader: FreeVarReader[VarSort] =
+        FreeVarReaderImpl(freeMapChain.getVar, () => freeMapChain.getAllInScope)
+      implicit val freeVarScope: FreeVarScope[F]         = FreeVarScopeImpl(freeMapChain)
+
+      val patternInfoChain = PatternInfoChain[F]()
+      val bundleInfoChain  = BundleInfoChain[F]()
+
+      implicit val nestingInfoWriter: NestingInfoWriter[F] = NestingInfoWriterImpl(patternInfoChain, bundleInfoChain)
+      implicit val nestingInfoReader: NestingInfoReader    =
+        NestingInfoReaderImpl(
+          () => patternInfoChain.getStatus._1,
+          () => patternInfoChain.getStatus._2,
+          () => bundleInfoChain.getStatus,
         )
-        .flatMap { normalizedTerm =>
-          if (normalizedTerm.freeMap.count > 0) {
-            if (normalizedTerm.freeMap.wildcards.isEmpty && normalizedTerm.freeMap.connectives.isEmpty) {
-              val topLevelFreeList = normalizedTerm.freeMap.levelBindings.map {
-                case (name, FreeContext(_, _, sourcePosition)) => s"$name at $sourcePosition"
-              }
-              F.raiseError(
-                TopLevelFreeVariablesNotAllowedError(topLevelFreeList.mkString(", ")),
-              )
-            } else if (normalizedTerm.freeMap.connectives.nonEmpty) {
-              def connectiveInstanceToString(conn: ConnectiveN): String = conn match {
-                case _: ConnAndN => "/\\ (conjunction)"
-                case _: ConnOrN  => "\\/ (disjunction)"
-                case _: ConnNotN => "~ (negation)"
-                case x           => x.toString
-              }
-              val connectives                                           = normalizedTerm.freeMap.connectives
-                .map { case (connType, sourcePosition) =>
-                  s"${connectiveInstanceToString(connType)} at $sourcePosition"
-                }
-                .mkString(", ")
-              F.raiseError(TopLevelLogicalConnectivesNotAllowedError(connectives))
-            } else {
-              val topLevelWildcardList = normalizedTerm.freeMap.wildcards.map { sourcePosition =>
-                s"_ (wildcard) at $sourcePosition"
-              }
-              F.raiseError(
-                TopLevelWildcardsNotAllowedError(topLevelWildcardList.mkString(", ")),
-              )
-            }
-          } else toProto(normalizedTerm.par).pure[F]
-        }
+
+      val normalizer              = NormalizerRecImpl[F, VarSort]()
+      val normalizedTerm: F[ParN] = normalizer.normalize(term)
+      // As other parts of the Rholang processing system still operate with the old data types,
+      // we must ensure that we convert the result accordingly in this context.
+      normalizedTerm.map(toProto)
+    }
 
     /**
       * @note In lieu of a purely functional wrapper around the lexer and parser

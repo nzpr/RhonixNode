@@ -10,7 +10,7 @@ import io.rhonix.rholang.types.*
 import sdk.syntax.all.*
 
 final case class NormalizerRecImpl[
-  F[+_]: Sync: BoundVarScope: FreeVarScope: NestingInfoWriter,
+  F[_]: Sync: BoundVarScope: FreeVarScope: NestingInfoWriter,
   T >: VarSort: BoundVarWriter: BoundVarReader: FreeVarWriter: FreeVarReader,
 ]()(implicit nestingInfo: NestingInfoReader)
     extends NormalizerRec[F] {
@@ -21,18 +21,18 @@ final case class NormalizerRecImpl[
 
   override def normalize(name: Name): F[ParN] = name match {
     case nv: NameVar      =>
-      VarNormalizer.normalizeBoundVar[F, T](nv.var_, SourcePosition(nv.line_num, nv.col_num), NameSort)
+      VarNormalizer.normalizeBoundVar[F, T](nv.var_, SourcePosition(nv.line_num, nv.col_num), NameSort).widen
     case nq: NameQuote    => NormalizerRec[F].normalize(nq.proc_)
-    case wc: NameWildcard => VarNormalizer.normalizeWildcard[F](SourcePosition(wc.line_num, wc.col_num))
+    case wc: NameWildcard => VarNormalizer.normalizeWildcard[F](SourcePosition(wc.line_num, wc.col_num)).widen
   }
 
   override def normalize(remainder: ProcRemainder): F[Option[VarN]] = remainder match {
-    case _: ProcRemainderEmpty => none.pure
+    case _: ProcRemainderEmpty => Sync[F].pure(None)
     case pr: ProcRemainderVar  => VarNormalizer.normalizeRemainder[F, T](pr.procvar_).map(_.some)
   }
 
   override def normalize(remainder: NameRemainder): F[Option[VarN]] = remainder match {
-    case _: NameRemainderEmpty => none.pure
+    case _: NameRemainderEmpty => Sync[F].pure(None)
     case nr: NameRemainderVar  => VarNormalizer.normalizeRemainder[F, T](nr.procvar_).map(_.some)
   }
 }
@@ -45,7 +45,7 @@ object NormalizerRecImpl {
    * @return core Rholang AST object [[ParN]]
    */
   def normalize[
-    F[+_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingInfoWriter,
+    F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingInfoWriter,
     T >: VarSort: BoundVarWriter: BoundVarReader: FreeVarWriter: FreeVarReader,
   ](proc: Proc)(implicit nestingInfo: NestingInfoReader): F[ParN] = {
 
@@ -60,15 +60,15 @@ object NormalizerRecImpl {
       /* Terminal expressions (0-arity constructors) */
       /* =========================================== */
       case _: PNil        => (NilN: ParN).pure
-      case p: PGround     => GroundNormalizer.normalizeGround[F](p)
-      case p: PVar        => VarNormalizer.normalizeVar[F, T](p)
-      case p: PVarRef     => VarRefNormalizer.normalizeVarRef[F, T](p)
+      case p: PGround     => GroundNormalizer.normalizeGround[F](p).widen
+      case p: PVar        => VarNormalizer.normalizeVar[F, T](p).widen
+      case p: PVarRef     => VarRefNormalizer.normalizeVarRef[F, T](p).widen
       case p: PSimpleType => Sync[F].delay(SimpleTypeNormalizer.normalizeSimpleType(p))
 
       /* Unary expressions (1-arity constructors) */
       /* ======================================== */
-      case p: PBundle   => BundleNormalizer.normalizeBundle[F](p)
-      case p: PNegation => NegationNormalizer.normalizeNegation[F](p)
+      case p: PBundle   => BundleNormalizer.normalizeBundle[F](p).widen
+      case p: PNegation => NegationNormalizer.normalizeNegation[F](p).widen
       case p: PEval     => NormalizerRec[F].normalize(p.name_)
       case p: PExprs    => NormalizerRec[F].normalize(p.proc_)
       case p: PNot      => unaryExp(p.proc_, ENotN.apply)
@@ -77,9 +77,9 @@ object NormalizerRecImpl {
       /* Binary expressions (2-arity constructors) */
       /* ========================================= */
       case p: PPar            => ParNormalizer.normalizePar[F](p)
-      case p: PMatches        => MatchesNormalizer.normalizeMatches[F](p)
-      case p: PConjunction    => ConjunctionNormalizer.normalizeConjunction[F](p)
-      case p: PDisjunction    => DisjunctionNormalizer.normalizeDisjunction[F](p)
+      case p: PMatches        => MatchesNormalizer.normalizeMatches[F](p).widen
+      case p: PConjunction    => ConjunctionNormalizer.normalizeConjunction[F](p).widen
+      case p: PDisjunction    => DisjunctionNormalizer.normalizeDisjunction[F](p).widen
       case p: PMult           => binaryExp(p.proc_1, p.proc_2, EMultN.apply)
       case p: PDiv            => binaryExp(p.proc_1, p.proc_2, EDivN.apply)
       case p: PMod            => binaryExp(p.proc_1, p.proc_2, EModN.apply)
@@ -101,17 +101,17 @@ object NormalizerRecImpl {
 
       /* N-ary parameter expressions (N-arity constructors) */
       /* ================================================== */
-      case p: PCollect   => CollectNormalizer.normalizeCollect[F](p)
-      case p: PSend      => SendNormalizer.normalizeSend[F](p)
+      case p: PCollect   => CollectNormalizer.normalizeCollect[F](p).widen
+      case p: PSend      => SendNormalizer.normalizeSend[F](p).widen
       case p: PSendSynch => SendSynchNormalizer.normalizeSendSynch[F](p)
-      case p: PContr     => ContractNormalizer.normalizeContract[F, T](p)
+      case p: PContr     => ContractNormalizer.normalizeContract[F, T](p).widen
       case p: PInput     => InputNormalizer.normalizeInput(p)
-      case p: PNew       => NewNormalizer.normalizeNew[F, T](p)
+      case p: PNew       => NewNormalizer.normalizeNew[F, T](p).widen
       case p: PLet       => LetNormalizer.normalizeLet[F, T](p)
-      case p: PMatch     => MatchNormalizer.normalizeMatch[F, T](p)
-      case p: PIf        => IfNormalizer.normalizeIf[F](p)
-      case p: PIfElse    => IfNormalizer.normalizeIfElse[F](p)
-      case p: PMethod    => MethodNormalizer.normalizeMethod[F](p)
+      case p: PMatch     => MatchNormalizer.normalizeMatch[F, T](p).widen
+      case p: PIf        => IfNormalizer.normalizeIf[F](p).widen
+      case p: PIfElse    => IfNormalizer.normalizeIfElse[F](p).widen
+      case p: PMethod    => MethodNormalizer.normalizeMethod[F](p).widen
 
       case p => UnrecognizedNormalizerError(s"Unrecognized parser AST type `${p.getClass}`.").raiseError
     }
