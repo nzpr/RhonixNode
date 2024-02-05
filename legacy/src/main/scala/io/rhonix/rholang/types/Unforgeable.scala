@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 final class UPrivateN(val v: Array[Byte]) extends UnforgeableN
 object UPrivateN { def apply(bytes: Array[Byte]): UPrivateN = new UPrivateN(bytes) }

@@ -1,12 +1,10 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
-import cats.Eval
 import io.rhonix.rholang.parmanager.Manager
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
 
 class StackSafetySpec extends AnyFlatSpec with Matchers {
 

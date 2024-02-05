@@ -6,7 +6,7 @@ import coop.rchain.rholang.interpreter.compiler.VarSort
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.mockADT
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.{GBoolN, MatchCaseN, MatchN, NilN}
+import io.rhonix.rholang.types.{GBoolN, MatchCaseN, MatchN, NilN}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

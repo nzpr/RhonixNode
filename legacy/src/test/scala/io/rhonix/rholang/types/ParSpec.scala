@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 import io.rhonix.rholang.parmanager.Manager
 import org.scalatest.flatspec.AnyFlatSpec

@@ -5,8 +5,8 @@ import cats.effect.unsafe.implicits.global
 import coop.rchain.rholang.interpreter.compiler.VarSort
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.mockADT
-import io.rhonix.rholang.{EMethodN, ParProcN}
-import io.rhonix.rholang.ast.rholang.Absyn.{GroundString, ListProc, NameVar, PGround, PMethod, PPar, Proc}
+import io.rhonix.rholang.ast.rholang.Absyn.{GroundString, ListProc, PGround, PMethod, Proc}
+import io.rhonix.rholang.types.EMethodN
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

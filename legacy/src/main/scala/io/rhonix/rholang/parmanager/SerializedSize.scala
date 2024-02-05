@@ -3,7 +3,7 @@ package io.rhonix.rholang.parmanager
 import cats.Eval
 import cats.syntax.all.*
 import com.google.protobuf.CodedOutputStream
-import io.rhonix.rholang.*
+import io.rhonix.rholang.types.*
 
 import scala.annotation.unused
 

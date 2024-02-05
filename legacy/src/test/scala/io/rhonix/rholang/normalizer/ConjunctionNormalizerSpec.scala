@@ -6,8 +6,8 @@ import coop.rchain.rholang.interpreter.compiler.VarSort
 import coop.rchain.rholang.interpreter.errors.TopLevelLogicalConnectivesNotAllowedError
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.mockADT
-import io.rhonix.rholang.ConnAndN
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.ConnAndN
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

@@ -1,6 +1,6 @@
 package io.rhonix.rholang.parmanager
 
-import io.rhonix.rholang.*
+import io.rhonix.rholang.types.*
 
 object SubstituteRequired {
   def sReq(p: RhoTypeN): Boolean                               = p.substituteRequired

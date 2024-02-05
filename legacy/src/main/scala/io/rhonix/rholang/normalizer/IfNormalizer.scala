@@ -3,7 +3,7 @@ package io.rhonix.rholang.normalizer
 import cats.Apply
 import cats.syntax.all.*
 import io.rhonix.rholang.ast.rholang.Absyn.{PIf, PIfElse}
-import io.rhonix.rholang.{GBoolN, MatchCaseN, MatchN, NilN}
+import io.rhonix.rholang.types.{GBoolN, MatchCaseN, MatchN, NilN}
 import sdk.syntax.all.*
 
 object IfNormalizer {

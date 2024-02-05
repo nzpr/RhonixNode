@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 import cats.Eval
 

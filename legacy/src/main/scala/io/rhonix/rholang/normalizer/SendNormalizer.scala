@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer
 
 import cats.Applicative
 import cats.syntax.all.*
-import io.rhonix.rholang.SendN
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.SendN
 
 import scala.jdk.CollectionConverters.*
 

@@ -4,16 +4,16 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.SourcePosition
 import coop.rchain.rholang.interpreter.errors.*
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.NestingInfoReader
+import io.rhonix.rholang.types.ConnNotN
 
 object NegationNormalizer {
   def normalizeNegation[F[_]: Sync: NormalizerRec](
     p: PNegation,
   )(implicit nestingInfo: NestingInfoReader): F[ConnNotN] = {
     val pos = SourcePosition(p.line_num, p.col_num)
-    
+
     if (nestingInfo.insidePattern)
       if (!nestingInfo.insideTopLevelReceivePattern)
         NormalizerRec[F].normalize(p.proc_).map(ConnNotN(_))

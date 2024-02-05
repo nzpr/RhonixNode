@@ -1,6 +1,6 @@
 package io.rhonix.rholang.parmanager
 
-import io.rhonix.rholang.*
+import io.rhonix.rholang.types.*
 
 object EvalRequired {
   def eReq(p: RhoTypeN): Boolean                               = p.evalRequired

@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 final class GBoolN(val v: Boolean) extends GroundN
 object GBoolN { def apply(v: Boolean): GBoolN = new GBoolN(v) }

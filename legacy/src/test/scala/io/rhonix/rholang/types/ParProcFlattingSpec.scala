@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

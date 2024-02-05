@@ -1,7 +1,7 @@
 package io.rhonix.rholang.normalizer
 
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.{ParN, VarN}
 
 trait NormalizerRec[F[_]] {
   def normalize(proc: Proc): F[ParN]

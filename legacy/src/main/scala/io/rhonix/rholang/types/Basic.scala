@@ -1,9 +1,9 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 import cats.Eval
 import cats.syntax.all.*
-import io.rhonix.rholang.ParN.*
 import io.rhonix.rholang.parmanager.RhoHash
+import io.rhonix.rholang.types.ParN.*
 
 object NilN extends BasicN
 

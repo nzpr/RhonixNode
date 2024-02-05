@@ -5,8 +5,8 @@ import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.*
 import coop.rchain.rholang.interpreter.errors.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.*
 import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.types.{BoundVarN, FreeVarN, VarN, WildcardN}
 
 object VarNormalizer {
   def normalizeVar[F[_]: Sync, T >: VarSort: BoundVarReader: FreeVarReader: FreeVarWriter](

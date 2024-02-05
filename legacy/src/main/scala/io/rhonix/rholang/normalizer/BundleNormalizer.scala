@@ -5,9 +5,9 @@ import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.SourcePosition
 import coop.rchain.rholang.interpreter.errors.{InterpreterError, UnexpectedBundleContent}
 import io.rhonix.rholang.normalizer.syntax.all.*
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.NestingInfoWriter
+import io.rhonix.rholang.types.{BundleN, ConnectiveN, ParN, ParProcN}
 
 object BundleNormalizer {
   def normalizeBundle[F[_]: Sync: NormalizerRec: NestingInfoWriter](p: PBundle): F[BundleN] = {

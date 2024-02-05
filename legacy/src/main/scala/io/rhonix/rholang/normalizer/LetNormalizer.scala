@@ -3,9 +3,9 @@ package io.rhonix.rholang.normalizer
 import cats.effect.Sync
 import cats.syntax.all.*
 import io.rhonix.rholang.normalizer.syntax.all.*
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.types.{EListN, MatchCaseN, MatchN, ParN}
 import sdk.syntax.all.*
 
 import java.util.UUID

@@ -6,12 +6,13 @@ import coop.rchain.rholang.interpreter.compiler.{ProcSort, VarSort}
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.mockADT
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.{MatchCaseN, MatchN}
+import io.rhonix.rholang.types.{MatchCaseN, MatchN}
 import org.scalacheck.Arbitrary
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import org.scalacheck.Arbitrary.arbString
+
 class MatchNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
 
   behavior of "Match normalizer"

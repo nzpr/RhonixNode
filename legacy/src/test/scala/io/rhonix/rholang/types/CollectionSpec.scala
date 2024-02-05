@@ -1,6 +1,6 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
-import io.rhonix.rholang.CollectionSpecTestData.*
+import io.rhonix.rholang.types.CollectionSpecTestData.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

@@ -2,12 +2,12 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import coop.rchain.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
+import coop.rchain.rholang.interpreter.compiler.{NameSort, VarSort}
 import coop.rchain.rholang.interpreter.errors.ReceiveOnSameChannelsError
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.{mockADT, RemainderADTDefault}
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.{ReceiveBindN, ReceiveN}
+import io.rhonix.rholang.types.{ReceiveBindN, ReceiveN}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

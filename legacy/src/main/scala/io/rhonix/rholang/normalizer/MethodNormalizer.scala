@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer
 
 import cats.Applicative
 import cats.syntax.all.*
-import io.rhonix.rholang.EMethodN
 import io.rhonix.rholang.ast.rholang.Absyn.PMethod
+import io.rhonix.rholang.types.EMethodN
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 

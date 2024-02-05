@@ -7,7 +7,7 @@ import io.rhonix.rholang.normalizer.util.MockNormalizerRec.{mockADT, RemainderAD
 import io.rhonix.rholang.ast.rholang.Absyn.{Name, NameRemainder, Proc, ProcRemainder}
 import io.rhonix.rholang.normalizer.NormalizerRec
 import io.rhonix.rholang.normalizer.util.Mock.{MockNormalizerRecTerm, TermData}
-import io.rhonix.rholang.{GStringN, ParN, VarN}
+import io.rhonix.rholang.types.{GStringN, ParN, VarN}
 
 import scala.collection.mutable.ListBuffer
 

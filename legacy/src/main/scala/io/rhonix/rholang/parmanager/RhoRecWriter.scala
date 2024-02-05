@@ -2,7 +2,7 @@ package io.rhonix.rholang.parmanager
 
 import cats.Applicative
 import cats.syntax.all.*
-import io.rhonix.rholang.RhoTypeN
+import io.rhonix.rholang.types.RhoTypeN
 import sdk.codecs.PrimitiveWriter
 
 object RhoRecWriter {

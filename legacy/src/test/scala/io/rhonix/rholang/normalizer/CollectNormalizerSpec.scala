@@ -5,8 +5,8 @@ import cats.effect.unsafe.implicits.global
 import coop.rchain.rholang.interpreter.compiler.VarSort
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.normalizer.util.MockNormalizerRec.{mockADT, RemainderADTDefault}
-import io.rhonix.rholang.{EListN, EMapN, ESetN, ETupleN}
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.{EListN, EMapN, ESetN, ETupleN}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

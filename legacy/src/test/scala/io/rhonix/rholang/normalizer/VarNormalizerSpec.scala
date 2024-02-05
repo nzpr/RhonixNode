@@ -3,15 +3,10 @@ package io.rhonix.rholang.normalizer
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import coop.rchain.rholang.interpreter.compiler.{NameSort, ProcSort, VarSort}
-import coop.rchain.rholang.interpreter.errors.{
-  TopLevelFreeVariablesNotAllowedError,
-  TopLevelWildcardsNotAllowedError,
-  UnexpectedProcContext,
-  UnexpectedReuseOfProcContextFree,
-}
+import coop.rchain.rholang.interpreter.errors.*
 import io.rhonix.rholang.normalizer.util.Mock.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.{BoundVarN, FreeVarN, WildcardN}
+import io.rhonix.rholang.types.{BoundVarN, FreeVarN, WildcardN}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

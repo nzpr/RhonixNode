@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 /** *
   * Nothing can be received from a (quoted) bundle with `readFlag = false`.

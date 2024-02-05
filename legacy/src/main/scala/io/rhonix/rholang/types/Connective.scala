@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 /** Connective for type Bool in pattern */
 object ConnBoolN extends ConnectiveSTypeN

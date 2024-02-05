@@ -2,9 +2,9 @@ package io.rhonix.rholang.parmanager
 
 import cats.Eval
 import com.google.protobuf.CodedOutputStream
-import io.rhonix.rholang.*
+import io.rhonix.rholang.types.{NilN, ParN, ParProcN, RhoTypeN}
 import sdk.codecs.protobuf
-import sdk.codecs.protobuf.{ProtoCodec, ProtoPrimitiveReader, ProtoPrimitiveWriter}
+import sdk.codecs.protobuf.{ProtoCodec, ProtoPrimitiveReader}
 
 import java.io.InputStream
 

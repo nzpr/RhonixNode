@@ -1,9 +1,10 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 import cats.Eval
 import cats.syntax.all.*
 import io.rhonix.rholang.parmanager.Manager.*
 import sdk.syntax.all.*
+
 import scala.util.hashing.MurmurHash3
 
 /** Base trait for Rholang elements in the Reducer */

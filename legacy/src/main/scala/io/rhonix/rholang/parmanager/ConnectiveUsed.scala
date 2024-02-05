@@ -2,7 +2,7 @@ package io.rhonix.rholang.parmanager
 
 import cats.Eval
 import cats.syntax.all.*
-import io.rhonix.rholang.*
+import io.rhonix.rholang.types.*
 
 object ConnectiveUsed {
   def cUsed(p: RhoTypeN): Eval[Boolean]                               = p.connectiveUsed

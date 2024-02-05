@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 final class ENegN(private val input: ParN) extends Operation1ParN {
   override val p: ParN = input

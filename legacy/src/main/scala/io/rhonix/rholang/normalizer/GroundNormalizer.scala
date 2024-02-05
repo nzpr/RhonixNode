@@ -4,8 +4,8 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.normalizer.GroundNormalizeMatcher.{stripString, stripUri}
 import coop.rchain.rholang.interpreter.errors.NormalizerError
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.{ExprN, GBigIntN, GBoolN, GIntN, GStringN, GUriN}
 
 object GroundNormalizer {
   def normalizeGround[F[_]: Sync](p: PGround): F[ExprN] = Sync[F].defer {

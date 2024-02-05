@@ -2,10 +2,10 @@ package io.rhonix.rholang.normalizer
 
 import cats.Apply
 import cats.syntax.all.*
-import io.rhonix.rholang.EMatchesN
 import io.rhonix.rholang.ast.rholang.Absyn.{PMatches, Proc}
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
+import io.rhonix.rholang.types.EMatchesN
 
 object MatchesNormalizer {
   def normalizeMatches[F[_]: Apply: NormalizerRec: BoundVarScope: FreeVarScope: NestingInfoWriter](

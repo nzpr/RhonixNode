@@ -4,9 +4,9 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.*
 import coop.rchain.rholang.interpreter.errors.*
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.*
+import io.rhonix.rholang.types.*
 import sdk.syntax.all.*
 
 final case class NormalizerRecImpl[

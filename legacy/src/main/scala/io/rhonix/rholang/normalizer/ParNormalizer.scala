@@ -2,8 +2,8 @@ package io.rhonix.rholang.normalizer
 
 import cats.Apply
 import cats.syntax.all.*
-import io.rhonix.rholang.ParN
 import io.rhonix.rholang.ast.rholang.Absyn.PPar
+import io.rhonix.rholang.types.ParN
 import sdk.syntax.all.*
 
 object ParNormalizer {

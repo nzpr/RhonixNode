@@ -1,7 +1,7 @@
 package io.rhonix.rholang.normalizer
 
-import io.rhonix.rholang.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
+import io.rhonix.rholang.types.*
 
 object SimpleTypeNormalizer {
   def normalizeSimpleType(p: PSimpleType): ConnectiveSTypeN = p.simpletype_ match {

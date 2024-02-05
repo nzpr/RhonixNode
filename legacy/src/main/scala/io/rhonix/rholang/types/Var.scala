@@ -1,4 +1,4 @@
-package io.rhonix.rholang
+package io.rhonix.rholang.types
 
 final class BoundVarN(val idx: Int) extends VarN
 object BoundVarN { def apply(value: Int): BoundVarN = new BoundVarN(value) }
