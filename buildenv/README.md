@@ -7,4 +7,4 @@ To update CI image run
 docker build -t rhodevteam/node-buildenv:ubuntu20.04 ./ubuntu-20.04
 ```
 
-and push to Rhonix dockerhub.
+and push to the dockerhub.

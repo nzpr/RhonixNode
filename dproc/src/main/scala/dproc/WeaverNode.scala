@@ -5,12 +5,15 @@ import cats.effect.Ref
 import cats.effect.kernel.{Async, Sync}
 import cats.syntax.all.*
 import cats.{Applicative, Monad}
+import diagnostics.syntax.all.kamonSyntax
 import dproc.DProc.ExeEngine
 import dproc.WeaverNode.{validateExeData, ReplayResult}
 import dproc.data.Block
 import fs2.Stream
+import sdk.diag.Metrics
 import sdk.merging.{DagMerge, Relation, Resolve}
 import sdk.node.Processor
+import sdk.syntax.all.*
 import weaver.*
 import weaver.GardState.GardM
 import weaver.LazoState.isSynchronous
@@ -19,7 +22,7 @@ import weaver.data.*
 import weaver.rules.{Dag, Finality, InvalidBasic}
 import weaver.syntax.all.*
 
-final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
+final case class WeaverNode[F[_]: Sync: Metrics, M, S, T](state: WeaverState[M, S, T]) {
   def dag: DagMerge[F, M] = new DagMerge[F, M] {
     override def between(ceil: Set[M], floor: Set[M]): F[Iterator[M]] = {
       val seqWithSender: M => (S, Int)  = (x: M) => state.lazo.dagData(x).sender -> state.lazo.dagData(x).seqNum
@@ -37,6 +40,11 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
         .pure
   }
 
+  def finalizedSet(minGenJs: Set[M], fFringe: Set[M]): F[Iterator[T]] = for {
+    pf <- dag.latestFringe(minGenJs)
+    r  <- dag.between(fFringe, pf).map(_.filterNot(state.lazo.offences)).map(_.flatMap(state.meld.txsMap))
+  } yield r
+
   def resolver: Resolve[F, T] = new Resolve[F, T] {
     override def resolve(x: IterableOnce[T]): F[(Set[T], Set[T])] =
       Resolve.naive[T](x, state.meld.conflictsMap.contains).bimap(_.iterator.to(Set), _.iterator.to(Set)).pure
@@ -47,8 +55,7 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
 
   def computeFsResolve(fFringe: Set[M], minGenJs: Set[M]): F[ConflictResolution[T]] =
     for {
-      pf        <- dag.latestFringe(minGenJs)
-      toResolve <- dag.between(fFringe, pf).map(_.filterNot(state.lazo.offences).flatMap(state.meld.txsMap))
+      toResolve <- finalizedSet(minGenJs, fFringe)
       r         <- resolver.resolve(toResolve)
     } yield ConflictResolution(r._1, r._2)
 
@@ -73,13 +80,12 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
         .toLeft(m.finalFringe)
     })
 
-  def validateFsResolve(m: Block[M, S, T]): EitherT[F, InvalidFringeResolve[T], ConflictResolution[T]] =
-    EitherT(computeFsResolve(m.finalFringe, m.minGenJs).map { finalization =>
-      (finalization != m.finalized.getOrElse(ConflictResolution.empty[T]))
-        .guard[Option]
-        .as(InvalidFringeResolve(finalization, m.finalized.getOrElse(ConflictResolution.empty[T])))
-        .toLeft(finalization)
+  def validateFsResolve(m: Block[M, S, T]): EitherT[F, InvalidFringeResolve[T], ConflictResolution[T]] = {
+    val is = m.finalized.getOrElse(ConflictResolution.empty[T])
+    EitherT(computeFsResolve(m.finalFringe, m.minGenJs).map { shouldBe =>
+      (shouldBe != is).guard[Option].as(InvalidFringeResolve(shouldBe, is)).toLeft(is)
     })
+  }
 
   def validateGard(m: Block[M, S, T], expT: Int): EitherT[F, InvalidDoubleSpend[T], Unit] =
     EitherT(WeaverNode(state).computeGard(m.txs, m.finalFringe, expT).pure.map { txToPut =>
@@ -102,27 +108,34 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
     val offences = state.lazo.offences
     for {
       lazoF   <- Sync[F].delay(WeaverNode(state).computeFringe(mgjs))
-      newF     = (lazoF.fFringe != state.lazo.latestFringe(mgjs)).guard[Option]
+      newF     = (lazoF.fFringe neqv state.lazo.latestFringe(mgjs).fFringe).guard[Option]
       fin     <- newF.traverse(_ => WeaverNode(state).computeFsResolve(lazoF.fFringe, mgjs))
       lazoE   <- exeEngine.consensusData(lazoF.fFringe)
       txToPut  = WeaverNode(state).computeGard(txs, lazoF.fFringe, lazoE.expirationThreshold)
       toMerge <- WeaverNode(state).computeCsResolve(mgjs, lazoF.fFringe)
-      _       <- exeEngine.execute(
+      r       <- exeEngine.execute(
+                   state.lazo.latestFringe(mgjs).fFringe,
+                   lazoF.fFringe,
                    fin.map(_.accepted).getOrElse(Set()),
                    toMerge.accepted,
                    txToPut.toSet,
-                 ) // TODO return hash here to put in a block
+                 )
+
+      ((finalStateHash, finRj), (postStateHash, provRj)) = r
     } yield Block(
       sender = sender,
       minGenJs = mgjs,
       txs = txToPut,
       offences = offences,
       finalFringe = lazoF.fFringe,
-      finalized = fin,
-      merge = toMerge.accepted,
+      // TODO add rejections due to negative balance overflow
+      finalized = fin,          // .map(x => x.copy(rejected = x.rejected ++ finRj, accepted = x.accepted -- finRj)),
+      merge = toMerge.accepted, // -- provRj,
       bonds = lazoE.bonds,
       lazTol = lazoE.lazinessTolerance,
       expThresh = lazoE.expirationThreshold,
+      finalStateHash = finalStateHash,
+      postStateHash = postStateHash,
     )
   }
 
@@ -138,8 +151,21 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
       _  <- validateExeData(lE, Block.toLazoE(m))
       _  <- validateGard(m, lE.expirationThreshold)
       _  <- validateCsResolve(m)
-      // TODO execution logic is cumbersome, here we do not merge finality since it has been done on block creation
-      _  <- EitherT(exeEngine.execute(Set.empty[T], m.merge, m.txs.toSet).map(_.guard[Option].toRight(Offence.iexec)))
+
+      toResolve <- EitherT.liftF(finalizedSet(m.minGenJs, m.finalFringe).map(_.toSet))
+      base      <- EitherT.liftF(dag.latestFringe(m.minGenJs))
+
+      r <- EitherT.liftF(exeEngine.execute(base, m.finalFringe, toResolve, m.merge, m.txs.toSet))
+
+      ((finalState, _), (postState, _)) = r
+
+      _ <-
+        EitherT.fromOption(
+          (java.util.Arrays.equals(finalState, m.finalStateHash) &&
+            java.util.Arrays.equals(postState, m.postStateHash))
+            .guard[Option],
+          Offence.iexec,
+        )
     } yield ()
 
   def createBlockWithId(
@@ -158,39 +184,41 @@ final case class WeaverNode[F[_]: Sync, M, S, T](state: WeaverState[M, S, T]) {
     m: Block.WithId[M, S, T],
     exeEngine: ExeEngine[F, M, S, T],
     relations: Relation[F, T],
-  ): F[ReplayResult[M, S, T]] = Sync[F].defer {
-    lazy val conflictSet =
-      Dag.between[M](m.m.minGenJs, m.m.finalFringe, state.lazo.seenMap).flatMap(state.meld.txsMap).toList
-    lazy val unseen      = state.lazo.dagData.keySet -- state.lazo.view(m.m.minGenJs)
-    lazy val mkMeld      = MeldState
-      .computeRelationMaps[F, T](
-        m.m.txs,
-        unseen.flatMap(state.meld.txsMap).toList,
-        conflictSet,
-        relations.conflicts,
-        relations.depends,
-      )
-      .map { case (cm, dm) =>
-        MergingData(
+  ): F[ReplayResult[M, S, T]] = Sync[F]
+    .defer {
+      lazy val conflictSet =
+        Dag.between[M](m.m.minGenJs, m.m.finalFringe, state.lazo.seenMap).flatMap(state.meld.txsMap).toList
+      lazy val unseen      = state.lazo.dagData.keySet -- state.lazo.view(m.m.minGenJs)
+      lazy val mkMeld      = MeldState
+        .computeRelationMaps[F, T](
           m.m.txs,
-          conflictSet.toSet,
-          cm,
-          dm,
-          m.m.finalized.map(_.accepted).getOrElse(Set()),
-          m.m.finalized.map(_.rejected).getOrElse(Set()),
+          unseen.flatMap(state.meld.txsMap).toList,
+          conflictSet,
+          relations.conflicts,
+          relations.depends,
         )
-      }
+        .map { case (cm, dm) =>
+          MergingData(
+            m.m.txs,
+            conflictSet.toSet,
+            cm,
+            dm,
+            m.m.finalized.map(_.accepted).getOrElse(Set()),
+            m.m.finalized.map(_.rejected).getOrElse(Set()),
+          )
+        }
 
-    val lazoME  = Block.toLazoM(m.m).computeExtended(state.lazo)
-    val offOptT = validateMessage(m.m, exeEngine).swap.toOption
+      val lazoME  = Block.toLazoM(m.m).computeExtended(state.lazo)
+      val offOptT = validateMessage(m.m, exeEngine).swap.toOption
 
-    // invalid messages do not participate in merge and are not accounted for double spend guard
-    val offCase   = offOptT.map(off => ReplayResult(lazoME, none[MergingData[T]], none[GardM[M, T]], off.some))
-    // if msg is valid - Meld state and Gard state should be updated
-    val validCase = mkMeld.map(_.some).map(ReplayResult(lazoME, _, Block.toGardM(m.m).some, none[Offence]))
+      // invalid messages do not participate in merge and are not accounted for double spend guard
+      val offCase   = offOptT.map(off => ReplayResult(lazoME, none[MergingData[T]], none[GardM[M, T]], off.some))
+      // if msg is valid - Meld state and Gard state should be updated
+      val validCase = mkMeld.map(_.some).map(ReplayResult(lazoME, _, Block.toGardM(m.m).some, none[Offence]))
 
-    offCase.getOrElseF(validCase)
-  }
+      offCase.getOrElseF(validCase)
+    }
+    .timedM("replay")
 }
 
 object WeaverNode {
@@ -217,7 +245,7 @@ object WeaverNode {
   /**
    * Replay block and add it to the Weaver state.
    */
-  private def replayAndAdd[F[_]: Sync, M, S, T: Ordering](
+  private def replayAndAdd[F[_]: Sync: Metrics, M, S, T: Ordering](
     b: Block.WithId[M, S, T],
     weaverStRef: Ref[F, WeaverState[M, S, T]],
     exeEngine: ExeEngine[F, M, S, T],
@@ -226,7 +254,7 @@ object WeaverNode {
     for {
       w  <- weaverStRef.get
       br <- WeaverNode(w).replay(b, exeEngine, relation)
-      r  <- weaverStRef.modify(_.add(b.id, br.lazoME, br.meldMOpt, br.gardMOpt, br.offenceOpt))
+      r  <- weaverStRef.modify(_.add(b.id, br.lazoME, br.meldMOpt, br.gardMOpt, br.offenceOpt)).timedM("state-add")
       _  <- new Exception(s"Add failed after replay which should not be possible.").raiseError.unlessA(r._2)
     } yield AddEffect(r._1, b.m.finalized, br.offenceOpt)
 
@@ -244,14 +272,14 @@ object WeaverNode {
   /**
    * Propose given the latest state of the node.
    */
-  def proposeOnLatest[F[_]: Sync, M, S, T: Ordering](
+  def proposeOnLatest[F[_]: Sync: Metrics, M, S, T: Ordering](
     sender: S,
     weaverStRef: Ref[F, WeaverState[M, S, T]],
     readTxs: => F[Set[T]],
     exeEngine: ExeEngine[F, M, S, T],
     idGen: Block[M, S, T] => F[M],
   ): F[Block.WithId[M, S, T]] = (weaverStRef.get, readTxs).flatMapN { case (w, txs) =>
-    WeaverNode(w).createBlockWithId(sender, txs, exeEngine, idGen)
+    WeaverNode(w).createBlockWithId(sender, txs, exeEngine, idGen).timedM("propose")
   }
 
   def isSynchronousF[F[_]: Monad, M, S, T](id: S, weaverStRef: Ref[F, WeaverState[M, S, T]]): F[Boolean] =
@@ -260,7 +288,7 @@ object WeaverNode {
   /**
    * Stream of processed blocks with callback to trigger process
    */
-  def processor[F[_]: Async, M, S, T: Ordering](
+  def processor[F[_]: Async: Metrics, M, S, T: Ordering](
     weaverStRef: Ref[F, WeaverState[M, S, T]],
     exeEngine: ExeEngine[F, M, S, T],
     relation: Relation[F, T],

@@ -9,3 +9,7 @@ trait BlockDbApi[F[_]] {
   def getById(id: Long): F[Option[Block]]
   def getByHash(hash: Array[Byte]): F[Option[Block]]
 }
+
+object BlockDbApi {
+  val MethodName: String = "blocks"
+}

@@ -1,10 +1,10 @@
 package weaver
 
+import cats.implicits.catsSyntaxOptionId
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import weaver.rules.Dag._
-
-import scala.annotation.tailrec
+import weaver.rules.Dag
+import weaver.rules.Dag.*
 
 class LazoDagSpec extends AnyFlatSpec with Matchers {
 
@@ -33,6 +33,15 @@ class LazoDagSpec extends AnyFlatSpec with Matchers {
     val sender           = Map(0 -> 10, 1 -> 11, 2 -> 12, 3 -> 11, 4 -> 12)
     val x                = floor(fringes, isSelfDescendant, sender)
     x shouldBe Set(0, 1, 2)
+  }
+
+  "between defined via seq numbers" should "return empty if ceiling == floor" in {
+    val top           = Set(0, 1)
+    val btm           = top
+    val seqWithSender = Map(0 -> ("s0", 1), 1 -> ("s2", 1))
+    val lookup        = (_: String, _: Int) => 1.some
+
+    Dag.between[Int, String](top, btm, seqWithSender, lookup).toList shouldBe List()
   }
 
   // Message cannot be added if offender is in the view.

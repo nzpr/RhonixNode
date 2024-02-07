@@ -5,7 +5,6 @@ import weaver.data.*
 
 /**
  * All data required to be packed in a block.
- * This does not include data required from execution engine to do execution.
  * @param sender block sender
  * @param minGenJs minimal generative justifications set
  * @param offences offences computed by the message
@@ -16,9 +15,9 @@ import weaver.data.*
  * @param bonds bonds map of a message
  * @param lazTol laziness tolerance
  * @param expThresh transaction expiration threshold
- * @tparam M
- * @tparam S
- * @tparam T
+ * @tparam M type for block ID
+ * @tparam S type for sender ID
+ * @tparam T type for transaction ID
  */
 final case class Block[M, S, T](
   sender: S,
@@ -31,12 +30,14 @@ final case class Block[M, S, T](
   bonds: Bonds[S],
   lazTol: Int,
   expThresh: Int,
+  finalStateHash: Array[Byte],
+  postStateHash: Array[Byte],
 )
 
 object Block {
   final case class WithId[M, S, T](id: M, m: Block[M, S, T])
 
-  def toLazoM[M, S, T](m: Block[M, S, T]) = MessageData(
+  def toLazoM[M, S, T](m: Block[M, S, T]): MessageData[M, S] = MessageData(
     m.sender,
     m.minGenJs,
     m.offences,
@@ -44,7 +45,7 @@ object Block {
     FinalData(m.bonds, m.lazTol, m.expThresh),
   )
 
-  def toLazoE[M, S, T](m: Block[M, S, T]) =
+  def toLazoE[M, S, T](m: Block[M, S, T]): FinalData[S] =
     FinalData(m.bonds, m.lazTol, m.expThresh)
 
   def toGardM[M, S, T](m: Block[M, S, T]): GardM[M, T] = GardM(m.txs.toSet, m.finalFringe)

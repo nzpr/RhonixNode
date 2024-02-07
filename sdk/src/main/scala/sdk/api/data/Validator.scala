@@ -1,12 +1,12 @@
 package sdk.api.data
 
 final case class Validator(
-  publicKey: Array[Byte], // Unique index
-  http: String,
+  id: Long,              // PK key
+  publicKey: Array[Byte],// Unique index
 ) {
   override def equals(obj: Any): Boolean = obj match {
     case that: Validator =>
-      this.publicKey.sameElements(that.publicKey) && this.http == that.http
+      this.publicKey.sameElements(that.publicKey)
     case _               => false
   }
 }

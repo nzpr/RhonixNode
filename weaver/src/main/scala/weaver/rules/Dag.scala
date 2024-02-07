@@ -1,6 +1,6 @@
 package weaver.rules
 
-import cats.implicits.catsSyntaxOptionId
+import cats.syntax.all.*
 
 object Dag {
   private def edge[M, S](
@@ -67,6 +67,7 @@ object Dag {
   def between[M](ceiling: Set[M], floor: Set[M], seen: M => Set[M]): Set[M] =
     ceiling.flatMap(seen) ++ ceiling -- floor.flatMap(seen)
 
+  // Get items between, including ceil excluding floor
   def between[M, S](
     ceil: Set[M],
     floor: Set[M],
@@ -75,7 +76,15 @@ object Dag {
   ): Iterator[M] = {
     val c = ceil.map(seqWithSender).toList.toMap
     val f = floor.map(seqWithSender).toList.toMap
-    val r = c.iterator.flatMap { case (k, up) => (f.getOrElse(k, 0) to up).reverseIterator.map(k -> _) }
+    val r = c.iterator.flatMap { case (k, up) =>
+      f.get(k)
+        .map { bottom =>
+          if (bottom == up) Iterator.empty[(S, Int)] // if bottom item == up item, discard
+          else (bottom + 1 to up).reverseIterator.map(k -> _)
+        }
+        .getOrElse((0 to up).reverseIterator.map(k -> _))
+
+    }
     r.flatMap(lookup.tupled)
   }
 }

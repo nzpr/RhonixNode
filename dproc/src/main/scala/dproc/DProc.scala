@@ -8,6 +8,7 @@ import dproc.WeaverNode.*
 import dproc.data.Block
 import fs2.Stream
 import sdk.DagCausalQueue
+import sdk.diag.Metrics
 import sdk.merging.Relation
 import sdk.node.{Processor, Proposer}
 import weaver.WeaverState
@@ -37,7 +38,13 @@ final case class DProc[F[_], M, T](
 
 object DProc {
   trait ExeEngine[F[_], M, S, T] {
-    def execute(toFinalize: Set[T], toMerge: Set[T], txs: Set[T]): F[Boolean]
+    def execute(
+      base: Set[M],
+      finalFringe: Set[M],
+      toFinalize: Set[T],
+      toMerge: Set[T],
+      txs: Set[T],
+    ): F[((Array[Byte], Seq[T]), (Array[Byte], Seq[T]))]
 
     // data read from the final state associated with the final fringe
     def consensusData(fringe: Set[M]): F[FinalData[S]]
@@ -64,7 +71,7 @@ object DProc {
     def remove(m: M): F[Set[M]] = mut.lock.surround(bufferStRef.modify(_.satisfy(m)._1.dequeue))
   }
 
-  def apply[F[_]: Async, M, S, T: Ordering](
+  def apply[F[_]: Async: Metrics, M, S, T: Ordering](
     // states
     weaverStRef: Ref[F, WeaverState[M, S, T]], // weaver
     proposerStRef: Ref[F, Proposer.ST],        // proposer
