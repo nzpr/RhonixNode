@@ -8,6 +8,7 @@ import sdk.store.syntax.{KeyValueStoreManagerSyntax, KeyValueStoreSyntax, KeyVal
 
 trait AllSyntax
     extends ThrowableSyntax
+    with TupleSyntax
     with TrySyntax
     with VoidSyntax
     with MapSyntax
