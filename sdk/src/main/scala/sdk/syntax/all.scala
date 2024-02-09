@@ -22,3 +22,4 @@ trait AllSyntax
     with MetricsWriterSdkSyntax
     with DigestSyntax
     with FutureSyntax
+    with TupleSyntax

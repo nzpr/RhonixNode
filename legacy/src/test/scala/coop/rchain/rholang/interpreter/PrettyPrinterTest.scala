@@ -1,28 +1,12 @@
 package coop.rchain.rholang.interpreter
 
 import java.io.StringReader
-
-import coop.rchain.models.Expr.ExprInstance._
-import coop.rchain.models.rholang.implicits._
-import coop.rchain.models.{Send, _}
-import coop.rchain.rholang.interpreter.compiler.{
-  BoundMapChain,
-  Compiler,
-  FreeMap,
-  NameSort,
-  NameVisitInputs,
-  ProcNormalizeMatcher,
-  ProcSort,
-  ProcVisitInputs,
-  SourcePosition,
-  VarSort,
-}
-import coop.rchain.rholang.interpreter.compiler.normalizer.{
-  BoolNormalizeMatcher,
-  GroundNormalizeMatcher,
-  NameNormalizeMatcher,
-}
-import io.rhonix.rholang.ast.rholang.Absyn._
+import coop.rchain.models.Expr.ExprInstance.*
+import coop.rchain.models.rholang.implicits.*
+import coop.rchain.models.{Send, *}
+import coop.rchain.rholang.interpreter.compiler.*
+import coop.rchain.rholang.interpreter.compiler.normalizer.*
+import io.rhonix.rholang.ast.rholang.Absyn.*
 import cats.Eval
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
@@ -30,8 +14,7 @@ import org.scalatest.matchers.should.Matchers
 import coop.rchain.catscontrib.effect.implicits.sEval
 
 import scala.collection.immutable.BitSet
-import io.rhonix.rholang.Bindings._
-import io.rhonix.rholang._
+import io.rhonix.rholang.types.NilN
 
 class BoolPrinterSpec extends AnyFlatSpec with Matchers {
 

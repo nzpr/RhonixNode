@@ -25,7 +25,6 @@ object Dependencies {
   val bouncyProvCastle   = "org.bouncycastle"            % "bcprov-jdk15on"   % "1.70"
   val bouncyPkixCastle   = "org.bouncycastle"            % "bcpkix-jdk15on"   % "1.70"
   val guava              = "com.google.guava"            % "guava"            % "31.1-jre"
-  val secp256k1Java      = "com.github.rchain"           % "secp256k1-java"   % "0.1"
   val scodecCore         = "org.scodec"                 %% "scodec-core"      % "1.11.10"
   val scodecCats         = "org.scodec"                 %% "scodec-cats"      % "1.2.0"
   val scodecBits         = "org.scodec"                 %% "scodec-bits"      % "1.1.37"
@@ -51,7 +50,6 @@ object Dependencies {
     protobuf,
     scalapbRuntimeLib,
     scalapbCompiler,
-    secp256k1Java,
     scodecCore,
     scodecCats,
     scodecBits,

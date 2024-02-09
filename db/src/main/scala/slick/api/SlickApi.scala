@@ -1,7 +1,7 @@
 package slick.api
 
 import cats.effect.Async
-import cats.implicits.toFunctorOps
+import cats.syntax.all.*
 import sdk.primitive.ByteArray
 import slick.syntax.all.*
 import slick.{Actions, SlickDb}
