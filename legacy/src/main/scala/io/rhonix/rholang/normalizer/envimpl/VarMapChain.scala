@@ -45,6 +45,20 @@ final class VarMapChain[F[_]: Sync, T](private val chain: HistoryChain[VarMap[T]
     chain.current().get(name).get.index
   }
 
+    /**
+     * Adds a new variable to the current variable map and returns its index. The index is inverted.
+     *
+     * @param varData the data of the variable to add.
+     * @return the inverted index of the added variable.
+     */
+    // TODO: Should be removed after reducer rewriting
+  def putVarInverted(varData: IdContext[T]): Int = {
+    val (name, sort, sourcePosition) = varData
+    chain.updateCurrent(_.put(name, sort, sourcePosition))
+    chain.current().getInverted(name).get.index
+  }
+
+
   /**
    * Retrieves a variable from the current variable map.
    *

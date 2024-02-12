@@ -3,9 +3,11 @@ package io.rhonix.rholang.normalizer.syntax
 import cats.Functor
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.compiler.{FreeContext, IdContext}
+import coop.rchain.rholang.interpreter.compiler.{FreeContext, IdContext, SourcePosition}
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
+
+import java.util.UUID
 
 trait NormalizerSyntax {
   implicit def rholangNormalizerSyntax[F[_], A](f: F[A]): NormalizerOps[F, A] = new NormalizerOps[F, A](f)
@@ -67,8 +69,22 @@ class NormalizerOps[F[_], A](val f: F[A]) extends AnyVal {
     f.withAddedBoundVars(absorbFree(freeVars)).map(_._1)
   }
 
+  /** Create new unique bound variables in a copy of the current scope.
+     * @param countVars Number of unique variables to create
+     * @param typeVars  Type of the unique variables (same for all of them)
+     * @return result of the effect and the indices of created unique variables
+     */
+  def withNewUniqueBoundVars[T](countVars: Int, typeVars: T)(implicit
+    sync: Sync[F],
+    bvs: BoundVarScope[F],
+    bvw: BoundVarWriter[T],
+  ): F[(A, Seq[Int])] = {
+    def createUniqueVarData: IdContext[T] = (UUID.randomUUID().toString, typeVars, SourcePosition(0, 0))
+    f.withAddedBoundVars((1 to countVars).map(_ => createUniqueVarData))
+  }
+
   /** Put new bound variables in a copy of the current scope.
-   * @return result of the effect and the number of inserted non-duplicate variables
+   * @return result of the effect and the indices of inserted non-duplicate variables
    */
   def withAddedBoundVars[T](
     boundVars: Seq[IdContext[T]],

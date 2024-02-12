@@ -103,7 +103,7 @@ object NormalizerRecImpl {
       /* ================================================== */
       case p: PCollect   => CollectNormalizer.normalizeCollect[F](p).widen
       case p: PSend      => SendNormalizer.normalizeSend[F](p).widen
-      case p: PSendSynch => SendSyncNormalizer.normalizeSendSync[F](p)
+      case p: PSendSynch => SendSyncNormalizer.normalizeSendSync[F, T](p).widen
       case p: PContr     => ContractNormalizer.normalizeContract[F, T](p).widen
       case p: PInput     => InputNormalizer.normalizeInput(p)
       case p: PNew       => NewNormalizer.normalizeNew[F, T](p).widen
