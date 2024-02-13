@@ -32,14 +32,12 @@ class VarMapSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "update the VarContext when putting an existing variable" in {
-    val varMap = VarMap(Seq(("existingVar", 1, SourcePosition(0, 0))))
-      .put("existingVar", 2, SourcePosition(1, 1))
+    val varMap = VarMap(Seq(("existingVar", 1, SourcePosition(0, 0)))).put("existingVar", 2, SourcePosition(1, 1))._1
     varMap.get("existingVar") shouldBe (Some(VarContext(1, 2, SourcePosition(1, 1))))
   }
 
   it should "increment the de Bruijn index when putting a new variable" in {
-    val varMap = VarMap(Seq(("var1", 1, SourcePosition(0, 0))))
-      .put("var2", 2, SourcePosition(1, 1))
+    val varMap = VarMap(Seq(("var1", 1, SourcePosition(0, 0)))).put("var2", 2, SourcePosition(1, 1))._1
     varMap.get("var1").get.index shouldBe 0
     varMap.get("var2").get.index shouldBe 1
   }

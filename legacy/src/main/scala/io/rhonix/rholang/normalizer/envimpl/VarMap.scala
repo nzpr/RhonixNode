@@ -32,12 +32,12 @@ final case class VarMap[T](private val data: Map[String, VarContext[T]], private
    * @param name the name of the variable
    * @param sort the type of the variable
    * @param sourcePosition the source position of the variable
-   * @return a new VarMap with the updated data and next index
+   * @return a new VarMap with the new data and the index of the added variable
    */
-  def put(name: String, sort: T, sourcePosition: SourcePosition): VarMap[T] = {
+  def put(name: String, sort: T, sourcePosition: SourcePosition): (VarMap[T], Int) = {
     val newData  = data.updated(name, VarContext(nextIndex, sort, sourcePosition))
     val newIndex = nextIndex + 1
-    new VarMap(newData, newIndex)
+    (new VarMap(newData, newIndex), nextIndex)
   }
 }
 
@@ -49,7 +49,7 @@ object VarMap {
    * @return a new VarMap with the given data and a next index of 0
    */
   def apply[T](initData: Seq[(String, T, SourcePosition)]): VarMap[T] = initData.foldLeft(empty[T]) {
-    case (varMap, data) => varMap.put(data._1, data._2, data._3)
+    case (varMap, data) => varMap.put(data._1, data._2, data._3)._1
   }
 
   /**
