@@ -29,3 +29,26 @@ final case class Block(
   mergeDeploySetFinal: Set[ByteArray], // deploy set finally accepted
   dropDeploySetFinal: Set[ByteArray],  // deploy set finally rejected
 )
+
+object Block {
+  def apply(b: sdk.api.data.Block): Block = new sdk.data.Block(
+    b.version,
+    ByteArray(b.hash),
+    b.signatureAlg,
+    ByteArray(b.signature),
+    ByteArray(b.finStateHash),
+    ByteArray(b.postStateHash),
+    ByteArray(b.sender),
+    b.shardId,
+    b.justifications.map(ByteArray(_)),
+    b.seqNum,
+    Set(),
+    b.bonds.map(x => ByteArray(x.validator) -> x.stake).toMap,
+    Set(),
+    b.deploys.map(ByteArray(_)),
+    Set(),
+    Set(),
+    Set(),
+    Set(),
+  )
+}
