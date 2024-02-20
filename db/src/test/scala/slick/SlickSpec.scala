@@ -13,6 +13,8 @@ import sdk.data.{Block, Deploy}
 import sdk.primitive.ByteArray
 import slick.SlickSpec.*
 import slick.api.SlickApi
+import slick.jdbc.PostgresProfile
+import slick.migration.api.PostgresDialect
 import slick.syntax.all.*
 
 class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyChecks {
@@ -183,7 +185,7 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
 
   "Loaded peers" should "be the same as generated and stored peers" in {
     forAll(Gen.nonEmptyListOf(nonEmptyAlphaString)) { urls =>
-      val peers = urls.map(Peer(_, isSelf = false, isValidator = true)) match {
+      val peers = urls.distinct.map(Peer(_, port = 1234, isSelf = false, isValidator = true)) match {
         case head :: tail => head.copy(isSelf = true) +: tail
         case list         => list
       }
@@ -194,7 +196,8 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
         implicit val slickDb: SlickDb = api.slickDb
 
         for {
-          _           <- peers.traverse(peer => api.actions.peerInsertIfNot(peer.url, peer.isSelf, peer.isValidator).run)
+          _           <-
+            peers.traverse(peer => api.actions.peerInsertIfNot(peer.host, peer.port, peer.isSelf, peer.isValidator).run)
           loadedPeers <- api.actions.peers.run
         } yield peers shouldBe loadedPeers
       }
@@ -208,11 +211,12 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
         implicit val async            = Async[IO]
         implicit val slickDb: SlickDb = api.slickDb
 
-        val url  = "url"
-        val peer = Peer(url, isSelf = true, isValidator = true)
+        val host = "host"
+        val port = 1234
+        val peer = Peer(host, port, isSelf = true, isValidator = true)
         for {
-          _       <- api.actions.peerInsertIfNot(peer.url, peer.isSelf, peer.isValidator).run
-          _       <- api.actions.removePeer(peer.url).run
+          _       <- api.actions.peerInsertIfNot(peer.host, peer.port, peer.isSelf, peer.isValidator).run
+          _       <- api.actions.removePeer(peer.host).run
           dbPeers <- api.actions.peers.run
         } yield dbPeers shouldBe Seq.empty[Peer]
       }
@@ -223,7 +227,7 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
 object SlickSpec {
 
   def embedPgSlick[F[_]: Async]: Resource[F, SlickApi[F]] =
-    SlickEmbeddedPgDatabase[F].evalMap(x => SlickDb(x, PostgresProfile, new PostgresDialect).flatMap(SlickApi[F]))
+    EmbeddedPgSlickDb[F].evalMap(x => SlickDb(x, PostgresProfile, new PostgresDialect).flatMap(SlickApi[F]))
 
   // Define Arbitrary for ByteArray since it's a custom type and needs specific generation logic
   implicit val byteArrayArbitrary: Arbitrary[ByteArray] = Arbitrary {

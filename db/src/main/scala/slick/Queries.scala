@@ -107,5 +107,5 @@ final case class Queries(profile: JdbcProfile) {
 
   val peersCompiled = Compiled(qPeers.map(identity))
 
-  val peerIdByPk = Compiled((url: Rep[String]) => qPeers.filter(_.url === url).map(_.id))
+  val peerIdByPk = Compiled((host: Rep[String]) => qPeers.filter(_.host === host).map(_.id))
 }
