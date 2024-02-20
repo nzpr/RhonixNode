@@ -1,4 +1,4 @@
-package slick
+package sim
 
 import cats.effect.kernel.Resource
 import cats.effect.{Async, Sync}
@@ -6,7 +6,10 @@ import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import slick.jdbc.JdbcBackend.Database
 import slick.util.AsyncExecutor
 
-object EmbeddedPgSlickDb {
+// This is straight copy of slick.EmbeddedPgSqlSlickDb.scala in db package.
+// Since it is defined only for tests, it is not accessible in the main code.
+// TODO Maybe it makes sense to move simulation to node tests
+object SlickEmbeddedPgDatabase {
 
   def apply[F[_]: Async]: Resource[F, Database] = {
     val open           = Sync[F].delay(

@@ -222,7 +222,8 @@ class SlickSpec extends AsyncFlatSpec with Matchers with ScalaCheckPropertyCheck
 
 object SlickSpec {
 
-  def embedPgSlick[F[_]: Async]: Resource[F, SlickApi[F]] = EmbeddedPgSqlSlickDb[F].evalMap(SlickApi[F])
+  def embedPgSlick[F[_]: Async]: Resource[F, SlickApi[F]] =
+    SlickEmbeddedPgDatabase[F].evalMap(x => SlickDb(x, PostgresProfile, new PostgresDialect).flatMap(SlickApi[F]))
 
   // Define Arbitrary for ByteArray since it's a custom type and needs specific generation logic
   implicit val byteArrayArbitrary: Arbitrary[ByteArray] = Arbitrary {
