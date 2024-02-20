@@ -1,16 +1,17 @@
-package sim.balances
+package node
 
 import cats.data.OptionT
-import cats.effect.{Async, Sync}
+import cats.effect.Sync
 import cats.syntax.all.*
+import node.DbApiImpl.*
+import node.Hashing.*
+import sdk.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
 import sdk.primitive.ByteArray
-import sim.balances.Hashing.bondsMapDigest
-import sim.balances.dbApiImpl.*
-import sim.balances.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
-import slick.SlickDb
+import sdk.syntax.all.digestSyntax
 import slick.api.*
 
-class dbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
+// TODO move somewhere
+final case class DbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
 
   def saveBlock(b: dproc.data.Block.WithId[ByteArray, ByteArray, BalancesDeploy]): F[Unit] =
     for {
@@ -45,9 +46,9 @@ class dbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
               )
 
       _ <- sApi.blockInsert(block)(
-             justificationSetHash = calcSetHash(block.justificationSet),
+             justificationSetHash = block.justificationSet.digest,
              offencesSetHash = calcSetHash(block.offencesSet),
-             bondsMapHash = bondsMapDigest.digest(b.m.bonds),
+             bondsMapHash = bondsMapDigest.digest(b.m.bonds.bonds),
              finalFringeHash = calcSetHash(block.finalFringe),
              execDeploySetHash = calcSetHash(block.execDeploySet),
              mergeDeploySetHash = calcSetHash(block.mergeDeploySet),
@@ -112,9 +113,7 @@ class dbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
       .value
 }
 
-object dbApiImpl {
-  def apply[F[_]: Async](db: SlickDb): F[dbApiImpl[F]] =
-    Async[F].executionContext.map(ec => new dbApiImpl(new SlickApi(db, ec)))
+object DbApiImpl {
 
   private val ProtocolVersion  = 0
   private val SigAlg           = ""

@@ -1,7 +1,6 @@
-package sim.api.data
+package node
 
 import cats.data.Validated.Valid
-import node.Node
 import node.api.web.Validation
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,9 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import sdk.api.*
 import sdk.api.data.TokenTransferRequest
 import sdk.codecs.Digest
-import sdk.crypto.ECDSA
-import secp256k1.Secp256k1
-import sim.balances.Hashing.*
+import Hashing.*
 
 class TokenTransferValidationSpec extends AnyFlatSpec with Matchers {
 

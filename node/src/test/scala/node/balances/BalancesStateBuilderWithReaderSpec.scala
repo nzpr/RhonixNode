@@ -1,19 +1,24 @@
-package sim.balances
+package node.balances
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
-import sdk.hashing.Blake2b
+import node.BalancesStateBuilderWithReader
+import node.Hashing.*
+import node.Serialization.*
+import node.balances.BalancesStateBuilderWithReaderSpec.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import sdk.api.data.Balance
+import sdk.data.BalancesState
 import sdk.diag.Metrics
+import sdk.hashing.Blake2b
 import sdk.history.ByteArray32
 import sdk.history.History.EmptyRootHash
 import sdk.primitive.ByteArray
-import sdk.store.{ByteArrayKeyValueTypedStore, InMemoryKeyValueStore}
+import sdk.store.{ByteArrayKeyValueTypedStore, HistoryWithValues, InMemoryKeyValueStore}
 import sdk.syntax.all.sdkSyntaxTry
-import sim.balances.BalancesStateBuilderWithReaderSpec.*
-import sim.balances.data.BalancesState
+import BalancesStateBuilderWithReaderSpec.blake2b256Hash
 
 class BalancesStateBuilderWithReaderSpec extends AnyFlatSpec with Matchers {
 
@@ -67,7 +72,9 @@ object BalancesStateBuilderWithReaderSpec {
     implicit val m: Metrics[IO] = Metrics.unit[IO]
 
     (mkHistory, mkValuesStore)
-      .flatMapN { case history -> valueStore => f(BalancesStateBuilderWithReader(history, valueStore)) }
+      .flatMapN { case history -> valueStore =>
+        f(BalancesStateBuilderWithReader(HistoryWithValues(history, valueStore)))
+      }
       .unsafeRunSync()
   }
 }
