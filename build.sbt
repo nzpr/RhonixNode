@@ -113,7 +113,7 @@ lazy val sim = (project in file("sim"))
   //  .settings(settingsScala3*) // Not supported in IntelliJ Scala plugin
   .settings(settingsScala2*)
   .settings(
-    libraryDependencies ++= common,
+    libraryDependencies ++= common :+ embedPgsql,
     version                          := "0.1.0-SNSHOT",
     assembly / mainClass             := Some("sim.NetworkSim"),
     assembly / assemblyJarName       := "sim.jar",
