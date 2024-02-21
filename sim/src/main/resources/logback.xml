@@ -1,3 +1,4 @@
 <configuration>
     <logger name="org.http4s" level="OFF"/>
+    <logger name="slick.jdbc.JdbcBackend" level="OFF"/>
 </configuration>

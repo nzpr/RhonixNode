@@ -21,7 +21,7 @@ class SlickSqlSpec extends AnyFlatSpec with Matchers {
       }
       IO(println(showSql)).as(Succeeded)
     }
-    SlickEmbeddedPgDatabase[IO]
+    EmbeddedPgSlickDb[IO]
       .use(implicit db => SlickDb[IO](db, PostgresProfile, new PostgresDialect).flatMap(y => test(y.profile)))
       .unsafeRunSync()
   }

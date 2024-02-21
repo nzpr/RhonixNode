@@ -11,13 +11,14 @@ final case class Config(
 
 object Config {
   final case class PeerCfg(
-    url: String,
+    host: String,
+    port: Int,
     isSelf: Boolean,
     isValidator: Boolean,
   ) {
-    override def toString = s"""{url: "$url", isSelf: $isSelf, isValidator: $isValidator}"""
+    override def toString = s"""{host: "$host", port: $port, isSelf: $isSelf, isValidator: $isValidator}"""
   }
 
   // Default config has an example value as a basis when filling config manually
-  val Default: Config = Config(List(PeerCfg("url", isSelf = false, isValidator = true)))
+  val Default: Config = Config(List(PeerCfg("host", port = 1234, isSelf = false, isValidator = true)))
 }

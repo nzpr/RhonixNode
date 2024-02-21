@@ -1,6 +1,7 @@
 package sdk.codecs.protobuf
 
 import cats.Eval
+import cats.syntax.all.*
 import com.google.protobuf.CodedOutputStream
 import sdk.codecs.PrimitiveWriter
 
@@ -23,6 +24,10 @@ object ProtoPrimitiveWriter {
       def write(x: Long): Eval[Unit] = Eval.later(output.writeUInt64NoTag(x))
 
       def write(x: String): Eval[Unit] = Eval.later(output.writeStringNoTag(x))
+
+      // This implementation is needed to work around the problem with `traverse_`
+      // See more examples here: https://gist.github.com/nzpr/38f843139224d1de1f0e9d15c75e925c
+      def write[A](x: Seq[A], writeF: A => Eval[Unit]): Eval[Unit] = x.map(writeF).fold(().pure[Eval])(_ *> _)
     }
 
   def encodeWith(write: PrimitiveWriter[Eval] => Eval[Unit]): Eval[Array[Byte]] =

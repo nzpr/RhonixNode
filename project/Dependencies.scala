@@ -13,8 +13,8 @@ object Dependencies {
   )
 
   // Network communication
-  val grpc      = "io.grpc" % "grpc-core"  % "1.53.0"
-  val grpcNetty = "io.grpc" % "grpc-netty" % "1.53.0"
+  val grpc      = "io.grpc" % "grpc-core"  % "1.61.0"
+  val grpcNetty = "io.grpc" % "grpc-netty" % "1.61.0"
 
   // LEGACY dependencies of imported projects
   val protobuf           = "com.google.protobuf"         % "protobuf-java"    % "3.22.2"
@@ -77,7 +77,7 @@ object Dependencies {
   val mockito             = "org.mockito"       %% "mockito-scala-cats" % "1.17.12"  % Test
   val scalacheck_e        = "org.typelevel"     %% "scalacheck-effect"  % "1.0.4"    % Test
   val scalatestScalacheck = "org.scalatestplus" %% "scalacheck-1-17"    % "3.2.16.0" % Test
-  val embedPgsql          = "io.zonky.test"      % "embedded-postgres"  % "2.0.6"    % Test
+  val embedPgsql          = "io.zonky.test"      % "embedded-postgres"  % "2.0.6"
 
   // Diagnostics
   val kamonBundle           = "io.kamon"    %% "kamon-bundle"         % "2.6.1"
@@ -125,7 +125,7 @@ object Dependencies {
   // Cryptography
   val bcprov = "org.bouncycastle" % "bcprov-jdk15on" % "1.68"
 
-  val common = Seq(catsCore, catsEffect, fs2Core, jaxb, kindProjector)
+  val common = Seq(catsCore, catsEffect, fs2Core, jaxb, kindProjector, mouse)
 
   val diagnostics = Seq(kamonBundle, kamonInfluxDbReporter, kamonJaegerReporter, influxDbClient)
 

@@ -13,4 +13,6 @@ trait PrimitiveWriter[F[_]] {
   def write(x: Int): F[Unit]
   def write(x: Long): F[Unit]
   def write(x: String): F[Unit]
+
+  def write[A](x: Seq[A], writeF: A => F[Unit]): F[Unit]
 }
