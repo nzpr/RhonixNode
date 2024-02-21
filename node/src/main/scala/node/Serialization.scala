@@ -3,6 +3,7 @@ package node
 import cats.{Applicative, Monad}
 import cats.syntax.all.*
 import dproc.data.Block
+import node.comm.CommImpl.{BlockHash, BlockHashResponse}
 import sdk.api.data.{Balance, TokenTransferRequest}
 import sdk.codecs.protobuf.ProtoCodec
 import sdk.codecs.{Codec, PrimitiveReader, PrimitiveWriter, Serialize}
@@ -180,4 +181,25 @@ object Serialization {
   // See more examples here: https://gist.github.com/nzpr/38f843139224d1de1f0e9d15c75e925c
   private def serializeSeq[F[_]: Applicative, A: Ordering](l: Seq[A], writeF: A => F[Unit]): F[Unit] =
     l.sorted.map(writeF).fold(().pure[F])(_ *> _)
+
+  implicit def blockHashBroadcastSerialize[F[_]: Monad]: Serialize[F, BlockHash] =
+    new Serialize[F, BlockHash] {
+      override def write(x: BlockHash): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) => w.write(x.msg.bytes)
+
+      override def read: PrimitiveReader[F] => F[BlockHash] = (r: PrimitiveReader[F]) =>
+        for {
+          hash <- r.readBytes
+        } yield BlockHash(ByteArray(hash))
+    }
+
+  implicit def blockHashBroadcastResponseSerialize[F[_]: Monad]: Serialize[F, BlockHashResponse] =
+    new Serialize[F, BlockHashResponse] {
+      override def write(x: BlockHashResponse): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) =>
+        w.write(x.rcvd)
+
+      override def read: PrimitiveReader[F] => F[BlockHashResponse] = (r: PrimitiveReader[F]) =>
+        for {
+          rcvd <- r.readBool
+        } yield BlockHashResponse(rcvd)
+    }
 }
