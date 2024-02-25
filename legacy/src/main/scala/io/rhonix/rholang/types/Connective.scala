@@ -40,14 +40,40 @@ object ConnOrN {
 }
 
 /** The "=..." Binding for Bound variable in pattern matching.
-  * The purpose of VarRef is to provide a mechanism to bind variables to values or processes
-  * within pattern matching structures in Rholang, which is useful for controlling the flow of information
-  * and processes within a Rholang program.
-  * E.g.:
-  * match someProc { =x => x!(*someChannel) }
-  *  or
-  * for(@{=*x} <- someChannel) { x!(*someOtherChannel) }
-  */
+ * @param index the De Bruijn index of the variable which should have been bound above this pattern.
+ * @param depth the CURRENT pattern nesting depth of THIS varRef. This is used for checking in reducer.
+ *
+ * The purpose of VarRef is to provide a mechanism to bind variables to values or processes
+ * within pattern matching structures in Rholang, which is useful for controlling the flow of information
+ * and processes within a Rholang program.
+ * {{{  
+ * // Example with match:
+ *   new x in {
+ *     match *x {
+ *       =*x => true
+ *       _   => false
+ *     }
+ *   }
+ *  // Example with for:
+ *  new x in {
+ *    for(@{=*x} <- @"chan") { x!(Nil) }
+ *  }
+ *  // complex example
+ *    new stdout(`rho:io:stdout`) in {
+ *     match 42 {
+ *       x => {
+ *         @"chan1"!({for(@42 <- @"chan2") { Nil }}) |
+ *         for (@y <- @"chan1") {
+ *           match y {
+ *             {for(@{=x} <- @"chan2") { Nil }} => stdout!("yes")
+ *             _                                => stdout!("no")
+ *           }
+ *         }
+ *       }
+ *     }
+ *   }
+ * }}}
+ */
 final class ConnVarRefN(val index: Int, val depth: Int) extends ConnectiveVarN
 object ConnVarRefN {
   def apply(index: Int, depth: Int): ConnVarRefN = new ConnVarRefN(index, depth)
