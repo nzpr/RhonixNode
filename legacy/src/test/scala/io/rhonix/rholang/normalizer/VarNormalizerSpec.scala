@@ -65,7 +65,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
     }
   }
 
-  it should "throw an exception when trying to add a free variable to the top-level term (not in the pattern)" ignore {
+  it should "throw an exception when trying to add a free variable to the top-level term (not in the pattern)" in {
     forAll { (varName: String) =>
       val term = new PVar(new ProcVarVar(varName))
 
@@ -109,7 +109,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
     par shouldBe WildcardN
   }
 
-  it should "throw an exception when trying to add a wildcard to the top-level term (not in the pattern)" ignore {
+  it should "throw an exception when trying to add a wildcard to the top-level term (not in the pattern)" in {
     val term = new PVar(new ProcVarWildcard)
 
     // Create a mock DSL with the true `isTopLevel` flag (default value).
