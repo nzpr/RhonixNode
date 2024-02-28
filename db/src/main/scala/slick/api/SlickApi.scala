@@ -125,4 +125,6 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
         ),
       ),
     )
+
+  def isBlockExist(hash: ByteArray): F[Boolean] = actions.isBlockExist(hash).run
 }

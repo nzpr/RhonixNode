@@ -35,12 +35,22 @@ object Network {
       val p2pStream = {
         val notSelf = peersWithIdx.filterNot(_._2 == idx).map(_._1)
 
+        val selfDbApiImpl  = DbApiImpl(setup.database)
+        val peersDbApiImpl = peers.map(peerSetup => DbApiImpl(peerSetup.database))
+
         // TODO this is a hack to make block appear in peers databases
         def copyBlockToPeers(hash: ByteArray): F[Unit] = for {
-          bOpt   <- DbApiImpl(setup.database).readBlock(hash)
+          bOpt   <- selfDbApiImpl.readBlock(hash)
           b      <- bOpt.liftTo[F](new Exception(s"Block not found for hash $hash"))
           bWithId = Block.WithId[ByteArray, ByteArray, BalancesDeploy](hash, b)
-          _      <- peers.traverse(peerSetup => DbApiImpl(peerSetup.database).saveBlock(bWithId))
+          _      <- peersDbApiImpl.parTraverse { peerDbImpl =>
+                      peerDbImpl
+                        .isBlockExist(hash)
+                        .ifM(
+                          ifFalse = peerDbImpl.saveBlock(bWithId),
+                          ifTrue = ().pure,
+                        )
+                    }
         } yield ()
 
         setup.dProc.output

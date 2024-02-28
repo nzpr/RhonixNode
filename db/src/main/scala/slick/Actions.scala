@@ -257,6 +257,9 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
       }
     }
 
+  def isBlockExist(hash: ByteArray): DBIOAction[Boolean, NoStream, Read] =
+    queries.blockIdByHash(hash.bytes).result.headOption.map(_.isDefined)
+
   /** DeploySet */
 
   /** Insert a new deploy set in table if there is no such entry. Returned id */

@@ -143,6 +143,10 @@ object Setup {
         genesisPoS.pure[F] // TODO for now PoS is static defined in genesis
     }
 
+    val dbApiImpl = DbApiImpl(database)
+    val saveBlock = dbApiImpl.saveBlock _
+    val readBlock = dbApiImpl.readBlock(_: ByteArray).flatMap(_.liftTo[F](new Exception("Block not found")))
+
     DProc
       .apply[F, ByteArray, ByteArray, BalancesDeploy](
         state.weaverStRef,
@@ -154,8 +158,8 @@ object Setup {
         exeEngine,
         Relation.notRelated[F, BalancesDeploy],
         b => Sync[F].delay(ByteArray(Blake2b.hash256(b.digest.bytes))),
-        DbApiImpl(database).saveBlock,
-        DbApiImpl(database).readBlock(_).flatMap(_.liftTo[F](new Exception("Block not found"))),
+        saveBlock,
+        readBlock,
       )
   })
 

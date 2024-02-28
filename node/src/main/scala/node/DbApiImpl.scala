@@ -91,6 +91,8 @@ final case class DbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
     OptionT(sApi.blockGet(id)).semiflatMap(decode).value
   }
 
+  def isBlockExist(id: ByteArray): F[Boolean] = sApi.isBlockExist(id)
+
   def saveBalancesDeploy(d: BalancesDeploy): F[Unit] = sApi.deployInsert(
     sdk.data.Deploy(
       sig = d.id,
