@@ -62,11 +62,11 @@ final class HistoryChainVarMapOps[T](private val chain: HistoryChain[VarMap[T]])
   def createBoundVars(vars: Seq[(T, SourcePosition)]): Seq[VarContext[T]] = chain.modifyCurrent(_.create(vars))
 
   /**
-   * Searches for a variable in the chain of variable maps and returns the first match along with its depth.
+   * Searches for a variable in the chain of variable maps and returns the first match.
    *
    * @param name the name of the variable.
-   * @return an option containing a tuple with the variable context and its depth if the variable exists, None otherwise.
+   * @return an option containing a tuple with the variable context if the variable exists, None otherwise.
    */
-  def getFirstVarInChain(name: String): Option[(VarContext[T], Int)] =
-    chain.iter.zipWithIndex.toSeq.collectFirstSome { case (boundMap, depth) => boundMap.get(name).map((_, depth)) }
+  def getFirstVarInChain(name: String): Option[VarContext[T]] =
+    chain.iter.toSeq.collectFirstSome(_.get(name))
 }

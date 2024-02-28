@@ -14,7 +14,7 @@ object NegationNormalizer {
   )(implicit nestingInfo: NestingReader): F[ConnNotN] = {
     val pos = SourcePosition(p.line_num, p.col_num)
 
-    if (nestingInfo.insidePattern)
+    if (nestingInfo.patternDepth > 0) // If we inside a pattern
       if (!nestingInfo.insideTopLevelReceivePattern)
         NormalizerRec[F].normalize(p.proc_).map(ConnNotN(_))
       else

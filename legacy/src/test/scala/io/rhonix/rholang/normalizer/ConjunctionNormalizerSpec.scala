@@ -22,7 +22,7 @@ class ConjunctionNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyCheck
       val right = new PGround(new GroundString(s2))
       val term  = new PConjunction(left, right)
 
-      implicit val (mockRec, _, _, _, _, _, _, _, infoReader) = createMockDSL[IO, VarSort](isPattern = true)
+      implicit val (mockRec, _, _, _, _, _, _, _, infoReader) = createMockDSL[IO, VarSort](patternDepth = 1)
 
       val adt = ConjunctionNormalizer.normalizeConjunction[IO](term).unsafeRunSync()
 

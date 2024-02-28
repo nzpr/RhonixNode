@@ -13,9 +13,9 @@ trait BoundVarReader[T] {
   /**
    * Find bound variable across variables of all nesting levels.
    * @param name variable name.
-   * @return bound variable with nesting level or None .
+   * @return bound variable or None .
    */
-  def findBoundVar(name: String): Option[(VarContext[T], Int)]
+  def findBoundVar(name: String): Option[VarContext[T]]
 }
 
 object BoundVarReader {

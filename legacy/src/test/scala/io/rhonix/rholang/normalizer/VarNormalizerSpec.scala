@@ -51,7 +51,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
       val term = new PVar(new ProcVarVar(varName))
 
       // Create a mock DSL with an empty BoundVarMap and FreeVarMap, and with the false `isTopLevel` flag.
-      implicit val (_, _, _, bVR, _, fVW, fVR, _, infoReader) = createMockDSL[IO, VarSort](isPattern = true)
+      implicit val (_, _, _, bVR, _, fVW, fVR, _, infoReader) = createMockDSL[IO, VarSort](patternDepth = 1)
 
       val par = VarNormalizer.normalizeVar[IO, VarSort](term).unsafeRunSync()
 
@@ -87,7 +87,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
       implicit val (_, _, _, bVR, _, fVW, fVR, _, infoReader) = createMockDSL[IO, VarSort](
         // Add a free variable with the same name
         initFreeVars = Map(varName -> (varIndex, NameSort)),
-        isPattern = true,
+        patternDepth = 1,
       )
 
       val thrown = intercept[UnexpectedReuseOfProcContextFree] {
@@ -102,7 +102,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
     val term = new PVar(new ProcVarWildcard)
 
     implicit val (_, _, _, bVR, _, fVW, fVR, _, infoReader) = createMockDSL[IO, VarSort](
-      isPattern = true,
+      patternDepth = 1,
     )
 
     val par = VarNormalizer.normalizeVar[IO, VarSort](term).unsafeRunSync()

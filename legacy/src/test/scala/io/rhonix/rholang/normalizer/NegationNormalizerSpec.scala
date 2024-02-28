@@ -22,7 +22,7 @@ class NegationNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks w
       val term = new PNegation(data)
 
       // Create a mock DSL with the false `isTopLevel` flag.
-      implicit val (nRec, _, _, _, _, _, _, _, infoReader) = createMockDSL[IO, VarSort](isPattern = true)
+      implicit val (nRec, _, _, _, _, _, _, _, infoReader) = createMockDSL[IO, VarSort](patternDepth = 1)
 
       val adt = NegationNormalizer.normalizeNegation[IO](term).unsafeRunSync()
 

@@ -33,9 +33,9 @@ final case class NormalizerRecImpl[F[_]: Sync, T >: VarSort]() extends Normalize
 
   implicit val freeVarScope: FreeVarScope[F] = FreeVarScopeImpl(freeMapChain)
 
-  val patternInfoChain: HistoryChain[(Boolean, Boolean)] = HistoryChain.default[(Boolean, Boolean)]
+  val patternInfoChain: HistoryChain[(Int, Boolean)] = HistoryChain.default[(Int, Boolean)]
   // TODO: Move initialization of internal state to functions on the interface.
-  patternInfoChain.push((false, false))
+  patternInfoChain.push((0, false))
 
   val bundleInfoChain: HistoryChain[Boolean] = HistoryChain.default[Boolean]
   // TODO: Move initialization of internal state to functions on the interface.

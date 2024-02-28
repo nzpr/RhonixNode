@@ -9,6 +9,6 @@ case class MockBoundVarReader[T](boundVars: Map[String, (Int, T)]) extends Bound
 
   override def getBoundVar(name: String): Option[VarContext[T]] = boundVarMap.get(name)
 
-  override def findBoundVar(name: String): Option[(VarContext[T], Int)] =
-    boundVarMap.get(name).map(context => (context, 0)) // Example with level 0
+  override def findBoundVar(name: String): Option[VarContext[T]] =
+    boundVarMap.get(name)
 }

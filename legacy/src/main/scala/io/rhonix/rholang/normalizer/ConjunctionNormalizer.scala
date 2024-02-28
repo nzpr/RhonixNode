@@ -13,7 +13,7 @@ object ConjunctionNormalizer {
   def normalizeConjunction[F[_]: Sync: NormalizerRec](
     p: PConjunction,
   )(implicit nestingInfo: NestingReader): F[ConnAndN] =
-    if (nestingInfo.insidePattern)
+    if (nestingInfo.patternDepth > 0) // If we inside a pattern
       (p.proc_1, p.proc_2)
         .nmap(NormalizerRec[F].normalize)
         .mapN((left, right) => ConnAndN(Seq(left, right)))

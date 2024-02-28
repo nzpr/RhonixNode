@@ -36,7 +36,7 @@ class VarRefNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks wit
 
       val term = new PVarRef(varRefKind, varName)
 
-      implicit val (_, _, _, bWR, _, _, _, _, _) = createMockDSL[IO, VarSort](initBoundVars = InitBoundVarsData)
+      implicit val (_, _, _, bWR, _, _, _, _, nReader) = createMockDSL[IO, VarSort](initBoundVars = InitBoundVarsData)
 
       val adt = VarRefNormalizer.normalizeVarRef[IO, VarSort](term).unsafeRunSync()
 
@@ -55,7 +55,7 @@ class VarRefNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks wit
       }
       val term               = new PVarRef(varRefKind, varName)
 
-      implicit val (_, _, _, bWR, _, _, _, _, _) = createMockDSL[IO, VarSort](
+      implicit val (_, _, _, bWR, _, _, _, _, nReader) = createMockDSL[IO, VarSort](
         initBoundVars = Map.empty,
       )
 
@@ -78,7 +78,7 @@ class VarRefNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks wit
 
       val unexpectedVarType = varType match { case ProcSort => NameSort; case NameSort => ProcSort }
 
-      implicit val (_, _, _, bWR, _, _, _, _, _) = createMockDSL[IO, VarSort](
+      implicit val (_, _, _, bWR, _, _, _, _, nReader) = createMockDSL[IO, VarSort](
         initBoundVars = Map(varName -> (0, unexpectedVarType)),
       )
 
