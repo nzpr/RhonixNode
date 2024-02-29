@@ -2,7 +2,12 @@ package io.rhonix.rholang.normalizer
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import coop.rchain.rholang.interpreter.errors.ReceiveOnSameChannelsError
+import coop.rchain.rholang.interpreter.compiler.{createUniqueVarData, FreeContext, NameSort, SourcePosition, VarSort}
+import coop.rchain.rholang.interpreter.errors.{
+  ReceiveOnSameChannelsError,
+  UnexpectedBundleContent,
+  UnrecognizedNormalizerError,
+}
 import io.rhonix.rholang.ast.rholang.Absyn.*
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
@@ -198,5 +203,240 @@ object InputNormalizer {
         } yield ReceiveN(binds, continuation, persistent, peek, freeVars.size)
       }
     }
+  }
+
+  def normalizeInputNew[
+    F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter,
+    T >: VarSort: BoundVarWriter: BoundVarReader: FreeVarWriter: FreeVarReader,
+  ](p: PInput): F[ParN] = {
+
+    def NormalizePatterns(
+      patterns: Seq[(Seq[Name], NameRemainder)],
+      normalizedSources: Seq[ParN],
+    ): F[Seq[ReceiveBindN]] =
+      (patterns zip normalizedSources)
+        .traverse { case ((names, remainder), source) =>
+          for {
+            initFreeCount <- Sync[F].delay(FreeVarReader[T].getFreeVars.size)
+            rbNames       <- names.traverse(NormalizerRec[F].normalize)
+            rbRemainder   <- NormalizerRec[F].normalize(remainder)
+            freeCount      = FreeVarReader[T].getFreeVars.size - initFreeCount
+          } yield ReceiveBindN(rbNames, source, rbRemainder, freeCount)
+        }
+
+    def createBinds(
+      patterns: Seq[(Seq[Name], NameRemainder)],
+      processedSources: Seq[ParN],
+    ): F[(Seq[ReceiveBindN], Seq[(String, FreeContext[T])])] =
+      for {
+        patternTuple     <- NormalizePatterns(patterns, processedSources).withinPatternGetFreeVars(withinReceive = true)
+        (binds, freeVars) = patternTuple
+
+        duplicatesInSources = processedSources.distinct.size != processedSources.size
+        _                  <- ReceiveOnSameChannelsError(p.line_num, p.col_num).raiseError[F, Unit].whenA(duplicatesInSources)
+      } yield (binds, freeVars)
+
+    case class JoinData(
+      binds: Seq[ReceiveBindN],
+      freeVars: Seq[(String, FreeContext[T])],
+      addSends: Seq[SendN],
+      addNestedSendNames: Seq[String],
+      persistentFlag: Boolean,
+      peekFlag: Boolean,
+    )
+
+    def normalizeJoin(join: Receipt): F[JoinData] = join match {
+      case rl: ReceiptLinear   =>
+        // if we have a linear consume, e.g. `for (ptn1, ptn2, ... <- src1, src2, ...; ...) { inputContinuation }`
+        rl.receiptlinearimpl_ match {
+          case ls: LinearSimple =>
+            val (
+              patterns: Seq[(Seq[Name], NameRemainder)],
+              processedSources: Seq[ParN],
+              addSends: Seq[SendN],
+              addNestedSendNames: Seq[String],
+            ) =
+              ls.listlinearbind_.asScala.toSeq
+                .foldLeftM((Seq[(Seq[Name], NameRemainder)](), Seq[ParN](), Seq[SendN](), Seq[String]())) {
+                  case ((foldPatterns, foldSources, foldAddSends, foldAddNestedSendNames), bind) =>
+                    bind match {
+                      case lbi: LinearBindImpl =>
+                        lbi.namesource_ match {
+
+                          case ss: SimpleSource =>
+                            for {
+                              normalizedSource <- NormalizerRec[F].normalize(ss.name_)
+                            } yield (
+                              foldPatterns :+ (lbi.listname_.asScala.toSeq, lbi.nameremainder_),
+                              foldSources :+ normalizedSource,
+                              foldAddSends,
+                              foldAddNestedSendNames,
+                            )
+
+                          case rss: ReceiveSendSource =>
+                            // NOTE: It is not clear how to get rid of BNFC type generation here
+                            val uniqueVarName = createUniqueVarData(NameSort)._1
+                            val genVar        = new NameVar(uniqueVarName)
+                            for {
+                              normalizedSource <- NormalizerRec[F].normalize(rss.name_)
+                            } yield (
+                              foldPatterns :+ (genVar +: lbi.listname_.asScala.toSeq, lbi.nameremainder_),
+                              foldSources :+ normalizedSource,
+                              foldAddSends,
+                              foldAddNestedSendNames :+ uniqueVarName,
+                            )
+
+                          case srs: SendReceiveSource =>
+                            val newVarIdx = BoundVarWriter[T].createBoundVar(NameSort)
+                            val genSource = BoundVarN(newVarIdx)
+                            for {
+                              sendChan <- NormalizerRec[F].normalize(srs.name_)
+                              sendArgs <- srs.listproc_.asScala.toSeq.traverse(NormalizerRec[F].normalize)
+                            } yield (
+                              foldPatterns :+ (lbi.listname_.asScala.toSeq, lbi.nameremainder_),
+                              foldSources :+ genSource,
+                              foldAddSends :+ SendN(sendChan, genSource +: sendArgs),
+                              foldAddNestedSendNames,
+                            )
+                        }
+                    }
+                }
+
+            for {
+              bindsTuple       <- createBinds(patterns, processedSources)
+              (binds, freeVars) = bindsTuple
+            } yield JoinData(
+              binds = binds,
+              freeVars = freeVars,
+              addSends = addSends,
+              addNestedSendNames = addNestedSendNames,
+              persistentFlag = false,
+              peekFlag = false,
+            )
+        }
+      case rr: ReceiptRepeated =>
+        // if we have a persistent consume, e.g. `for (ptn1, ptn2, ... <= src1, src2, ...) { inputContinuation }`
+        rr.receiptrepeatedimpl_ match {
+          case rs: RepeatedSimple =>
+            val (patterns, sources) = rs.listrepeatedbind_.asScala.toSeq.map { case rbi: RepeatedBindImpl =>
+              ((rbi.listname_.asScala.toSeq, rbi.nameremainder_), rbi.name_)
+            }.unzip
+            for {
+              processedSources <- sources.traverse(NormalizerRec[F].normalize)
+              bindsTuple       <- createBinds(patterns, processedSources)
+              (binds, freeVars) = bindsTuple
+            } yield JoinData(
+              binds = binds,
+              freeVars = freeVars,
+              addSends = Seq(),
+              addNestedSendNames = Seq(),
+              persistentFlag = true,
+              peekFlag = false,
+            )
+        }
+      case rp: ReceiptPeek     =>
+        // if we have a peek consume, e.g. `for (ptn1, ptn2, ... <<- src1, src2, ...) { inputContinuation }`
+        rp.receiptpeekimpl_ match {
+          case ps: PeekSimple =>
+            val (patterns, sources) = ps.listpeekbind_.asScala.toSeq.map { case pbi: PeekBindImpl =>
+              ((pbi.listname_.asScala.toSeq, pbi.nameremainder_), pbi.name_)
+            }.unzip
+            for {
+              processedSources <- sources.traverse(NormalizerRec[F].normalize)
+              bindsTuple       <- createBinds(patterns, processedSources)
+              (binds, freeVars) = bindsTuple
+            } yield JoinData(
+              binds = binds,
+              freeVars = freeVars,
+              addSends = Seq(),
+              addNestedSendNames = Seq(),
+              persistentFlag = false,
+              peekFlag = true,
+            )
+        }
+    }
+
+    def constructResult(
+      joinData: JoinData,
+      continuation: ParN,
+      addNestedSends: Seq[SendN],
+    ): ParN = {
+      val newContinuation = ParN.makeParProc(addNestedSends :+ continuation)
+      val receive         = ReceiveN(
+        joinData.binds,
+        newContinuation,
+        joinData.persistentFlag,
+        joinData.peekFlag,
+        joinData.freeVars.size + joinData.addNestedSendNames.size,
+      )
+      if (joinData.addSends.isEmpty) receive
+      else
+        //  Send-receive sources operations should be normalized before other sources
+        //  to prevent conflicts with bound variables in the new context.
+        NewN(
+          bindCount = joinData.addSends.size,
+          p = ParN.makeParProc(joinData.addSends :+ receive),
+          uri = Seq(),
+          injections = Map[String, ParN](),
+        )
+    }
+
+    def constructNestedSends(chanNames: Seq[String]): Seq[SendN] = chanNames.map { name =>
+      val varIdx = BoundVarReader[T].getBoundVar(name).get.index
+      SendN(BoundVarN(varIdx), NilN)
+    }
+
+    /**
+     * This function is used to process multiple receipts (joins) by normalizing them separately and then combining them.
+     * {{{
+     *   // Input: Two joins: `for (join1 ; join2) {Nil}`
+     *  for(x1 <- @"ch11" & y1 <- @"ch12" & ... ;
+     *      x2 <= @"ch21" & y2 <= @"ch22" & ... ) {
+     *    Nil
+     *  }
+     *
+     *  // Output: Normalized AST with two nested binds: `for(join1) { for(join2) {Nil} }`
+     *  for(x1 <- @"ch11" & y1 <- @"ch12" & ... ) {
+     *    for(x2 <= @"ch21" & y2 <= @"ch22" & ... ) {
+     *      Nil
+     *    }
+     *  }
+     * }}}
+     *
+     * @param joins A sequence of Receipt objects that need to be processed.
+     * @return A tuple containing the first Receipt from the input sequence and a Proc object representing the continuation of the input.
+     *         The continuation is created by folding the tail of the input sequence from right to left,
+     *         creating a new ListReceipt for each Receipt and adding it to a new PInput along with the current Proc.
+     */
+    def normalizeJoins(firstJoin: Receipt, restJoins: Seq[Receipt], continuation: Proc): F[ParN] =
+      // Each level of the recursion must be wrapped in a copy of the bound variable scope.
+      // Because we create new bound variables during join normalization, we need to ensure that
+      // the new variables are not visible in previous levels of the recursion.
+      BoundVarScope[F].withCopyBoundVarScope(for {
+        joinData <- normalizeJoin(firstJoin)
+
+        processContinuation =
+          for {
+            newContinuation <- if (restJoins.isEmpty) NormalizerRec[F].normalize(continuation)
+                               else normalizeJoins(restJoins.head, restJoins.tail, continuation)
+            addNestedSends   = constructNestedSends(joinData.addNestedSendNames)
+          } yield (newContinuation, addNestedSends)
+
+        continuationTuple                <- processContinuation.withAbsorbedFreeVars(joinData.freeVars)
+        (newContinuation, addNestedSends) = continuationTuple
+
+      } yield constructResult(joinData, newContinuation, addNestedSends))
+
+    def noJoinsError: F[Unit] = UnrecognizedNormalizerError(
+      s"Receive should contain at least one join: ${SourcePosition(p.line_num, p.col_num)}.",
+    ).raiseError
+
+    for {
+      joins <- Sync[F].delay(p.listreceipt_.asScala.toSeq)
+
+      _ <- noJoinsError.whenA(joins.isEmpty) // if joins empty, throw exception
+
+      res <- normalizeJoins(joins.head, joins.tail, p.proc_)
+    } yield res
   }
 }

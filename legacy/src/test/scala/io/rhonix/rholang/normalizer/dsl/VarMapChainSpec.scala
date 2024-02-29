@@ -27,20 +27,20 @@ class VarMapChainSpec extends AnyFlatSpec with Matchers {
     val chain   = VarMapChain[IO, String](Seq(InitMap1, InitMap2))
     val _       = chain.putVar(NewName, Sort, Pos)
     val result  = chain.iter.toSeq
-    result shouldBe Seq(InitMap1, InitMap2.put(NewName, Sort, Pos))
+    result shouldBe Seq(InitMap1, InitMap2.put(NewName, Sort, Pos)._1)
   }
 
   it should "return the correct index of the added variable" in {
     val NewName     = "newVar"
     val chain       = VarMapChain[IO, String](Seq(InitMap1, InitMap2))
     val idx         = chain.putVar(NewName, Sort, Pos)
-    val expectedIdx = InitMap2.put(NewName, Sort, Pos).get(NewName).get.index
+    val expectedIdx = InitMap2.put(NewName, Sort, Pos)._2
     idx shouldBe expectedIdx
   }
 
   it should "retrieve a variable from the current variable map" in {
     val NewName     = "newVar"
-    val initMap2New = InitMap2.put(NewName, Sort, Pos)
+    val initMap2New = InitMap2.put(NewName, Sort, Pos)._1
     val chain       = VarMapChain[IO, String](Seq(InitMap1, initMap2New))
     val result      = chain.getVar(NewName)
     result shouldBe initMap2New.get(NewName)
@@ -48,7 +48,7 @@ class VarMapChainSpec extends AnyFlatSpec with Matchers {
 
   it should "return None if the variable does not exist in the last var map" in {
     val Name   = "NotExistingName"
-    val chain  = VarMapChain[IO, String](Seq(InitMap1.put(Name, Sort, Pos), InitMap2))
+    val chain  = VarMapChain[IO, String](Seq(InitMap1.put(Name, Sort, Pos)._1, InitMap2))
     val result = chain.getVar(Name)
     result shouldBe None
   }
@@ -56,8 +56,8 @@ class VarMapChainSpec extends AnyFlatSpec with Matchers {
   it should "search for a variable in the chain of variable maps and return the first match along with its depth" in {
     val NewName1    = "newVar1"
     val NewName2    = "newVar2"
-    val InitMap1New = InitMap1.put(NewName1, Sort, Pos)
-    val InitMap2New = InitMap2.put(NewName2, Sort, Pos)
+    val InitMap1New = InitMap1.put(NewName1, Sort, Pos)._1
+    val InitMap2New = InitMap2.put(NewName2, Sort, Pos)._1
     val chain       = VarMapChain[IO, String](Seq(InitMap1New, InitMap2New))
     val result1     = chain.getFirstVarInChain(NewName1)
     val result2     = chain.getFirstVarInChain(NewName2)
