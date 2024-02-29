@@ -5,7 +5,6 @@ import cats.effect.std.Console
 import cats.effect.{Async, Sync}
 import cats.syntax.all.*
 import fs2.Stream
-import node.comm.CommImpl
 import sdk.crypto.ECDSA
 import sdk.data.{BalancesDeploy, BalancesState}
 import sdk.diag.Metrics
@@ -37,7 +36,7 @@ object Node {
           .mkGenesisBlock[F](id, genesisPoS, genesisBalances, setup.balancesShard)
           .flatMap { genesisM =>
             DbApiImpl(setup.database).saveBlock(genesisM) *>
-              setup.ports.sendToInput(CommImpl.BlockHash(genesisM.id)) *>
+              setup.ports.sendToInput(genesisM.id) *>
               Sync[F].delay(sdk.log.Logger.console.info(s"Genesis block created with hash ${genesisM.id}"))
           },
       )

@@ -8,20 +8,21 @@ import cats.syntax.all.*
 import diagnostics.metrics.InfluxDbBatchedMetrics
 import dproc.DProc
 import dproc.DProc.ExeEngine
+import dproc.data.Block
 import node.Codecs.*
 import node.Hashing.*
 import node.Node.BalancesShardName
 import node.api.web.PublicApiJson
 import node.api.web.https4s.RouterFix
 import node.api.{web, ExternalApiSlickImpl}
-import node.comm.CommImpl.{BlockHash, BlockHashResponse}
-import node.comm.{CommImpl, PeerTable}
+import node.comm.PeerTable
 import node.lmdb.LmdbStoreManager
-import node.rpc.GrpcServer
+import node.rpc.syntax.all.grpcClientSyntax
+import node.rpc.{GrpcChannelsManager, GrpcClient, GrpcServer}
 import node.state.StateManager
 import org.http4s.HttpRoutes
 import org.http4s.server.Server
-import sdk.api.ExternalApi
+import sdk.api.{BlockEndpoint, ExternalApi}
 import sdk.api.data.Balance
 import sdk.comm.Peer
 import sdk.data.BalancesDeploy
@@ -38,9 +39,11 @@ import slick.api.SlickApi
 import slick.jdbc.JdbcBackend.DatabaseDef
 import slick.jdbc.PostgresProfile
 import slick.migration.api.PostgresDialect
+import slick.syntax.all.slickApiSyntax
 import weaver.WeaverState
 import weaver.data.FinalData
 
+import java.net.SocketAddress
 import java.nio.file.Path
 
 /** Node setup. */
@@ -70,8 +73,8 @@ final case class Setup[F[_]](
 
 // Not to use in production. Ports that can be used to bypass API servers to call directly in simulation.
 final case class Ports[F[_]](
-  inHash: fs2.Stream[F, BlockHash],
-  sendToInput: BlockHash => F[Unit],
+  inHash: fs2.Stream[F, ByteArray],
+  sendToInput: (ByteArray, SocketAddress) => F[Unit],
 )
 
 object Setup {
@@ -194,8 +197,7 @@ object Setup {
     // connect to the database
     database          <- database[F](dbDef)
     // load node configuration
-    // cfg                <- node.Config.load[F](database) TODO load
-    cfg                = (node.Config.Default, diagnostics.metrics.Config.Default, comm.Config.Default)
+    cfg               <- node.Config.load[F](database)
     (nCfg, mCfg, cCfg) = cfg
     // metrics
     metrics           <- metrics(nCfg.enableInfluxDb, mCfg, id.toHex)
@@ -215,27 +217,34 @@ object Setup {
     // web server
     webServer         <- webServer[F](nCfg.webApi.host, nCfg.webApi.port + idx, nCfg.devMode, extApiImpl)
     // port for input blocks
-    inBlockQ          <- Resource.eval(Queue.unbounded[F, BlockHash])
+    inBlockQ          <- Resource.eval(Queue.unbounded[F, (ByteArray, SocketAddress)])
     // grpc server
-    grpcSrv           <- {
-      val receive = inBlockQ.tryOffer(_: BlockHash).map(BlockHashResponse)
-      val bep     = CommImpl.blockHashExchangeProtocol[F](receive)
-      GrpcServer.apply[F](nCfg.gRpcPort + idx, bep)
-    }
+    grpcChManager     <- GrpcChannelsManager[F]
+    grpcSrv           <-
+      GrpcServer.apply[F](nCfg.gRpcPort + idx, inBlockQ.tryOffer(_, _), (h, _) => DbApiImpl(database).readBlock(h))
     // peerTable
     peerTable         <- { implicit val db: SlickApi[F] = database; Resource.eval(PeerTable(cCfg)) }
     // core logic
     dProc             <- {
-      implicit val m: Metrics[F] = metrics;
+      implicit val m: Metrics[F] = metrics
       val deploysWithDummy       = (dPool.toMap.map(_.values.toSet), dummyDeploys).mapN(_ ++ _)
       dProc(id, nodeState, balancesShard, genesisPoS, database, deploysWithDummy)
     }
   } yield {
     // This `pullIncoming` in real node should contain messages received by API server (grpc)
-    val inHashes     = fs2.Stream.fromQueueUnterminated(inBlockQ)
-    val pullIncoming = inHashes.evalTap(x => dProc.acceptMsg(x.msg))
+    val inHashes = fs2.Stream.fromQueueUnterminated(inBlockQ)
 
-    val ports = Ports(pullIncoming, inBlockQ.offer)
+    def fetchBlock(hash: ByteArray, socketAddress: SocketAddress): F[Unit] = {
+      implicit val x: GrpcChannelsManager[F] = grpcChManager
+      import Serialization.*
+      GrpcClient[F]
+        .callEndpoint[ByteArray, Block[ByteArray, ByteArray, BalancesDeploy]](BlockEndpoint, hash, socketAddress)
+        .flatMap(block => DbApiImpl(database).saveBlock(Block.WithId(hash, block)))
+    }
+
+    val pullIncoming = inHashes.evalTap((fetchBlock _).tupled).map(_._1).evalTap(dProc.acceptMsg)
+
+    val ports = Ports(pullIncoming, inBlockQ.offer(_, _))
 
     Setup(
       database,

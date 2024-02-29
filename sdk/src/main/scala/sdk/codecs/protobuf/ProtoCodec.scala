@@ -2,7 +2,7 @@ package sdk.codecs.protobuf
 
 import cats.Applicative
 import cats.syntax.all.*
-import com.google.protobuf.CodedOutputStream
+import com.google.protobuf.{CodedInputStream, CodedOutputStream}
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
 import scala.util.Using

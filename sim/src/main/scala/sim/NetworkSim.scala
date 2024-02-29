@@ -5,6 +5,7 @@ import cats.effect.std.Random
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
 import node.Setup
+import sdk.comm.Peer
 import sdk.data.BalancesState
 import sdk.hashing.Blake2b
 import sdk.primitive.ByteArray
@@ -103,6 +104,8 @@ object NetworkSim extends IOApp {
               SlickPgDatabase[IO](
                 _root_.db.Config.Default.copy(dbUrl = s"${_root_.db.Config.Default.dbUrl}_${idx + 1}"),
               )
+            // populate database with peers
+            val peers: List[Peer]          = ???
             Setup.all[IO](db, id, genesisPoS, node.Main.randomDeploys[IO](users, netCfg.txPerBlock), idx)
           }
           .map(setups => Network.apply[IO](setups, genesisPoS, genesisBalances, netCfg))

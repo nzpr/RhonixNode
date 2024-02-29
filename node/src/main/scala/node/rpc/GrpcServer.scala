@@ -4,23 +4,33 @@ import cats.effect.kernel.Async
 import cats.effect.std.Dispatcher
 import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
+import dproc.data.Block
 import io.grpc.*
 import io.grpc.netty.NettyServerBuilder
-import node.comm.CommImpl.{BlockHash, BlockHashResponse}
-import sdk.comm.CommProtocol
+import node.Serialization.*
+import sdk.api.{BlockEndpoint, BlockHashEndpoint}
+import sdk.data.BalancesDeploy
 import sdk.log.Logger
+import sdk.primitive.ByteArray
+
+import java.net.SocketAddress
 
 object GrpcServer {
   def apply[F[_]: Async](
     port: Int,
-    blockExchangeProtocol: CommProtocol[F, BlockHash, BlockHashResponse],
+    hashRcvF: (ByteArray, SocketAddress) => F[Boolean],
+    blockResolve: (ByteArray, SocketAddress) => F[Option[Block[ByteArray, ByteArray, BalancesDeploy]]],
   ): Resource[F, Server] =
     Dispatcher.sequential[F].flatMap { dispatcher =>
       val serviceDefinition: ServerServiceDefinition = ServerServiceDefinition
         .builder(sdk.api.RootPathString)
         .addMethod(
-          GrpcMethod(blockExchangeProtocol),
-          mkMethodHandler(blockExchangeProtocol, dispatcher),
+          GrpcMethod[ByteArray, Boolean](BlockHashEndpoint),
+          mkMethodHandler(hashRcvF, dispatcher),
+        )
+        .addMethod(
+          GrpcMethod[ByteArray, Option[Block[ByteArray, ByteArray, BalancesDeploy]]](BlockEndpoint),
+          mkMethodHandler(blockResolve, dispatcher),
         )
         .build()
 
@@ -36,7 +46,7 @@ object GrpcServer {
     }
 
   private def mkMethodHandler[F[_], Req, Resp](
-    definition: CommProtocol[F, Req, Resp],
+    callback: (Req, SocketAddress) => F[Resp], // request and remote address
     dispatcher: Dispatcher[F],
   ): ServerCallHandler[Req, Resp] = new ServerCallHandler[Req, Resp] {
     override def startCall(
@@ -44,6 +54,9 @@ object GrpcServer {
       headers: Metadata,
     ): ServerCall.Listener[Req] = {
       Logger.console.info(s"SERVER_START_CALL: ${call.getMethodDescriptor}")
+      val remoteAddr = call.getAttributes.get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR)
+      Logger.console.info(s"CALLER ADDR: $remoteAddr")
+
       Logger.console.info(s"SERVER_START_CALL: $headers")
 
       // Number of messages to read next from the response (default is no read at all)
@@ -53,7 +66,7 @@ object GrpcServer {
         override def onMessage(message: Req): Unit = {
           Logger.console.info(s"SERVER_ON_MESSAGE: $message")
           call.sendHeaders(headers)
-          val result = dispatcher.unsafeRunSync(definition.callback(message))
+          val result = dispatcher.unsafeRunSync(callback(message, remoteAddr))
           call.sendMessage(result)
           Logger.console.info(s"SERVER_SENT_RESPOND_MSG")
           call.close(Status.OK, headers)

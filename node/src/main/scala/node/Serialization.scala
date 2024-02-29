@@ -3,7 +3,6 @@ package node
 import cats.syntax.all.*
 import cats.{Applicative, Monad}
 import dproc.data.Block
-import node.comm.CommImpl.{BlockHash, BlockHashResponse}
 import sdk.api.data.{Balance, TokenTransferRequest}
 import sdk.codecs.{PrimitiveReader, PrimitiveWriter, Serialize}
 import sdk.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
@@ -181,24 +180,38 @@ object Serialization {
   private def serializeSeq[F[_]: Applicative, A: Ordering](l: Seq[A], writeF: A => F[Unit]): F[Unit] =
     l.sorted.map(writeF).fold(().pure[F])(_ *> _)
 
-  implicit def blockHashBroadcastSerialize[F[_]: Monad]: Serialize[F, BlockHash] =
-    new Serialize[F, BlockHash] {
-      override def write(x: BlockHash): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) => w.write(x.msg.bytes)
+  implicit def byteArraySerialize[F[_]: Monad]: Serialize[F, ByteArray] =
+    new Serialize[F, ByteArray] {
+      override def write(x: ByteArray): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) => w.write(x.bytes)
 
-      override def read: PrimitiveReader[F] => F[BlockHash] = (r: PrimitiveReader[F]) =>
+      override def read: PrimitiveReader[F] => F[ByteArray] = (r: PrimitiveReader[F]) =>
         for {
           hash <- r.readBytes
-        } yield BlockHash(ByteArray(hash))
+        } yield ByteArray(hash)
     }
 
-  implicit def blockHashBroadcastResponseSerialize[F[_]: Monad]: Serialize[F, BlockHashResponse] =
-    new Serialize[F, BlockHashResponse] {
-      override def write(x: BlockHashResponse): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) =>
-        w.write(x.rcvd)
+  implicit def booleanSerialize[F[_]: Monad]: Serialize[F, Boolean] =
+    new Serialize[F, Boolean] {
+      override def write(x: Boolean): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) => w.write(x)
 
-      override def read: PrimitiveReader[F] => F[BlockHashResponse] = (r: PrimitiveReader[F]) =>
+      override def read: PrimitiveReader[F] => F[Boolean] = (r: PrimitiveReader[F]) =>
         for {
           rcvd <- r.readBool
-        } yield BlockHashResponse(rcvd)
+        } yield rcvd
+    }
+
+  implicit def optional[F[_]: Monad, A](implicit serializeA: Serialize[F, A]): Serialize[F, Option[A]] =
+    new Serialize[F, Option[A]] {
+      override def write(x: Option[A]): PrimitiveWriter[F] => F[Unit] = (w: PrimitiveWriter[F]) =>
+        x match {
+          case Some(a) => w.write(true) *> serializeA.write(a)(w)
+          case None    => w.write(false)
+        }
+
+      override def read: PrimitiveReader[F] => F[Option[A]] = (r: PrimitiveReader[F]) =>
+        for {
+          exists <- r.readBool
+          a      <- if (exists) serializeA.read(r).map(Some(_)) else None.pure[F]
+        } yield a
     }
 }

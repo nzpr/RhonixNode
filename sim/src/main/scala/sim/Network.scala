@@ -7,9 +7,8 @@ import cats.effect.std.Console
 import cats.syntax.all.*
 import dproc.data.Block
 import fs2.{Pipe, Stream}
-import node.comm.CommImpl
-import node.comm.CommImpl.BlockHash
 import node.{DbApiImpl, Genesis, NodeSnapshot, Setup}
+import sdk.comm.Peer
 import sdk.data.{BalancesDeploy, BalancesState}
 import sdk.diag.Metrics
 import sdk.primitive.ByteArray
@@ -20,23 +19,23 @@ import scala.concurrent.duration.{Duration, DurationInt}
 object Network {
 
   def apply[F[_]: Async: Parallel: Console](
-    peers: List[Setup[F]],
+    peers: Map[Peer, Setup[F]],
     genesisPosState: FinalData[ByteArray],
     genesisBalancesState: BalancesState,
     netCfg: sim.Config,
   ): fs2.Stream[F, Unit] = {
 
     def broadcast(peers: List[Setup[F]], delay: Duration): Pipe[F, ByteArray, Unit] =
-      _.evalMap(m => Temporal[F].sleep(delay) *> peers.traverse_(_.ports.sendToInput(BlockHash(m)).void))
+      _.evalMap(m => Temporal[F].sleep(delay) *> peers.traverse_(_.ports.sendToInput(m).void))
 
     val peersWithIdx = peers.zipWithIndex
 
-    val streams = peersWithIdx.map { case setup -> idx =>
+    val streams = peersWithIdx.toList.map { case (_, setup) -> idx =>
       val p2pStream = {
-        val notSelf = peersWithIdx.filterNot(_._2 == idx).map(_._1)
+        val notSelf = peersWithIdx.filterNot(_._2 == idx).map(_._1._2).toList
 
         val selfDbApiImpl  = DbApiImpl(setup.database)
-        val peersDbApiImpl = peers.map(peerSetup => DbApiImpl(peerSetup.database))
+        val peersDbApiImpl = peers.toList.map { case (_, peerSetup) => DbApiImpl(peerSetup.database) }
 
         // TODO this is a hack to make block appear in peers databases
         def copyBlockToPeers(hash: ByteArray): F[Unit] = for {
@@ -68,7 +67,7 @@ object Network {
     }
 
     val logDiag: Stream[F, Unit] = {
-      val streams = peers.map { p =>
+      val streams = peers.toList.map { case (_, p) =>
         NodeSnapshot
           .stream(p.stateManager, p.dProc.finStream)
           .map(List(_))
@@ -86,7 +85,7 @@ object Network {
     val simStream: Stream[F, Unit] = Stream.emits(streams).parJoin(streams.size)
 
     val mkGenesis: Stream[F, Unit] = {
-      val genesisCreator: Setup[F] = peers.head
+      val genesisCreator: Setup[F] = peers.head._2
       implicit val m: Metrics[F]   = Metrics.unit
       Stream.eval(
         Genesis
@@ -98,7 +97,7 @@ object Network {
           )
           .flatMap { genesisM =>
             DbApiImpl(genesisCreator.database).saveBlock(genesisM) *>
-              genesisCreator.ports.sendToInput(CommImpl.BlockHash(genesisM.id)) *>
+              genesisCreator.ports.sendToInput(genesisM.id) *>
               Sync[F].delay(println(s"Genesis block created"))
           },
       )
