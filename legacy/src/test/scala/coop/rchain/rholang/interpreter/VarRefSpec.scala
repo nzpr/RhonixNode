@@ -1,10 +1,13 @@
 package coop.rchain.rholang.interpreter
 
-import cats.effect.IO
+import cats.Parallel
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Async, IO, Sync}
+import cats.implicits.*
 import coop.rchain.metrics
-import coop.rchain.metrics.{Metrics, NoopSpan, Span}
+import coop.rchain.metrics.*
 import coop.rchain.models.Expr.ExprInstance.GString
+import coop.rchain.models.rholang.RhoType.RhoBoolean
 import coop.rchain.models.rholang.implicits.*
 import coop.rchain.rholang.Resources.mkRuntime
 import coop.rchain.rholang.interpreter.errors.InterpreterError
@@ -24,13 +27,13 @@ class VarRefSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers
          #  match 42 {
          #    x => {
          #      match 42 {
-         #        =x => @"${outcomeCh}"!(true)
-         #        _  => @"${outcomeCh}"!(false)
+         #        =x => @"$OutcomeCh"!(true)
+         #        _  => @"$OutcomeCh"!(false)
          #      }
          #    }
          #  }
          # """.stripMargin('#')
-    testExecute(term).unsafeRunSync() should equal(Right(true))
+    testExecute[IO](term).timeout(MaxDuration).unsafeRunSync() should equal(Right(true))
   }
 
   it should "match in two level depth pattern" in {
@@ -39,37 +42,38 @@ class VarRefSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers
          #  match 42 {
          #    x => {
          #      match {for(@42 <- @Nil) {Nil}} {
-         #        {for(@{=x} <- @Nil) { Nil }} => @"${outcomeCh}"!(true)
-         #        _                            => @"${outcomeCh}"!(false)
+         #        {for(@{=x} <- @Nil) { Nil }} => @"$OutcomeCh"!(true)
+         #        _                            => @"$OutcomeCh"!(false)
          #      }
          #    }
          #  }
          # """.stripMargin('#')
-    testExecute(term).unsafeRunSync() should equal(Right(true))
+    testExecute[IO](term).timeout(MaxDuration).unsafeRunSync() should equal(Right(true))
   }
 }
 
 object VarRefSpec {
-  implicit val logF: Log[IO]            = Log.log[IO]
-  implicit val noopMetrics: Metrics[IO] = new metrics.Metrics.MetricsNOP[IO]
-  implicit val noopSpan: Span[IO]       = NoopSpan[IO]()
-  private val maxDuration               = 5.seconds
+  val MaxDuration: FiniteDuration = 5.seconds
+  val OutcomeCh                   = "ret"
 
-  val outcomeCh      = "ret"
-  val reduceErrorMsg = "Error: index out of bound: -1"
-
-  private def testExecute(source: String): IO[Either[InterpreterError, Boolean]] =
-    mkRuntime[IO]("rholang-variable-reference")
+  private def testExecute[F[_]: Sync: Async: Parallel](
+    source: String,
+  ): F[Either[InterpreterError, Boolean]] = {
+    implicit val logF: Log[F]            = Log.log[F]
+    implicit val noopMetrics: Metrics[F] = new metrics.Metrics.MetricsNOP[F]
+    implicit val noopSpan: Span[F]       = NoopSpan[F]()
+    mkRuntime[F]("rholang-variable-reference")
       .use { runtime =>
         for {
           evalResult <- runtime.evaluate(source)
           result     <- if (evalResult.errors.isEmpty)
                           for {
-                            data      <- runtime.getData(GString(outcomeCh)).map(_.head)
-                            boolResult = data.a.pars.head.exprs.head.getGBool
+                            data                       <- runtime.getData(GString(OutcomeCh)).map(_.head)
+                            Seq(RhoBoolean(boolResult)) = data.a.pars
                           } yield Right(boolResult)
-                        else IO.pure(Left(evalResult.errors.head))
+                        else Async[F].pure(Left(evalResult.errors.head))
         } yield result
       }
-      .timeout(maxDuration)
+  }
+
 }
