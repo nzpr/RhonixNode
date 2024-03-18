@@ -2,7 +2,7 @@ package coop.rchain.rholang.interpreter
 
 import cats.Parallel
 import cats.effect.unsafe.implicits.global
-import cats.effect.{Async, IO, Sync}
+import cats.effect.{Async, IO}
 import cats.implicits.*
 import coop.rchain.metrics
 import coop.rchain.metrics.*
@@ -21,6 +21,7 @@ import scala.concurrent.duration.*
 
 class VarRefSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with Matchers {
   import VarRefSpec.*
+
   "Rholang VarRef" should "match in single level depth pattern" in {
     val term =
       s"""
@@ -56,12 +57,13 @@ object VarRefSpec {
   val MaxDuration: FiniteDuration = 5.seconds
   val OutcomeCh                   = "ret"
 
-  private def testExecute[F[_]: Sync: Async: Parallel](
+  private def testExecute[F[_]: Async: Parallel](
     source: String,
   ): F[Either[InterpreterError, Boolean]] = {
     implicit val logF: Log[F]            = Log.log[F]
     implicit val noopMetrics: Metrics[F] = new metrics.Metrics.MetricsNOP[F]
     implicit val noopSpan: Span[F]       = NoopSpan[F]()
+
     mkRuntime[F]("rholang-variable-reference")
       .use { runtime =>
         for {
@@ -71,7 +73,7 @@ object VarRefSpec {
                             data                       <- runtime.getData(GString(OutcomeCh)).map(_.head)
                             Seq(RhoBoolean(boolResult)) = data.a.pars
                           } yield Right(boolResult)
-                        else Async[F].pure(Left(evalResult.errors.head))
+                        else Left(evalResult.errors.head).pure[F]
         } yield result
       }
   }
