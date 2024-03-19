@@ -7,7 +7,7 @@ import coop.rchain.rspace.hashing.Blake2b256Hash
 import coop.rchain.rspace.state.RSpaceExporter
 import coop.rchain.rspace.state.RSpaceExporter.*
 import coop.rchain.shared.{Log, Stopwatch}
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 object RSpaceExporterItems {
 

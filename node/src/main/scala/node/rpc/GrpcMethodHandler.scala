@@ -2,7 +2,7 @@ package node.rpc
 
 import cats.effect.std.Dispatcher
 import io.grpc.{Metadata, ServerCall, ServerCallHandler, Status}
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 
 object GrpcMethodHandler {
   def apply[F[_], Req, Resp](

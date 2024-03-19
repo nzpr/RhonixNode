@@ -11,7 +11,7 @@ import coop.rchain.shared.{Log, Serialize, Stopwatch}
 import coop.rchain.store.{KeyValueStore, LmdbStoreManager}
 import fs2.Stream
 import scodec.bits.ByteVector
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 import java.nio.file.Path
 

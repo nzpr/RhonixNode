@@ -2,11 +2,11 @@ package coop.rchain.shared
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import sdk.log.LogSource
 
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import scala.jdk.CollectionConverters.IteratorHasAsScala
+import sdk.diag.Log.*
 
 object PathOps {
 
@@ -45,7 +45,7 @@ object PathOps {
     }
 
   implicit class PathDelete(path: Path) {
-    def deleteDirectory[F[_]: Sync: Log]()(implicit logSource: LogSource): F[Unit] = {
+    def deleteDirectory[F[_]: Sync: Log](): F[Unit] = {
       import cats.syntax.all.*
 
       import java.io.File
@@ -86,7 +86,7 @@ object PathOps {
       } yield ()
     }
 
-    def deleteSingleFile[F[_]: Sync: Log]()(implicit logSource: LogSource): F[Unit] = {
+    def deleteSingleFile[F[_]: Sync: Log](): F[Unit] = {
       import coop.rchain.catscontrib.Catscontrib.ToBooleanOpsFromBoolean
 
       def delete(): F[Unit] =

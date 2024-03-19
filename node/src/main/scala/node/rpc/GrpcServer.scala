@@ -10,7 +10,7 @@ import io.grpc.netty.NettyServerBuilder
 import sdk.serialize.auto.*
 import sdk.api.{BlockEndpoint, BlockHashEndpoint, LatestBlocksEndpoint}
 import sdk.data.{BalancesDeploy, HostWithPort}
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 import sdk.primitive.ByteArray
 
 object GrpcServer {

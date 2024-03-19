@@ -11,7 +11,7 @@ import coop.rchain.rspace.internal.*
 import coop.rchain.rspace.trace.*
 import coop.rchain.shared.syntax.*
 import coop.rchain.shared.{Log, Serialize}
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 import scala.collection.SortedSet
 import scala.jdk.CollectionConverters.*
@@ -29,8 +29,6 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     with IReplaySpace[F, C, P, A, K] {
 
   override protected def logF: Log[F] = Log[F]
-
-  override protected[this] val logger: Logger = Logger[this.type]
 
   implicit protected[this] lazy val MetricsSource: Metrics.Source =
     Metrics.Source(RSpaceMetricsSource, "replay")

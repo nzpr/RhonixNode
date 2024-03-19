@@ -9,7 +9,7 @@ import node.rpc.{GrpcChannelsManager, GrpcClient}
 import sdk.crypto.ECDSA
 import sdk.data.{BalancesState, HostWithPort}
 import sdk.diag.Metrics
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 import sdk.primitive.ByteArray
 import secp256k1.Secp256k1
 import weaver.data.FinalData

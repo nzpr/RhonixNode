@@ -7,7 +7,7 @@ import coop.rchain.rspace.internal.*
 import coop.rchain.rspace.trace.*
 import coop.rchain.rspace.util.ReplayException
 import coop.rchain.shared.Log
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 trait IReplaySpace[F[_], C, P, A, K] extends ISpace[F, C, P, A, K] {
 
@@ -61,7 +61,7 @@ trait IReplaySpace[F[_], C, P, A, K] extends ISpace[F, C, P, A, K] {
         ifFalse = {
           val msg =
             s"Unused COMM event: replayData multimap has ${replayData.size} elements left"
-          logF.error(msg) >> logF.error(replayData.toString) >> syncF.raiseError[Unit](
+          logErrorF(msg) >> logErrorF(replayData.toString) >> syncF.raiseError[Unit](
             new ReplayException(msg),
           )
         },

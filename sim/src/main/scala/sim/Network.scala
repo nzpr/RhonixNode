@@ -18,7 +18,6 @@ object Network {
     peers: List[Setup[F]],
     genesisPosState: FinalData[ByteArray],
     genesisBalancesState: BalancesState,
-    netCfg: sim.Config,
   ): fs2.Stream[F, Unit] = {
     val streams = peers.map(_.nodeStream)
 

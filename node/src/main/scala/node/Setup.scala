@@ -30,7 +30,7 @@ import sdk.data.{BalancesDeploy, HostWithPort}
 import sdk.diag.Metrics
 import sdk.hashing.Blake2b
 import sdk.history.History
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 import sdk.merging.MergeLogicForPayments.mergeRejectNegativeOverflow
 import sdk.merging.Relation
 import sdk.primitive.ByteArray

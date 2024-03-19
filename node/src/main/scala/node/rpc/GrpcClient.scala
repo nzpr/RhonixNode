@@ -2,7 +2,7 @@ package node.rpc
 
 import cats.effect.{Async, Sync}
 import io.grpc.*
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 
 import scala.concurrent.Promise
 

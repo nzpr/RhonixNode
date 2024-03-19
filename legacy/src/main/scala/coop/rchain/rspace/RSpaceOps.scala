@@ -12,7 +12,7 @@ import coop.rchain.rspace.history.*
 import coop.rchain.rspace.internal.*
 import coop.rchain.rspace.trace.{COMM, Consume, Log as EventLog, Produce}
 import coop.rchain.shared.{Log, Serialize}
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 import scala.collection.SortedSet
 import scala.util.Random
@@ -76,8 +76,6 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
 
   protected val historyRepositoryRef: Ref[F, HistoryRepository[F, C, P, A, K]] =
     Ref.unsafe(historyRepository)
-
-  protected[this] val logger: Logger
 
   // TODO: provide ref instance in the constructor
   private[this] val installs: Ref[F, Installs[F, C, P, A, K]] =

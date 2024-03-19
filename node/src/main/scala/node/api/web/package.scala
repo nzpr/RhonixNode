@@ -7,7 +7,7 @@ import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
 import org.http4s.{HttpApp, HttpRoutes}
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 
 package object web {
   def server[F[_]: Async](

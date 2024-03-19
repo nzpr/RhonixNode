@@ -121,7 +121,7 @@ object NetworkSim extends IOApp {
               )
             }
           }
-          .map(setups => Network.apply[IO](setups, genesisPoS, genesisBalances, netCfg))
+          .map(setups => Network.apply[IO](setups, genesisPoS, genesisBalances))
           .use(_.compile.drain.as(ExitCode.Success))
 
       case x => IO.println(s"Illegal option '${x.mkString(" ")}': see --help").as(ExitCode.Error)

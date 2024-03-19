@@ -9,7 +9,7 @@ import sdk.serialize.auto.*
 import sdk.codecs.Base16
 import sdk.data.{BalancesDeploy, BalancesDeployBody, BalancesState, HostWithPort}
 import sdk.error.FatalError
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 import sdk.primitive.ByteArray
 import sdk.reflect.ClassesAsConfig
 import sdk.syntax.all.*

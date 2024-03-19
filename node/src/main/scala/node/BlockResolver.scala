@@ -8,7 +8,7 @@ import fs2.Stream
 import node.rpc.syntax.all.grpcClientSyntax
 import node.rpc.{GrpcChannelsManager, GrpcClient}
 import sdk.data.{BalancesDeploy, HostWithPort}
-import sdk.log.Logger.*
+import sdk.diag.Log.*
 import sdk.primitive.ByteArray
 
 import java.net.{InetSocketAddress, SocketAddress}

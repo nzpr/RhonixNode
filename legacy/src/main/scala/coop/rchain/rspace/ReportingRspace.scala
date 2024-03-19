@@ -90,8 +90,6 @@ class ReportingRspace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   m: Match[F, P, A],
 ) extends ReplayRSpace[F, C, P, A, K](historyRepository, storeRef) {
 
-  override protected[this] val logger: Logger = Logger[this.type]
-
   implicit override protected[this] lazy val MetricsSource: Metrics.Source =
     Metrics.Source(RSpaceMetricsSource, "reporting")
 

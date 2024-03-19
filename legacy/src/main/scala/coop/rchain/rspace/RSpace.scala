@@ -3,7 +3,6 @@ package coop.rchain.rspace
 import cats.Parallel
 import cats.effect.*
 import cats.syntax.all.*
-import com.typesafe.scalalogging.Logger
 import coop.rchain.catscontrib.*
 import coop.rchain.metrics.Metrics.Source
 import coop.rchain.metrics.implicits.*
@@ -13,7 +12,7 @@ import coop.rchain.rspace.internal.{ConsumeCandidate, Datum, ProduceCandidate, W
 import coop.rchain.rspace.trace.*
 import coop.rchain.shared.{Log, Serialize}
 import coop.rchain.store.KeyValueStore
-import sdk.log.LogSourceMacroInstance.logSource
+import sdk.diag.Log.*
 
 import scala.collection.SortedSet
 
@@ -28,8 +27,6 @@ class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   val m: Match[F, P, A],
 ) extends RSpaceOps[F, C, P, A, K](historyRepository, storeRef)
     with ISpace[F, C, P, A, K] {
-
-  override protected[this] val logger: Logger = Logger[this.type]
 
   implicit protected[this] lazy val MetricsSource: Source = RSpaceMetricsSource
 
