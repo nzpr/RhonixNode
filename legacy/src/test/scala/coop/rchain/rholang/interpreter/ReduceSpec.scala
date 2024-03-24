@@ -669,7 +669,7 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
           freeCount = 3,
         ),
         ReceiveBind(
-          Seq(EVar(FreeVar(0)), EVar(FreeVar(1)), EVar(FreeVar(2))),
+          Seq(EVar(FreeVar(3)), EVar(FreeVar(4)), EVar(FreeVar(5))),
           GString("channel2"),
           freeCount = 3,
         ),
