@@ -46,7 +46,7 @@ object ReportingRspace {
   /**
     * Creates [[ReportingRspace]] from [[HistoryRepository]] and [[HotStore]].
     */
-  def apply[F[_]: Async: Span: Metrics: Log, C, P, A, K](
+  def apply[F[_]: Async: Span: Metrics: Log, C, P, A, K, B](
     historyRepository: HistoryRepository[F, C, P, A, K],
     store: HotStore[F, C, P, A, K],
   )(implicit
@@ -54,24 +54,24 @@ object ReportingRspace {
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[ReportingRspace[F, C, P, A, K]] =
+    m: Match[F, P, A, B],
+  ): F[ReportingRspace[F, C, P, A, K, B]] =
     Ref
       .of[F, HotStore[F, C, P, A, K]](store)
-      .map(storeRef => new ReportingRspace[F, C, P, A, K](historyRepository, storeRef))
+      .map(storeRef => new ReportingRspace[F, C, P, A, K, B](historyRepository, storeRef))
 
   /**
     * Creates [[RSpace]] from [[KeyValueStore]]'s,
     */
-  def create[F[_]: Async: Parallel: Log: Metrics: Span, C, P, A, K](
+  def create[F[_]: Async: Parallel: Log: Metrics: Span, C, P, A, K, B](
     store: RSpaceStore[F],
   )(implicit
     sc: Serialize[C],
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[ReportingRspace[F, C, P, A, K]] =
+    m: Match[F, P, A, B],
+  ): F[ReportingRspace[F, C, P, A, K, B]] =
     for {
       history                         <- RSpace.createHistoryRepo[F, C, P, A, K](store)
       (historyRepository, replayStore) = history
@@ -79,7 +79,7 @@ object ReportingRspace {
     } yield reportingRSpace
 }
 
-class ReportingRspace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
+class ReportingRspace[F[_]: Async: Log: Metrics: Span, C, P, A, K, B](
   historyRepository: HistoryRepository[F, C, P, A, K],
   storeRef: Ref[F, HotStore[F, C, P, A, K]],
 )(implicit
@@ -87,8 +87,8 @@ class ReportingRspace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   serializeP: Serialize[P],
   serializeA: Serialize[A],
   serializeK: Serialize[K],
-  m: Match[F, P, A],
-) extends ReplayRSpace[F, C, P, A, K](historyRepository, storeRef) {
+  m: Match[F, P, A, B],
+) extends ReplayRSpace[F, C, P, A, K, B](historyRepository, storeRef) {
 
   override protected[this] val logger: Logger = Logger[this.type]
 
@@ -113,7 +113,7 @@ class ReportingRspace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     collectReport *> report.modify((Seq.empty[Seq[ReportingEvent]], _))
 
   override protected def logComm(
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     channels: Seq[C],
     wk: WaitingContinuation[P, K],
     comm: COMM,

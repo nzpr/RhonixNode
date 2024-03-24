@@ -17,7 +17,7 @@ import sdk.log.LogSourceMacroInstance.logSource
 
 import scala.collection.SortedSet
 
-class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
+class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K, B](
   historyRepository: HistoryRepository[F, C, P, A, K],
   storeRef: Ref[F, HotStore[F, C, P, A, K]],
 )(implicit
@@ -25,9 +25,9 @@ class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   serializeP: Serialize[P],
   serializeA: Serialize[A],
   serializeK: Serialize[K],
-  val m: Match[F, P, A],
-) extends RSpaceOps[F, C, P, A, K](historyRepository, storeRef)
-    with ISpace[F, C, P, A, K] {
+  val m: Match[F, P, A, B],
+) extends RSpaceOps[F, C, P, A, B, K](historyRepository, storeRef)
+    with ISpace[F, C, P, A, K, B] {
 
   override protected[this] val logger: Logger = Logger[this.type]
 
@@ -138,7 +138,7 @@ class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     )
 
   private[this] def processMatchFound(
-    pc: ProduceCandidate[C, P, A, K],
+    pc: ProduceCandidate[C, P, A, K, B],
   ): F[MaybeActionResult] = {
     val ProduceCandidate(
       channels,
@@ -158,7 +158,7 @@ class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   }
 
   override protected def logComm(
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     channels: Seq[C],
     wk: WaitingContinuation[P, K],
     comm: COMM,
@@ -206,7 +206,7 @@ class RSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     } yield Checkpoint(nextHistory.history.root, log)
   }
 
-  def spawn: F[ISpace[F, C, P, A, K]] = spanF.withMarks("spawn") {
+  def spawn: F[ISpace[F, C, P, A, K, B]] = spanF.withMarks("spawn") {
     for {
       historyRepo   <- historyRepositoryRef.get
       nextHistory   <- historyRepo.reset(historyRepo.history.root)
@@ -232,7 +232,7 @@ object RSpace {
   /**
     * Creates [[RSpace]] from [[HistoryRepository]] and [[HotStore]].
     */
-  def apply[F[_]: Async: Span: Metrics: Log, C, P, A, K](
+  def apply[F[_]: Async: Span: Metrics: Log, C, P, A, K, B](
     historyRepository: HistoryRepository[F, C, P, A, K],
     store: HotStore[F, C, P, A, K],
   )(implicit
@@ -240,24 +240,24 @@ object RSpace {
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[RSpace[F, C, P, A, K]] =
+    m: Match[F, P, A, B],
+  ): F[RSpace[F, C, P, A, K, B]] =
     Ref
       .of[F, HotStore[F, C, P, A, K]](store)
-      .map(storeRef => new RSpace[F, C, P, A, K](historyRepository, storeRef))
+      .map(storeRef => new RSpace[F, C, P, A, K, B](historyRepository, storeRef))
 
   /**
     * Creates [[RSpace]] from [[KeyValueStore]]'s,
     */
-  def create[F[_]: Async: Parallel: Span: Metrics: Log, C, P, A, K](
+  def create[F[_]: Async: Parallel: Span: Metrics: Log, C, P, A, K, B](
     store: RSpaceStore[F],
   )(implicit
     sc: Serialize[C],
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[RSpace[F, C, P, A, K]] =
+    m: Match[F, P, A, B],
+  ): F[RSpace[F, C, P, A, K, B]] =
     for {
       setup                 <- createHistoryRepo[F, C, P, A, K](store)
       (historyReader, store) = setup
@@ -267,15 +267,15 @@ object RSpace {
   /**
     * Creates [[RSpace]] and [[ReplayRSpace]] from [[KeyValueStore]]'s.
     */
-  def createWithReplay[F[_]: Async: Parallel: Span: Metrics: Log, C, P, A, K](
+  def createWithReplay[F[_]: Async: Parallel: Span: Metrics: Log, C, P, A, K, B](
     store: RSpaceStore[F],
   )(implicit
     sc: Serialize[C],
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[(RSpace[F, C, P, A, K], ReplayRSpace[F, C, P, A, K])] =
+    m: Match[F, P, A, B],
+  ): F[(RSpace[F, C, P, A, K, B], ReplayRSpace[F, C, P, A, K, B])] =
     for {
       setup               <- createHistoryRepo[F, C, P, A, K](store)
       (historyRepo, store) = setup

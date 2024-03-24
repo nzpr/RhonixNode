@@ -3,9 +3,9 @@ package coop.rchain.rspace
 import coop.rchain.rspace.hashing.Blake2b256Hash
 import coop.rchain.rspace.internal._
 
-final case class Result[C, A](
+final case class Result[C, A, B](
     channel: C,
-    matchedDatum: A,
+    matchedDatum: B,
     removedDatum: A,
     persistent: Boolean
 )
@@ -24,7 +24,7 @@ final case class ContResult[C, P, K](
   * @tparam A a type representing an arbitrary piece of data and match result
   * @tparam K a type representing a continuation
   */
-trait ISpace[F[_], C, P, A, K] extends Tuplespace[F, C, P, A, K] {
+trait ISpace[F[_], C, P, A, K, B] extends Tuplespace[F, C, P, A, K, B] {
 
   /** Creates a checkpoint.
     *
