@@ -9,10 +9,14 @@ import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.types.ConnVarRefN
 
 object VarRefNormalizer {
-  def normalizeVarRef[F[_]: Sync, T >: VarSort: BoundVarReader](p: PVarRef): F[ConnVarRefN] =
+  def normalizeVarRef[F[_]: Sync, T >: VarSort: BoundVarReader](
+    p: PVarRef,
+  )(implicit nestingInfo: NestingReader): F[ConnVarRefN] =
     Sync[F].delay(BoundVarReader[T].findBoundVar(p.var_)).flatMap {
       // Found bounded variable
-      case Some((VarContext(index, _, kind, sourcePosition), depth)) =>
+      case Some(VarContext(index, _, kind, sourcePosition)) =>
+        val depth = nestingInfo.patternDepth
+        // TODO: Throw an exception if VarRef is outside the pattern?
         kind match {
           case ProcSort =>
             p.varrefkind_ match {

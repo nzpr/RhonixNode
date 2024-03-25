@@ -45,7 +45,7 @@ object Mock {
   def createMockDSL[F[_]: Sync, T](
     initBoundVars: Map[String, (Int, T)] = Map[String, (Int, T)](),
     initFreeVars: Map[String, (Int, T)] = Map[String, (Int, T)](),
-    isPattern: Boolean = false,
+    patternDepth: Int = 0,
     isReceivePattern: Boolean = false,
     isBundle: Boolean = false,
   ): (
@@ -69,7 +69,7 @@ object Mock {
 
     val mockIW: MockNestingWriter[F] = MockNestingWriter[F]()
 
-    val mockIR: MockNestingReader = MockNestingReader(isPattern, isReceivePattern, isBundle)
+    val mockIR: MockNestingReader = MockNestingReader(patternDepth, isReceivePattern, isBundle)
 
     val mockNormalizerRec: MockNormalizerRec[F, T] = MockNormalizerRec[F, T](mockBVScope, mockFVScope, mockIW, mockIR)
     (mockNormalizerRec, mockBVScope, mockBVW, mockBVR, mockFVScope, mockFVW, mockFVR, mockIW, mockIR)

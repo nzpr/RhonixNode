@@ -22,7 +22,7 @@ class DisjunctionNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyCheck
       val right = new PGround(new GroundString(s2))
       val term  = new PDisjunction(left, right)
 
-      implicit val (nRec, _, _, _, _, _, _, _, rReader) = createMockDSL[IO, VarSort](isPattern = true)
+      implicit val (nRec, _, _, _, _, _, _, _, rReader) = createMockDSL[IO, VarSort](patternDepth = 1)
 
       val adt = DisjunctionNormalizer.normalizeDisjunction[IO](term).unsafeRunSync()
 

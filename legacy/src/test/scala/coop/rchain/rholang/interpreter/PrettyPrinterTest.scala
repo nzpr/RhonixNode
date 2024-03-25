@@ -9,7 +9,8 @@ import coop.rchain.models.{Send, *}
 import coop.rchain.rholang.interpreter.compiler.*
 import io.rhonix.rholang.Bindings
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.normalizer.NormalizerRecImpl
+import io.rhonix.rholang.normalizer.{Normalizer, NormalizerRecImpl}
+import io.rhonix.rholang.types.*
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -92,40 +93,36 @@ class CollectPrinterSpec extends AnyFlatSpec with Matchers {
   }
 
   "List" should "Print" in {
-    val listData = new ListProc()
-    listData.add(new PVar(new ProcVarVar("P")))
-    listData.add(new PEval(new NameVar("x")))
-    listData.add(new PGround(new GroundInt("7")))
-    val list     = new PCollect(new CollectList(listData, new ProcRemainderVar(new ProcVarVar("ignored"))))
+    val listData =
+      if (Normalizer.BOUND_VAR_INDEX_REVERSED)
+        Seq(BoundVarN(1), BoundVarN(0), GIntN(7))
+      else
+        Seq(BoundVarN(0), BoundVarN(1), GIntN(7))
 
-    val result = PrettyPrinter(0, 2).buildString(testNormalizer[Eval].normalize(list).value)
+    val list   = EListN(listData, Some(FreeVarN(0)))
+    val result = PrettyPrinter(0, 2).buildString(list)
     result shouldBe "[x0, x1, 7...free0]"
   }
 
   "Set" should "Print" in {
-    val listData = new ListProc()
-    listData.add(new PVar(new ProcVarVar("P")))
-    listData.add(new PEval(new NameVar("x")))
-    listData.add(new PGround(new GroundInt("7")))
-    val list     =
-      new PCollect(new CollectSet(listData, new ProcRemainderVar(new ProcVarVar("ignored"))))
-
-    val result = PrettyPrinter(0, 2).buildString(testNormalizer[Eval].normalize(list).value)
+    val set    = ESetN(Seq(BoundVarN(0), BoundVarN(1), GIntN(7)), Some(FreeVarN(0)))
+    val result = PrettyPrinter(0, 2).buildString(set)
     result shouldBe "Set(7, x1, x0...free0)"
   }
 
   "Map" should "Print" in {
-    val mapData = new ListKeyValuePair()
-    mapData.add(
-      new KeyValuePairImpl(
-        new PGround(new GroundInt("7")),
-        new PGround(new GroundString("\"Seven\"")),
-      ),
-    )
-    mapData.add(new KeyValuePairImpl(new PVar(new ProcVarVar("P")), new PEval(new NameVar("x"))))
-    val map     = new PCollect(new CollectMap(mapData, new ProcRemainderVar(new ProcVarVar("ignored"))))
+    val boundVars =
+      if (Normalizer.BOUND_VAR_INDEX_REVERSED) (BoundVarN(1), BoundVarN(0)) else (BoundVarN(0), BoundVarN(1))
 
-    val result = PrettyPrinter(0, 2).buildString(testNormalizer[Eval].normalize(map).value)
+    val map = EMapN(
+      Seq(
+        (GIntN(7), GStringN("Seven")),
+        boundVars,
+      ),
+      Some(FreeVarN(0)),
+    )
+
+    val result = PrettyPrinter(0, 2).buildString(map)
     result shouldBe "{7 : \"" + "Seven" + "\", x0 : x1...free0}"
   }
 
@@ -613,8 +610,8 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
   }
 
   "PPar" should "Use fresh identifiers for free variables" in {
-    val parDoubleFree = new PPar(new PVar(new ProcVarVar("x")), new PVar(new ProcVarVar("y")))
-    val result        = PrettyPrinter().buildString(testNormalizer.normalize(parDoubleFree).value)
+    val parDoubleFree = ParProcN(Seq(FreeVarN(0), FreeVarN(1)))
+    val result        = PrettyPrinter().buildString(parDoubleFree)
     result shouldBe
       """free0 |
         |free1""".stripMargin
@@ -981,9 +978,9 @@ class NamePrinterSpec extends AnyFlatSpec with Matchers {
     norm
   }
 
-  "NameWildcard" should "Print" in {
-    val nw     = new NameWildcard()
-    val result = PrettyPrinter().buildString(testNormalizer.normalize(nw).value)
+  "Wildcard" should "Print" in {
+    val nw     = WildcardN
+    val result = PrettyPrinter().buildString(nw)
     result shouldBe "_"
   }
 
@@ -1006,5 +1003,4 @@ class NamePrinterSpec extends AnyFlatSpec with Matchers {
     val result = PrettyPrinter(0, 1).buildString(norm.normalize(nqeval).value)
     result shouldBe "x0 |\nx0"
   }
-
 }

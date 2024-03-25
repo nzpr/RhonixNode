@@ -15,7 +15,7 @@ object DisjunctionNormalizer {
   )(implicit nestingInfo: NestingReader): F[ConnOrN] = {
     def pos = SourcePosition(p.line_num, p.col_num)
 
-    if (nestingInfo.insidePattern)
+    if (nestingInfo.patternDepth > 0) // If we inside a pattern
       if (!nestingInfo.insideTopLevelReceivePattern)
         (p.proc_1, p.proc_2).nmap(NormalizerRec[F].normalize).mapN((left, right) => ConnOrN(Seq(left, right)))
       else {
