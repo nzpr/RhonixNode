@@ -30,10 +30,10 @@ trait PersistentStoreTester {
     implicit val m    = matchListPar[IO]
     implicit val kvm  = InMemoryStoreManager[IO]()
     val store         = kvm.rSpaceStores.unsafeRunSync()
-    val space = RSpace
-      .create[IO, Par, BindPattern, ListParWithRandom, TaggedContinuation](store)
+    val space         = RSpace
+      .create[IO, Par, BindPattern, ListParWithRandom, TaggedContinuation, MatchedParsWithRandom](store)
       .unsafeRunSync()
-    val reducer = RholangOnlyDispatcher(space)._2
+    val reducer       = RholangOnlyDispatcher(space)._2
     cost.set(Cost.UNSAFE_MAX).unsafeRunSync()
 
     // Execute test
@@ -46,17 +46,16 @@ trait PersistentStoreTester {
     implicit val noopSpan: Span[IO]      = NoopSpan[IO]()
     implicit val kvm                     = InMemoryStoreManager[IO]()
     mkRhoISpace[IO]
-      .flatMap {
-        case rspace =>
-          for {
-            cost <- CostAccounting.emptyCost[IO]
-            reducer = {
-              implicit val c = cost
-              RholangOnlyDispatcher(rspace)._2
-            }
-            _   <- cost.set(Cost.UNSAFE_MAX)
-            res <- f(rspace, reducer)
-          } yield res
+      .flatMap { case rspace =>
+        for {
+          cost   <- CostAccounting.emptyCost[IO]
+          reducer = {
+            implicit val c = cost
+            RholangOnlyDispatcher(rspace)._2
+          }
+          _      <- cost.set(Cost.UNSAFE_MAX)
+          res    <- f(rspace, reducer)
+        } yield res
       }
       .timeout(3.seconds)
       .unsafeRunSync()

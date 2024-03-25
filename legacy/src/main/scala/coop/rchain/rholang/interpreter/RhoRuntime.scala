@@ -40,10 +40,10 @@ trait RhoRuntime[F[_]] extends HasCost[F] {
     * @return
     */
   def evaluate(
-      term: String,
-      initialPhlo: Cost,
-      normalizerEnv: Map[String, Par],
-      rand: Blake2b512Random
+    term: String,
+    initialPhlo: Cost,
+    normalizerEnv: Map[String, Par],
+    rand: Blake2b512Random,
   ): F[EvaluateResult]
 
   /**
@@ -59,8 +59,8 @@ trait RhoRuntime[F[_]] extends HasCost[F] {
     * @param rand random seed for rholang execution
     * @return
     */
-  def inj(par: Par, env: Env[Par] = Env[Par]())(
-      implicit rand: Blake2b512Random
+  def inj(par: Par, env: Env[Par] = Env[Par]())(implicit
+    rand: Blake2b512Random,
   ): F[Unit]
 
   /**
@@ -68,11 +68,10 @@ trait RhoRuntime[F[_]] extends HasCost[F] {
     * for the current state of the runtime. You can revert the changes by [[revertToSoftCheckpoint]]
     * @return
     */
-  def createSoftCheckpoint
-      : F[SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation]]
+  def createSoftCheckpoint: F[SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation]]
 
   def revertToSoftCheckpoint(
-      softCheckpoint: SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation]
+    softCheckpoint: SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation],
   ): F[Unit]
 
   /**
@@ -98,9 +97,9 @@ trait RhoRuntime[F[_]] extends HasCost[F] {
     * @return
     */
   def consumeResult(
-      channel: Seq[Par],
-      pattern: Seq[BindPattern]
-  ): F[Option[(TaggedContinuation, Seq[ListParWithRandom])]]
+    channel: Seq[Par],
+    pattern: Seq[BindPattern],
+  ): F[Option[(TaggedContinuation, Seq[MatchedParsWithRandom])]]
 
   /**
     * get data directly from history repository
@@ -117,7 +116,7 @@ trait RhoRuntime[F[_]] extends HasCost[F] {
     * This function would not change the state in the runtime
     */
   def getContinuation(
-      channels: Seq[Par]
+    channels: Seq[Par],
   ): F[Seq[WaitingContinuation[BindPattern, TaggedContinuation]]]
 
   /**
@@ -139,31 +138,30 @@ trait ReplayRhoRuntime[F[_]] extends RhoRuntime[F] {
 }
 
 class RhoRuntimeImpl[F[_]: Sync: Span](
-    val reducer: Reduce[F],
-    val space: RhoISpace[F],
-    val cost: CostStateRef[F],
-    val blockDataRef: Ref[F, BlockData],
-    val mergeChs: Ref[F, Set[Par]]
+  val reducer: Reduce[F],
+  val space: RhoISpace[F],
+  val cost: CostStateRef[F],
+  val blockDataRef: Ref[F, BlockData],
+  val mergeChs: Ref[F, Set[Par]],
 ) extends RhoRuntime[F] {
   private val emptyContinuation = TaggedContinuation()
 
-  override def getHotChanges
-      : F[Map[Seq[Par], Row[BindPattern, ListParWithRandom, TaggedContinuation]]] = space.toMap
+  override def getHotChanges: F[Map[Seq[Par], Row[BindPattern, ListParWithRandom, TaggedContinuation]]] = space.toMap
 
   override def inj(par: Par, env: Env[Par] = Env[Par]())(implicit rand: Blake2b512Random): F[Unit] =
     reducer.inj(par)
 
   override def consumeResult(
-      channel: Seq[Par],
-      pattern: Seq[BindPattern]
-  ): F[Option[(TaggedContinuation, Seq[ListParWithRandom])]] =
+    channel: Seq[Par],
+    pattern: Seq[BindPattern],
+  ): F[Option[(TaggedContinuation, Seq[MatchedParsWithRandom])]] =
     space.consume(channel, pattern, emptyContinuation, persist = false).map(unpackOption)
 
   override def evaluate(
-      term: String,
-      initialPhlo: Cost,
-      normalizerEnv: Map[String, Name],
-      rand: Blake2b512Random
+    term: String,
+    initialPhlo: Cost,
+    normalizerEnv: Map[String, Name],
+    rand: Blake2b512Random,
   ): F[EvaluateResult] = {
     implicit val c: CostStateRef[F] = cost
     implicit val m                  = mergeChs
@@ -172,7 +170,7 @@ class RhoRuntimeImpl[F[_]: Sync: Span](
       reducer,
       term,
       initialPhlo,
-      normalizerEnv
+      normalizerEnv,
     )(rand)
   }
 
@@ -182,20 +180,19 @@ class RhoRuntimeImpl[F[_]: Sync: Span](
     space.createCheckpoint()
   }
 
-  override def createSoftCheckpoint
-      : F[SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation]] =
+  override def createSoftCheckpoint: F[SoftCheckpoint[Par, BindPattern, ListParWithRandom, TaggedContinuation]] =
     Span[F].withMarks("create-soft-heckpoint") {
       space.createSoftCheckpoint()
     }
 
   override def revertToSoftCheckpoint(
-      softCheckpoint: SoftCheckpoint[Name, BindPattern, ListParWithRandom, TaggedContinuation]
+    softCheckpoint: SoftCheckpoint[Name, BindPattern, ListParWithRandom, TaggedContinuation],
   ): F[Unit] = space.revertToSoftCheckpoint(softCheckpoint)
 
   override def getData(channel: Par): F[Seq[Datum[ListParWithRandom]]] = space.getData(channel)
 
   override def getContinuation(
-      channels: Seq[Name]
+    channels: Seq[Name],
   ): F[Seq[WaitingContinuation[BindPattern, TaggedContinuation]]] =
     space.getWaitingContinuations(channels)
 
@@ -205,13 +202,13 @@ class RhoRuntimeImpl[F[_]: Sync: Span](
 }
 
 class ReplayRhoRuntimeImpl[F[_]: Sync: Span](
-    override val reducer: Reduce[F],
-    override val space: RhoReplayISpace[F],
-    override val cost: CostStateRef[F],
-    // TODO: Runtime must be immutable. Block data and invalid blocks should be supplied when Runtime is created.
-    //  This also means to unify all special names necessary to spawn a new Runtime.
-    override val blockDataRef: Ref[F, BlockData],
-    override val mergeChs: Ref[F, Set[Par]]
+  override val reducer: Reduce[F],
+  override val space: RhoReplayISpace[F],
+  override val cost: CostStateRef[F],
+  // TODO: Runtime must be immutable. Block data and invalid blocks should be supplied when Runtime is created.
+  //  This also means to unify all special names necessary to spawn a new Runtime.
+  override val blockDataRef: Ref[F, BlockData],
+  override val mergeChs: Ref[F, Set[Par]],
 ) extends RhoRuntimeImpl[F](reducer, space, cost, blockDataRef, mergeChs)
     with ReplayRhoRuntime[F] {
   override def checkReplayData: F[Unit] = space.checkReplayData()
@@ -221,11 +218,11 @@ class ReplayRhoRuntimeImpl[F[_]: Sync: Span](
 
 object ReplayRhoRuntime {
   def apply[F[_]: Sync: Span](
-      reducer: Reduce[F],
-      space: RhoReplayISpace[F],
-      cost: CostStateRef[F],
-      blockDataRef: Ref[F, BlockData],
-      mergeChs: Ref[F, Set[Par]]
+    reducer: Reduce[F],
+    space: RhoReplayISpace[F],
+    cost: CostStateRef[F],
+    blockDataRef: Ref[F, BlockData],
+    mergeChs: Ref[F, Set[Par]],
   ) = new ReplayRhoRuntimeImpl[F](reducer, space, cost, blockDataRef, mergeChs)
 }
 
@@ -236,11 +233,11 @@ object RhoRuntime {
   private[this] val createPlayRuntime       = Metrics.Source(RuntimeMetricsSource, "create-play")
 
   def apply[F[_]: Sync: Span](
-      reducer: Reduce[F],
-      space: RhoISpace[F],
-      cost: CostStateRef[F],
-      blockDataRef: Ref[F, BlockData],
-      mergeChs: Ref[F, Set[Par]]
+    reducer: Reduce[F],
+    space: RhoISpace[F],
+    cost: CostStateRef[F],
+    blockDataRef: Ref[F, BlockData],
+    mergeChs: Ref[F, Set[Par]],
   ) = new RhoRuntimeImpl[F](reducer, space, cost, blockDataRef, mergeChs)
 
   type RhoTuplespace[F[_]]   = TCPAK[F, Tuplespace]
@@ -251,84 +248,98 @@ object RhoRuntime {
   type RhoHistoryRepository[F[_]] =
     HistoryRepository[F, Par, BindPattern, ListParWithRandom, TaggedContinuation]
 
-  type TCPAK[M[_], F[_[_], _, _, _, _]] =
-    F[M, Par, BindPattern, ListParWithRandom, TaggedContinuation]
+  type TCPAK[M[_], F[_[_], _, _, _, _, _]] =
+    F[M, Par, BindPattern, ListParWithRandom, TaggedContinuation, MatchedParsWithRandom]
 
   def introduceSystemProcesses[F[_]: Sync: CostStateRef: Span](
-      spaces: List[RhoTuplespace[F]],
-      processes: List[(Name, Arity, Remainder, BodyRef)]
+    spaces: List[RhoTuplespace[F]],
+    processes: List[(Name, Arity, Remainder, BodyRef)],
   ): F[List[Option[(TaggedContinuation, Seq[ListParWithRandom])]]] =
-    processes.flatMap {
-      case (name, arity, remainder, ref) =>
-        val channels = List(name)
-        val patterns = List(
-          BindPattern(
-            (0 until arity).map(i => EVar(FreeVar(i))),
-            remainder,
-            freeCount = arity
-          )
-        )
-        val continuation = TaggedContinuation(ScalaBodyRef(ref))
-        spaces.map(_.install(channels, patterns, continuation))
+    processes.flatMap { case (name, arity, remainder, ref) =>
+      val channels     = List(name)
+      val patterns     = List(
+        BindPattern(
+          (0 until arity).map(i => EVar(FreeVar(i))),
+          remainder,
+          freeCount = arity,
+        ),
+      )
+      val continuation = TaggedContinuation(ScalaBodyRef(ref))
+      spaces.map(_.install(channels, patterns, continuation))
     }.sequence
 
   def stdSystemProcesses[F[_]]: Seq[Definition[F]] = Seq(
-    Definition[F]("rho:io:stdout", FixedChannels.STDOUT, 1, BodyRefs.STDOUT, {
-      ctx: ProcessContext[F] =>
+    Definition[F](
+      "rho:io:stdout",
+      FixedChannels.STDOUT,
+      1,
+      BodyRefs.STDOUT,
+      { ctx: ProcessContext[F] =>
         ctx.systemProcesses.stdOut
-    }),
-    Definition[F]("rho:io:stdoutAck", FixedChannels.STDOUT_ACK, 2, BodyRefs.STDOUT_ACK, {
-      ctx: ProcessContext[F] =>
+      },
+    ),
+    Definition[F](
+      "rho:io:stdoutAck",
+      FixedChannels.STDOUT_ACK,
+      2,
+      BodyRefs.STDOUT_ACK,
+      { ctx: ProcessContext[F] =>
         ctx.systemProcesses.stdOutAck
-    }),
-    Definition[F]("rho:io:stderr", FixedChannels.STDERR, 1, BodyRefs.STDERR, {
-      ctx: ProcessContext[F] =>
+      },
+    ),
+    Definition[F](
+      "rho:io:stderr",
+      FixedChannels.STDERR,
+      1,
+      BodyRefs.STDERR,
+      { ctx: ProcessContext[F] =>
         ctx.systemProcesses.stdErr
-    }),
-    Definition[F]("rho:io:stderrAck", FixedChannels.STDERR_ACK, 2, BodyRefs.STDERR_ACK, {
-      ctx: ProcessContext[F] =>
+      },
+    ),
+    Definition[F](
+      "rho:io:stderrAck",
+      FixedChannels.STDERR_ACK,
+      2,
+      BodyRefs.STDERR_ACK,
+      { ctx: ProcessContext[F] =>
         ctx.systemProcesses.stdErrAck
-    }),
+      },
+    ),
     Definition[F](
       "rho:block:data",
       FixedChannels.GET_BLOCK_DATA,
       1,
-      BodyRefs.GET_BLOCK_DATA, { ctx =>
-        ctx.systemProcesses.getBlockData(ctx.blockData)
-      }
+      BodyRefs.GET_BLOCK_DATA,
+      ctx => ctx.systemProcesses.getBlockData(ctx.blockData),
     ),
     Definition[F](
       "rho:rev:address",
       FixedChannels.REV_ADDRESS,
       3,
-      BodyRefs.REV_ADDRESS, { ctx =>
-        ctx.systemProcesses.revAddress
-      }
+      BodyRefs.REV_ADDRESS,
+      ctx => ctx.systemProcesses.revAddress,
     ),
     Definition[F](
       "rho:rchain:deployerId:ops",
       FixedChannels.DEPLOYER_ID_OPS,
       3,
-      BodyRefs.DEPLOYER_ID_OPS, { ctx =>
-        ctx.systemProcesses.deployerIdOps
-      }
+      BodyRefs.DEPLOYER_ID_OPS,
+      ctx => ctx.systemProcesses.deployerIdOps,
     ),
     Definition[F](
       "rho:registry:ops",
       FixedChannels.REG_OPS,
       3,
-      BodyRefs.REG_OPS, { ctx =>
-        ctx.systemProcesses.registryOps
-      }
+      BodyRefs.REG_OPS,
+      ctx => ctx.systemProcesses.registryOps,
     ),
     Definition[F](
       "sys:authToken:ops",
       FixedChannels.SYS_AUTHTOKEN_OPS,
       3,
-      BodyRefs.SYS_AUTHTOKEN_OPS, { ctx =>
-        ctx.systemProcesses.sysAuthTokenOps
-      }
-    )
+      BodyRefs.SYS_AUTHTOKEN_OPS,
+      ctx => ctx.systemProcesses.sysAuthTokenOps,
+    ),
   )
 
   def stdRhoCryptoProcesses[F[_]]: Seq[Definition[F]] = Seq(
@@ -336,70 +347,65 @@ object RhoRuntime {
       "rho:crypto:secp256k1Verify",
       FixedChannels.SECP256K1_VERIFY,
       4,
-      BodyRefs.SECP256K1_VERIFY, { ctx =>
-        ctx.systemProcesses.secp256k1Verify
-      }
+      BodyRefs.SECP256K1_VERIFY,
+      ctx => ctx.systemProcesses.secp256k1Verify,
     ),
     Definition[F](
       "rho:crypto:blake2b256Hash",
       FixedChannels.BLAKE2B256_HASH,
       2,
-      BodyRefs.BLAKE2B256_HASH, { ctx =>
-        ctx.systemProcesses.blake2b256Hash
-      }
+      BodyRefs.BLAKE2B256_HASH,
+      ctx => ctx.systemProcesses.blake2b256Hash,
     ),
     Definition[F](
       "rho:crypto:keccak256Hash",
       FixedChannels.KECCAK256_HASH,
       2,
-      BodyRefs.KECCAK256_HASH, { ctx =>
-        ctx.systemProcesses.keccak256Hash
-      }
+      BodyRefs.KECCAK256_HASH,
+      ctx => ctx.systemProcesses.keccak256Hash,
     ),
     Definition[F](
       "rho:crypto:sha256Hash",
       FixedChannels.SHA256_HASH,
       2,
-      BodyRefs.SHA256_HASH, { ctx =>
-        ctx.systemProcesses.sha256Hash
-      }
+      BodyRefs.SHA256_HASH,
+      ctx => ctx.systemProcesses.sha256Hash,
     ),
     Definition[F](
       "rho:crypto:ed25519Verify",
       FixedChannels.ED25519_VERIFY,
       4,
-      BodyRefs.ED25519_VERIFY, { ctx =>
-        ctx.systemProcesses.ed25519Verify
-      }
-    )
+      BodyRefs.ED25519_VERIFY,
+      ctx => ctx.systemProcesses.ed25519Verify,
+    ),
   )
 
   def dispatchTableCreator[F[_]: Async: Span](
-      space: RhoTuplespace[F],
-      dispatcher: RhoDispatch[F],
-      blockData: Ref[F, BlockData],
-      extraSystemProcesses: Seq[Definition[F]]
+    space: RhoTuplespace[F],
+    dispatcher: RhoDispatch[F],
+    blockData: Ref[F, BlockData],
+    extraSystemProcesses: Seq[Definition[F]],
   ): RhoDispatchMap[F] =
     (stdSystemProcesses[F] ++ stdRhoCryptoProcesses[F] ++ extraSystemProcesses)
-      .map(_.toDispatchTable(ProcessContext(space, dispatcher, blockData)))
+      .map(x => x.toDispatchTable(ProcessContext(space, dispatcher, blockData)))
       .toMap
 
   val basicProcesses: Map[String, Par] = Map[String, Par](
-    "rho:registry:lookup"          -> Bundle(FixedChannels.REG_LOOKUP, writeFlag = true),
-    "rho:registry:insertArbitrary" -> Bundle(FixedChannels.REG_INSERT_RANDOM, writeFlag = true),
+    "rho:registry:lookup"                 -> Bundle(FixedChannels.REG_LOOKUP, writeFlag = true),
+    "rho:registry:insertArbitrary"        -> Bundle(FixedChannels.REG_INSERT_RANDOM, writeFlag = true),
     "rho:registry:insertSigned:secp256k1" -> Bundle(
       FixedChannels.REG_INSERT_SIGNED,
-      writeFlag = true
-    )
+      writeFlag = true,
+    ),
   )
 
   def setupReducer[F[_]: Async: Parallel: CostStateRef: Log: Metrics: Span](
-      chargingRSpace: RhoTuplespace[F],
-      blockDataRef: Ref[F, BlockData],
-      extraSystemProcesses: Seq[Definition[F]],
-      urnMap: Map[String, Par],
-      mergeChs: Ref[F, Set[Par]],
-      mergeableTagName: Par
+    chargingRSpace: RhoTuplespace[F],
+    blockDataRef: Ref[F, BlockData],
+    extraSystemProcesses: Seq[Definition[F]],
+    urnMap: Map[String, Par],
+    mergeChs: Ref[F, Set[Par]],
+    mergeableTagName: Par,
   ): Reduce[F] = {
     lazy val replayDispatchTable: RhoDispatchMap[F] =
       dispatchTableCreator(chargingRSpace, replayDispatcher, blockDataRef, extraSystemProcesses)
@@ -410,50 +416,50 @@ object RhoRuntime {
         replayDispatchTable,
         urnMap,
         mergeChs,
-        mergeableTagName
+        mergeableTagName,
       )
     replayReducer
   }
 
   def setupMapsAndRefs[F[_]: Async](
-      extraSystemProcesses: Seq[Definition[F]] = Seq.empty
+    extraSystemProcesses: Seq[Definition[F]] = Seq.empty,
   ): F[
-    (Ref[F, BlockData], Map[String, Name], Seq[(Name, Arity, Remainder, BodyRef)])
+    (Ref[F, BlockData], Map[String, Name], Seq[(Name, Arity, Remainder, BodyRef)]),
   ] =
     for {
       blockDataRef <- Ref.of(BlockData.empty)
-      urnMap = basicProcesses ++ (stdSystemProcesses[F] ++ stdRhoCryptoProcesses[F] ++ extraSystemProcesses)
-        .map(_.toUrnMap)
-      procDefs = (stdSystemProcesses[F] ++ stdRhoCryptoProcesses[F] ++ extraSystemProcesses)
-        .map(_.toProcDefs)
+      urnMap        = basicProcesses ++ (stdSystemProcesses[F] ++ stdRhoCryptoProcesses[F] ++ extraSystemProcesses)
+                        .map(_.toUrnMap)
+      procDefs      = (stdSystemProcesses[F] ++ stdRhoCryptoProcesses[F] ++ extraSystemProcesses)
+                        .map(_.toProcDefs)
     } yield (blockDataRef, urnMap, procDefs)
 
   def createRhoEnv[F[_]: Async: Parallel: CostStateRef: Log: Metrics: Span](
-      rspace: RhoISpace[F],
-      mergeChs: Ref[F, Set[Par]],
-      mergeableTagName: Par,
-      extraSystemProcesses: Seq[Definition[F]] = Seq.empty
+    rspace: RhoISpace[F],
+    mergeChs: Ref[F, Set[Par]],
+    mergeableTagName: Par,
+    extraSystemProcesses: Seq[Definition[F]] = Seq.empty,
   ): F[(Reduce[F], Ref[F, BlockData])] =
     for {
-      mapsAndRefs                      <- setupMapsAndRefs(extraSystemProcesses)
+      mapsAndRefs                     <- setupMapsAndRefs(extraSystemProcesses)
       (blockDataRef, urnMap, procDefs) = mapsAndRefs
-      reducer = setupReducer(
-        ChargingRSpace.chargingRSpace[F](rspace),
-        blockDataRef,
-        extraSystemProcesses,
-        urnMap,
-        mergeChs,
-        mergeableTagName
-      )
-      res <- introduceSystemProcesses(rspace :: Nil, procDefs.toList)
-      _   = assert(res.forall(_.isEmpty))
+      reducer                          = setupReducer(
+                                           ChargingRSpace.chargingRSpace[F](rspace),
+                                           blockDataRef,
+                                           extraSystemProcesses,
+                                           urnMap,
+                                           mergeChs,
+                                           mergeableTagName,
+                                         )
+      res                             <- introduceSystemProcesses(rspace :: Nil, procDefs.toList)
+      _                                = assert(res.forall(_.isEmpty))
     } yield (reducer, blockDataRef)
 
   // This is from Nassim Taleb's "Skin in the Game"
   val bootstrapRand: Blake2b512Random = Blake2b512Random(
     ("Decentralization is based on the simple notion that it is easier to macrobull***t than microbull***t. " +
       "Decentralization reduces large structural asymmetries.")
-      .getBytes()
+      .getBytes(),
   )
 
   def bootstrapRegistry[F[_]: Monad](runtime: RhoRuntime[F]): F[Unit] = {
@@ -467,24 +473,24 @@ object RhoRuntime {
   }
 
   private def createRuntime[F[_]: Async: Log: Metrics: Span: Parallel](
-      rspace: RhoISpace[F],
-      extraSystemProcesses: Seq[Definition[F]],
-      initRegistry: Boolean,
-      mergeableTagName: Par
+    rspace: RhoISpace[F],
+    extraSystemProcesses: Seq[Definition[F]],
+    initRegistry: Boolean,
+    mergeableTagName: Par,
   ): F[RhoRuntime[F]] =
     Span[F].trace(createPlayRuntime) {
       for {
-        cost     <- CostAccounting.emptyCost[F]
-        mergeChs <- Ref.of(Set[Par]())
-        rhoEnv <- {
+        cost               <- CostAccounting.emptyCost[F]
+        mergeChs           <- Ref.of(Set[Par]())
+        rhoEnv             <- {
           implicit val c: CostStateRef[F] = cost
           createRhoEnv(rspace, mergeChs, mergeableTagName, extraSystemProcesses)
         }
         (reducer, blockRef) = rhoEnv
         runtime             = new RhoRuntimeImpl[F](reducer, rspace, cost, blockRef, mergeChs)
-        _ <- if (initRegistry) {
-              bootstrapRegistry(runtime) >> runtime.createCheckpoint
-            } else ().pure[F]
+        _                  <- if (initRegistry) {
+                                bootstrapRegistry(runtime) >> runtime.createCheckpoint
+                              } else ().pure[F]
       } yield runtime
     }
 
@@ -503,10 +509,10 @@ object RhoRuntime {
     * @return
     */
   def createRhoRuntime[F[_]: Async: Log: Metrics: Span: Parallel](
-      rspace: RhoISpace[F],
-      mergeableTagName: Par,
-      initRegistry: Boolean = true,
-      extraSystemProcesses: Seq[Definition[F]] = Seq.empty
+    rspace: RhoISpace[F],
+    mergeableTagName: Par,
+    initRegistry: Boolean = true,
+    extraSystemProcesses: Seq[Definition[F]] = Seq.empty,
   ): F[RhoRuntime[F]] =
     createRuntime[F](rspace, extraSystemProcesses, initRegistry, mergeableTagName)
 
@@ -518,53 +524,53 @@ object RhoRuntime {
     * @return
     */
   def createReplayRhoRuntime[F[_]: Async: Log: Metrics: Span: Parallel](
-      rspace: RhoReplayISpace[F],
-      mergeableTagName: Par,
-      extraSystemProcesses: Seq[Definition[F]] = Seq.empty,
-      initRegistry: Boolean = true
+    rspace: RhoReplayISpace[F],
+    mergeableTagName: Par,
+    extraSystemProcesses: Seq[Definition[F]] = Seq.empty,
+    initRegistry: Boolean = true,
   ): F[ReplayRhoRuntime[F]] =
     Span[F].trace(createReplayRuntime) {
       for {
-        cost     <- CostAccounting.emptyCost[F]
-        mergeChs <- Ref.of(Set[Par]())
-        rhoEnv <- {
+        cost               <- CostAccounting.emptyCost[F]
+        mergeChs           <- Ref.of(Set[Par]())
+        rhoEnv             <- {
           implicit val c: CostStateRef[F] = cost
           createRhoEnv(rspace, mergeChs, mergeableTagName, extraSystemProcesses)
         }
         (reducer, blockRef) = rhoEnv
-        runtime = new ReplayRhoRuntimeImpl[F](
-          reducer,
-          rspace,
-          cost,
-          blockRef,
-          mergeChs
-        )
-        _ <- if (initRegistry) {
-              bootstrapRegistry(runtime) >> runtime.createCheckpoint
-            } else ().pure[F]
+        runtime             = new ReplayRhoRuntimeImpl[F](
+                                reducer,
+                                rspace,
+                                cost,
+                                blockRef,
+                                mergeChs,
+                              )
+        _                  <- if (initRegistry) {
+                                bootstrapRegistry(runtime) >> runtime.createCheckpoint
+                              } else ().pure[F]
       } yield runtime
     }
 
   def createRuntimes[F[_]: Async: Parallel: Log: Metrics: Span](
-      space: RhoISpace[F],
-      replaySpace: RhoReplayISpace[F],
-      initRegistry: Boolean,
-      additionalSystemProcesses: Seq[Definition[F]],
-      mergeableTagName: Par
+    space: RhoISpace[F],
+    replaySpace: RhoReplayISpace[F],
+    initRegistry: Boolean,
+    additionalSystemProcesses: Seq[Definition[F]],
+    mergeableTagName: Par,
   ): F[(RhoRuntime[F], ReplayRhoRuntime[F])] =
     for {
-      rhoRuntime <- RhoRuntime.createRhoRuntime[F](
-                     space,
-                     mergeableTagName,
-                     initRegistry,
-                     additionalSystemProcesses
-                   )
+      rhoRuntime       <- RhoRuntime.createRhoRuntime[F](
+                            space,
+                            mergeableTagName,
+                            initRegistry,
+                            additionalSystemProcesses,
+                          )
       replayRhoRuntime <- RhoRuntime.createReplayRhoRuntime[F](
-                           replaySpace,
-                           mergeableTagName,
-                           additionalSystemProcesses,
-                           initRegistry
-                         )
+                            replaySpace,
+                            mergeableTagName,
+                            additionalSystemProcesses,
+                            initRegistry,
+                          )
     } yield (rhoRuntime, replayRhoRuntime)
 
   /*
@@ -572,24 +578,24 @@ object RhoRuntime {
    */
 
   def createRuntime[F[_]: Async: Parallel: Log: Metrics: Span](
-      stores: RSpaceStore[F],
-      mergeableTagName: Par,
-      initRegistry: Boolean = false,
-      additionalSystemProcesses: Seq[Definition[F]] = Seq.empty
+    stores: RSpaceStore[F],
+    mergeableTagName: Par,
+    initRegistry: Boolean = false,
+    additionalSystemProcesses: Seq[Definition[F]] = Seq.empty,
   ): F[RhoRuntime[F]] = {
     import coop.rchain.rholang.interpreter.storage._
-    implicit val m: Match[F, BindPattern, ListParWithRandom] = matchListPar[F]
+    implicit val m: Match[F, BindPattern, ListParWithRandom, MatchedParsWithRandom] = matchListPar[F]
     for {
-      space <- RSpace
-                .create[F, Par, BindPattern, ListParWithRandom, TaggedContinuation](
-                  stores
-                )
+      space   <- RSpace
+                   .create[F, Par, BindPattern, ListParWithRandom, TaggedContinuation, MatchedParsWithRandom](
+                     stores,
+                   )
       runtime <- createRhoRuntime[F](
-                  space,
-                  mergeableTagName,
-                  initRegistry,
-                  additionalSystemProcesses
-                )
+                   space,
+                   mergeableTagName,
+                   initRegistry,
+                   additionalSystemProcesses,
+                 )
     } yield runtime
   }
 }

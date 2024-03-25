@@ -17,8 +17,8 @@ import org.scalatest.matchers.should.Matchers
 import cats.effect.{Async, IO, Ref}
 import cats.effect.unsafe.implicits.global
 
-trait StorageTestsBase[F[_], C, P, A, K] extends AnyFlatSpec with Matchers with OptionValues {
-  type T     = ISpace[F, C, P, A, K]
+trait StorageTestsBase[F[_], C, P, A, K, B] extends AnyFlatSpec with Matchers with OptionValues {
+  type T     = ISpace[F, C, P, A, K, B]
   type ST    = HotStore[F, C, P, A, K]
   type HR    = HistoryRepository[F, C, P, A, K]
   type RefST = Ref[F, ST]
@@ -47,43 +47,40 @@ trait StorageTestsBase[F[_], C, P, A, K] extends AnyFlatSpec with Matchers with 
   def run[S](f: F[S]): S
 
   protected def setupTestingSpace[S, STORE](
-      createISpace: (HR, ST) => F[(ST, RefST, T)],
-      f: (ST, RefST, T) => F[S]
-  )(
-      implicit
-      sc: Serialize[C],
-      sp: Serialize[P],
-      sa: Serialize[A],
-      sk: Serialize[K]
+    createISpace: (HR, ST) => F[(ST, RefST, T)],
+    f: (ST, RefST, T) => F[S],
+  )(implicit
+    sc: Serialize[C],
+    sp: Serialize[P],
+    sa: Serialize[A],
+    sk: Serialize[K],
   ): S = {
 
     val kvm = InMemoryStoreManager[F]()
 
     run(for {
-      stores                            <- kvm.rSpaceStores
+      stores                           <- kvm.rSpaceStores
       RSpaceStore(history, roots, cold) = stores
-      historyRepository <- HistoryRepositoryInstances
-                            .lmdbRepository[F, C, P, A, K](
-                              history,
-                              roots,
-                              cold
-                            )
-      cache         <- Ref[F].of(HotStoreState[C, P, A, K]())
-      historyReader <- historyRepository.getHistoryReader(historyRepository.root)
-      testStore <- {
+      historyRepository                <- HistoryRepositoryInstances
+                                            .lmdbRepository[F, C, P, A, K](
+                                              history,
+                                              roots,
+                                              cold,
+                                            )
+      cache                            <- Ref[F].of(HotStoreState[C, P, A, K]())
+      historyReader                    <- historyRepository.getHistoryReader(historyRepository.root)
+      testStore                        <- {
         val hr = historyReader.base
         HotStore[F, C, P, A, K](cache, hr)
       }
-      spaceAndStore        <- createISpace(historyRepository, testStore)
-      (store, atom, space) = spaceAndStore
-      res                  <- f(store, atom, space)
-    } yield {
-      res
-    })
+      spaceAndStore                    <- createISpace(historyRepository, testStore)
+      (store, atom, space)              = spaceAndStore
+      res                              <- f(store, atom, space)
+    } yield res)
   }
 }
 
-trait IOTests[C, P, A, R, K] extends StorageTestsBase[IO, C, P, R, K] {
+trait IOTests[C, P, A, R, K, B] extends StorageTestsBase[IO, C, P, R, K, B] {
   implicit val concurrentF: Async[IO]    = IO.asyncForIO
   implicit val monadF: Monad[IO]         = Monad[IO]
   implicit val logF: Log[IO]             = Log.log[IO]
@@ -93,7 +90,7 @@ trait IOTests[C, P, A, R, K] extends StorageTestsBase[IO, C, P, R, K] {
 }
 
 abstract class InMemoryHotStoreTestsBase[F[_]]
-    extends StorageTestsBase[F, String, Pattern, String, StringsCaptor]
+    extends StorageTestsBase[F, String, Pattern, String, StringsCaptor, String]
     with BeforeAndAfterAll {
 
   override def fixture[S](f: (ST, RefST, T) => F[S]): S = {
@@ -101,7 +98,7 @@ abstract class InMemoryHotStoreTestsBase[F[_]]
       (hr, ts) => {
         val atomicRef = Ref.of[F, ST](ts)
         atomicRef.map { ref =>
-          val space = new RSpace[F, String, Pattern, String, StringsCaptor](hr, ref)
+          val space = new RSpace[F, String, Pattern, String, StringsCaptor, String](hr, ref)
           (ts, ref, space)
         }
       }
