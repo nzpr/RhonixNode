@@ -25,7 +25,7 @@ class VarNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with M
       )
 
       val par = VarNormalizer.normalizeVar[IO, VarSort](term).unsafeRunSync()
-      par shouldBe BoundVarN(-1)
+      par shouldBe BoundVarN(varIndex)
     }
   }
 

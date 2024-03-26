@@ -48,9 +48,9 @@ object VarMap {
   /**
    * Creates a default instance of VarMap.
    *
-   * @return a new VarMap with an empty data map and a next index of 0
+   * @return a new VarMap with an empty data map and given next index
    */
-  def default[T]: VarMap[T] = VarMap(Map[String, VarContext[T]](), 0)
+  def default[T](nextIndex: Int = 0): VarMap[T] = VarMap(Map[String, VarContext[T]](), nextIndex)
 
   /**
    * Create a VarMap with the given data.
@@ -58,7 +58,8 @@ object VarMap {
    * @param initData the data to initialize the VarMap with
    * @return a new VarMap with the given data and a next index of 0
    */
-  def apply[T](initData: Seq[(String, T, SourcePosition)]): VarMap[T] = initData.foldLeft(default[T]) {
-    case (varMap, data) => varMap.put(data._1, data._2, data._3)._1
-  }
+  def apply[T](initData: Seq[(String, T, SourcePosition)], nextIndex: Int = 0): VarMap[T] =
+    initData.foldLeft(default[T](nextIndex)) { case (varMap, data) =>
+      varMap.put(data._1, data._2, data._3)._1
+    }
 }

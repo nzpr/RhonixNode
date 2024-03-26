@@ -10,9 +10,9 @@ final class HistoryChain[T](private val chain: collection.mutable.ListBuffer[T])
 
   /**
    * Retrieve the current (last) element of the chain.
-   * @return the last element of the chain
+   * @return An Option containing the last element of the chain if it exists, None otherwise.
    */
-  def current(): T = chain.last
+  def current(): Option[T] = chain.lastOption
 
   /**
    * Retrieve the depth (length) of the chain.

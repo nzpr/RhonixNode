@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class VarMapSpec extends AnyFlatSpec with Matchers {
 
   "A VarMap" should "return None when getting a non-existing variable" in {
-    val varMap = VarMap.default[Int]
+    val varMap = VarMap.default[Int]()
     varMap.get("nonExistingVar") shouldBe None
   }
 

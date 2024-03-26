@@ -13,33 +13,48 @@ trait NormalizerSyntax {
 
 class NormalizerOps[F[_], A](val f: F[A]) extends AnyVal {
 
-  private def processAsPattern[B](scopeFn: F[B], withinReceive: Boolean)(implicit
+  private def processAsPattern[B, T](scopeFn: F[B], withinReceive: Boolean)(implicit
+    sync: Sync[F],
     bvs: BoundVarScope[F],
     fvs: FreeVarScope[F],
     nes: NestingWriter[F],
-  ): F[B] = nes.withinPattern(withinReceive)(scopeFn).withNewVarScope
+    bvr: BoundVarReader[T],
+  ): F[B] = nes.withinPattern(withinReceive)(scopeFn).withNewVarScope[T]
 
-  def withNewVarScope(implicit
+  def withNewVarScope[T](implicit
+    sync: Sync[F],
     bvs: BoundVarScope[F],
     fvs: FreeVarScope[F],
-  ): F[A] = bvs.withNewBoundVarScope(fvs.withNewFreeVarScope(f))
+    bvr: BoundVarReader[T],
+  ): F[A] =
+    for {
+      startIdx <- sync.delay(bvr.getNextIndex)
+      res      <- bvs.withNewBoundVarScope(fvs.withNewFreeVarScope(f, startIdx))
+    } yield res
 
   /** Run a function within a new scope, label it as a pattern
    * @param withinReceive Flag should be true for pattern in receive (input) or contract. */
-  def withinPattern(
+  def withinPattern[T](
     withinReceive: Boolean = false,
-  )(implicit bvs: BoundVarScope[F], fvs: FreeVarScope[F], nes: NestingWriter[F]): F[A] =
+  )(implicit
+    sync: Sync[F],
+    bvs: BoundVarScope[F],
+    fvs: FreeVarScope[F],
+    nes: NestingWriter[F],
+    bvr: BoundVarReader[T],
+  ): F[A] =
     processAsPattern(f, withinReceive)
 
   /** Run a function within a new scope, label it as a pattern,
    * and subsequently extract all free variables from the normalized result of this function.
    * @param withinReceive Flag should be true for pattern in receive (input) or contract. */
   def withinPatternGetFreeVars[T](withinReceive: Boolean = false)(implicit
-    fun: Functor[F],
+    sync: Sync[F],
     bvs: BoundVarScope[F],
     fvs: FreeVarScope[F],
     nes: NestingWriter[F],
     fvr: FreeVarReader[T],
+    bvr: BoundVarReader[T],
   ): F[(A, Seq[(String, FreeContext[T])])] =
     processAsPattern(f.map((_, FreeVarReader[T].getFreeVars)), withinReceive)
 
@@ -56,15 +71,16 @@ class NormalizerOps[F[_], A](val f: F[A]) extends AnyVal {
    */
   def withAbsorbedFreeVars[T](
     freeVars: Seq[(String, FreeContext[T])],
-  )(implicit sync: Sync[F], bvs: BoundVarScope[F], bvw: BoundVarWriter[T]): F[A] = {
+  )(implicit sync: Sync[F], bvs: BoundVarScope[F], bvw: BoundVarWriter[T], bvr: BoundVarReader[T]): F[A] = {
 
     def absorbFree(freeVars: Seq[(String, FreeContext[T])]): Seq[IdContext[T]] = {
-      val sortedByLevel  = freeVars.sortBy(_._2.level)
-      val (levels, data) = sortedByLevel.unzip(fv => (fv._2.level, (fv._1, fv._2.typ, fv._2.sourcePosition)))
+      val sortedByLevel   = freeVars.sortBy(_._2.level)
+      val (levels, data)  = sortedByLevel.unzip(fv => (fv._2.level, (fv._1, fv._2.typ, fv._2.sourcePosition)))
+      val expectedIndices = levels.indices.map(_ + bvr.getNextIndex)
       assert(
-        levels == levels.indices,
+        levels == expectedIndices,
         "Error when absorbing free variables during normalization: incorrect de Bruijn levels." +
-          s"Should be ${levels.indices}, but was $levels.",
+          s"Should be $expectedIndices, but was $levels.",
       )
       data
     }

@@ -17,7 +17,7 @@ object Normalizer {
    *       This approach ensures compatibility with the legacy reducer and associated tests.
    *       However, it should be rewritten using non-inverted methods following the completion of reducer rewriting.
    */
-  val BOUND_VAR_INDEX_REVERSED = true
+  val BOUND_VAR_INDEX_REVERSED = false
 
   /** Normalizes parser AST types to core Rholang AST types. Entry point of the normalizer.
    *

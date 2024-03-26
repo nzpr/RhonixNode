@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 object ContractNormalizer {
   def normalizeContract[
     F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter,
-    T: BoundVarWriter: FreeVarReader,
+    T: BoundVarWriter: BoundVarReader: FreeVarReader,
   ](p: PContr): F[ReceiveN] =
     for {
       source <- NormalizerRec[F].normalize(p.name_)

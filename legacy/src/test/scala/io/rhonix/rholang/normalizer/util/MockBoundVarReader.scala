@@ -11,4 +11,6 @@ case class MockBoundVarReader[T](boundVars: Map[String, (Int, T)]) extends Bound
 
   override def findBoundVar(name: String): Option[VarContext[T]] =
     boundVarMap.get(name)
+
+  override def getNextIndex: Int = if (boundVarMap.isEmpty) 0 else boundVarMap.values.map(_.index).max + 1
 }
