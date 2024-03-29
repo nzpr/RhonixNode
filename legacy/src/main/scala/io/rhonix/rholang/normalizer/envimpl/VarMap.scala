@@ -38,7 +38,7 @@ final case class VarMap[T](data: Map[String, VarContext[T]], nextIndex: Int) {
   def create(vars: Seq[(T, SourcePosition)]): (VarMap[T], Seq[VarContext[T]]) = {
     val newNextIdx = nextIndex + vars.size
     // NOTE: Reverse index is not calculated here, it's temporary set to -1.
-    val addedVars  = vars.zipWithIndex.map { case ((t, pos), i) => VarContext(i, -1, t, pos) }
+    val addedVars  = vars.zipWithIndex.map { case ((t, pos), i) => VarContext(i + nextIndex, -1, t, pos) }
     (copy(nextIndex = newNextIdx), addedVars)
   }
 }
