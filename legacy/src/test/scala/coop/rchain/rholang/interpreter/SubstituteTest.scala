@@ -36,7 +36,7 @@ class SubSpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
       ConnString(true),
       ConnUri(true),
       ConnByteArray(true),
-      ConnOrBody(ConnectiveBody(Vector()))
+      ConnOrBody(ConnectiveBody(Vector())),
     ).map(Connective(_))
 
     val connectiveSeqs: Gen[Seq[Connective]] =
@@ -74,8 +74,8 @@ class VarSubSpec extends AnyFlatSpec with Matchers {
 
   "BoundVar" should "be left unchanged" in {
     implicit val env        = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par).shift(1)
-    val result              = maybeSubstitute[Eval](BoundVar(0)).value
-    val expectedResult: Var = BoundVar(0)
+    val result              = maybeSubstitute[Eval](BoundVar(2)).value
+    val expectedResult: Var = BoundVar(2)
     result should be(Left(expectedResult))
   }
 }
@@ -85,25 +85,25 @@ class SendSubSpec extends AnyFlatSpec with Matchers {
   "Send" should "leave variables not in evironment alone." in {
 
     implicit val env = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par).shift(1)
-    val result =
+    val result       =
       substituteSend[Eval]
-        .substitute(Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0)))
+        .substitute(Send(EVar(BoundVar(2)), List(Par()), false, BitSet(0)))
         .value
-    result should be(Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0)))
+    result should be(Send(EVar(BoundVar(2)), List(Par()), false, BitSet(0)))
   }
 
   "Send" should "substitute bound vars for values" in {
     val source0: Par = GPrivateBuilder()
     val source1: Par = GPrivateBuilder()
     implicit val env = Env.makeEnv(source0, source1)
-    val result = substituteSend[Eval]
+    val result       = substituteSend[Eval]
       .substitute(
         Send(
-          Send(EVar(BoundVar(1)), List(Par()), false, BitSet(1)),
+          Send(EVar(BoundVar(0)), List(Par()), false, BitSet(1)),
           List(Par()),
           false,
-          BitSet(1)
-        )
+          BitSet(1),
+        ),
       )
       .value
     result should be(
@@ -111,58 +111,58 @@ class SendSubSpec extends AnyFlatSpec with Matchers {
         Send(source0, List(Par()), false, BitSet()),
         List(Par()),
         false,
-        BitSet()
-      )
+        BitSet(),
+      ),
     )
   }
 
   "Send" should "substitute all bound vars for values" in {
     val source: Par  = GPrivateBuilder()
     implicit val env = Env.makeEnv(source)
-    val target = Send(
+    val target       = Send(
       EVar(BoundVar(0)),
       List(Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0))),
       false,
-      BitSet(0)
+      BitSet(0),
     )
-    val _target =
+    val _target      =
       Send(source, List(Send(source, List(Par()), false, BitSet())), false, BitSet())
-    val result = substituteSend[Eval].substitute(target).value
+    val result       = substituteSend[Eval].substitute(target).value
     result should be(_target)
   }
 
   "Send" should "substitute all bound vars for values in environment" in {
-    val chan0 = EVar(BoundVar(0))
-    val source: Par = New(
+    val chan0        = EVar(BoundVar(0))
+    val source: Par  = New(
       bindCount = 1,
       p = Send(chan0, List(Par()), false, BitSet(0)),
       uri = Vector.empty,
-      locallyFree = BitSet()
+      locallyFree = BitSet(),
     )
     implicit val env = Env.makeEnv(source)
-    val target =
+    val target       =
       Send(chan0, List(Send(chan0, List(Par()), false, BitSet(0))), false, BitSet(0))
-    val result = substituteSend[Eval].substitute(target).value
+    val result       = substituteSend[Eval].substitute(target).value
     result should be(
       Send(
         New(
           bindCount = 1,
-          p = Send(chan0, List(Par()), false, BitSet(0))
+          p = Send(chan0, List(Par()), false, BitSet(0)),
         ),
         List(
           Send(
             New(
               bindCount = 1,
-              p = Send(chan0, List(Par()), false, BitSet(0))
+              p = Send(chan0, List(Par()), false, BitSet(0)),
             ),
             List(Par()),
             false,
-            BitSet()
-          )
+            BitSet(),
+          ),
         ),
         false,
-        BitSet()
-      )
+        BitSet(),
+      ),
     )
   }
 }
@@ -171,39 +171,40 @@ class NewSubSpec extends AnyFlatSpec with Matchers {
   implicit val depth: Int = 0
   "New" should "only substitute body of expression" in {
     val source: Par  = GPrivateBuilder()
-    implicit val env = Env.makeEnv(source)
-    val target =
+    implicit val env = new Env[Par](Map(1 -> source), level = 2, shift = 0)
+    val target       =
       New(
         bindCount = 1,
         p = Send(EVar(BoundVar(1)), List(Par()), false, BitSet(1)),
         uri = Vector.empty,
-        locallyFree = BitSet(0)
+        locallyFree = BitSet(0),
       )
-    val result = substituteNew[Eval].substitute(target).value
+    val result       = substituteNew[Eval].substitute(target).value
     result should be(
       New(
         bindCount = 1,
         p = Send(source, List(Par()), false, BitSet()),
         uri = Vector.empty,
-        locallyFree = BitSet()
-      )
+        locallyFree = BitSet(),
+      ),
     )
   }
 
   "New" should "only substitute all variables in body of express" in {
     val source0: Par           = GPrivateBuilder()
     val source1: Par           = GPrivateBuilder()
-    implicit val env: Env[Par] = Env.makeEnv(source0, source1)
+    implicit val env: Env[Par] = new Env[Par](Map(2 -> source0, 3 -> source1), level = 4, shift = 0)
+
     val target = New(
       bindCount = 2,
       p = Send(
-        EVar(BoundVar(3)),
-        List(Send(EVar(BoundVar(2)), List(Par()), false, BitSet(2))),
+        EVar(BoundVar(2)),
+        List(Send(EVar(BoundVar(3)), List(Par()), false, BitSet(2))),
         false,
-        BitSet(2, 3)
+        BitSet(2, 3),
       ),
       uri = Vector.empty,
-      locallyFree = BitSet(0, 1)
+      locallyFree = BitSet(0, 1),
     )
 
     val result = substituteNew[Eval].substitute(target).value
@@ -214,11 +215,11 @@ class NewSubSpec extends AnyFlatSpec with Matchers {
           source0,
           List(Send(source1, List(Par()), false, BitSet())),
           false,
-          BitSet()
+          BitSet(),
         ),
         uri = Vector.empty,
-        locallyFree = BitSet()
-      )
+        locallyFree = BitSet(),
+      ),
     )
   }
 }
@@ -227,7 +228,7 @@ class EvalSubSpec extends AnyFlatSpec with Matchers {
   implicit val depth: Int = 0
   "Eval" should "remove Eval/Quote pairs." in {
     implicit val env: Env[Par] = Env.makeEnv(GPrivateBuilder("one"), GPrivateBuilder("zero"))
-    val target: Par            = EVar(BoundVar(1))
+    val target: Par            = EVar(BoundVar(0))
     val result                 = substitutePar[Eval].substitute(target).value
     val expected: Par          = GPrivateBuilder("one")
 
@@ -243,7 +244,7 @@ class BundleSubSpec extends AnyFlatSpec with Matchers {
     val target       = Bundle(Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0)))
     val result       = substituteBundle[Eval].substitute(target).value
     result should be(
-      Bundle(Send(source, List(Par()), false, BitSet()))
+      Bundle(Send(source, List(Par()), false, BitSet())),
     )
   }
 
@@ -251,24 +252,24 @@ class BundleSubSpec extends AnyFlatSpec with Matchers {
     val source0: Par           = GPrivateBuilder()
     val source1: Par           = GPrivateBuilder()
     implicit val env: Env[Par] = Env.makeEnv(source0, source1)
-    val target = Bundle(
+    val target                 = Bundle(
       Send(
-        EVar(BoundVar(1)),
-        List(Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0))),
+        EVar(BoundVar(0)),
+        List(Send(EVar(BoundVar(1)), List(Par()), false, BitSet(0))),
         false,
-        BitSet(0, 1)
-      )
+        BitSet(0, 1),
+      ),
     )
-    val result = substituteBundle[Eval].substitute(target).value
+    val result                 = substituteBundle[Eval].substitute(target).value
     result should be(
       Bundle(
         Send(
           source0,
           List(Send(source1, List(Par()), false, BitSet())),
           false,
-          BitSet()
-        )
-      )
+          BitSet(),
+        ),
+      ),
     )
   }
 
@@ -306,24 +307,24 @@ class VarRefSubSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be replaced at a higher depth inside a pattern" in {
-    val source: Par  = GPrivateBuilder()
-    implicit val env = Env.makeEnv(source).shift(1)
-    val target: Par =
+    val source: Par         = GPrivateBuilder()
+    implicit val env        = Env.makeEnv(source).shift(1)
+    val target: Par         =
       Match(
-        target = EVar(BoundVar(0)),
+        target = EVar(BoundVar(1)),
         cases = Seq(
           MatchCase(
-            pattern = Connective(VarRefBody(VarRef(index = 1, depth = 2))),
+            pattern = Connective(VarRefBody(VarRef(index = 0, depth = 2))),
             source = Par(),
-            freeCount = 0
-          )
-        )
+            freeCount = 0,
+          ),
+        ),
       )
-    val result = substitutePar[Eval].substitute(target).value
+    val result              = substitutePar[Eval].substitute(target).value
     val expectedResult: Par =
       Match(
-        target = EVar(BoundVar(0)),
-        cases = Seq(MatchCase(pattern = source, source = Par(), freeCount = 0))
+        target = EVar(BoundVar(1)),
+        cases = Seq(MatchCase(pattern = source, source = Par(), freeCount = 0)),
       )
 
     result should be(expectedResult)
@@ -344,20 +345,20 @@ class OpSubSpec extends AnyFlatSpec with Matchers {
   "EPercentPercent" should "be substituted correctly" in {
     val source: Par            = Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0))
     implicit val env: Env[Par] = Env.makeEnv(source)
-    val target =
+    val target                 =
       EPercentPercentBody(EPercentPercent(EVar(BoundVar(0)), EVar(BoundVar(1))))
-    val result         = substitutePar[Eval].substitute(target).value
-    val expectedResult = EPercentPercentBody(EPercentPercent(source, EVar(BoundVar(1))))
+    val result                 = substitutePar[Eval].substitute(target).value
+    val expectedResult         = EPercentPercentBody(EPercentPercent(source, EVar(BoundVar(1))))
     result should be(Par(exprs = List(expectedResult), locallyFree = BitSet(0, 1)))
   }
 
   "EMinusMinus" should "be substituted correctly" in {
     val source: Par            = Send(EVar(BoundVar(0)), List(Par()), false, BitSet(0))
     implicit val env: Env[Par] = Env.makeEnv(source)
-    val target =
+    val target                 =
       EMinusMinusBody(EMinusMinus(EVar(BoundVar(0)), EVar(BoundVar(1))))
-    val result         = substitutePar[Eval].substitute(target).value
-    val expectedResult = EMinusMinusBody(EMinusMinus(source, EVar(BoundVar(1))))
+    val result                 = substitutePar[Eval].substitute(target).value
+    val expectedResult         = EMinusMinusBody(EMinusMinus(source, EVar(BoundVar(1))))
     result should be(Par(exprs = List(expectedResult), locallyFree = BitSet(0, 1)))
   }
 }

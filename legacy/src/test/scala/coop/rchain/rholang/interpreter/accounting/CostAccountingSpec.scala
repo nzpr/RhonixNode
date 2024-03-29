@@ -206,7 +206,7 @@ class CostAccountingSpec
          } |
          loop!(10)
        }""".stripMargin,
-      3868L,
+      3874L,
     ),
     ("""42 | @0!(2) | for (x <- @0) { Nil }""", 336L),
     (

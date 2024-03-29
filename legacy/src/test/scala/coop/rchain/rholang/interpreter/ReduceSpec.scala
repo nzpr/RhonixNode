@@ -612,8 +612,8 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
           .withConnectiveUsed(true)
       val sendTarget   =
         Send(
-          EVar(BoundVar(1)),
-          List(GInt(7L), EVar(BoundVar(0))),
+          EVar(BoundVar(0)),
+          List(GInt(7L), EVar(BoundVar(1))),
           persistent = false,
           BitSet(0, 1),
         )
@@ -624,7 +624,7 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
             pattern,
             Send(
               GString("result"),
-              List(EVar(BoundVar(1)), EVar(BoundVar(0))),
+              List(EVar(BoundVar(0)), EVar(BoundVar(1))),
               false,
               BitSet(0, 1),
             ),
@@ -864,7 +864,7 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
             List(
               Datum.create(
                 channel0,
-                ListParWithRandom(Seq(GPrivate(ByteString.copyFrom(Array[Byte](42)))), result0Rand),
+                ListParWithRandom(Seq(GPrivate(ByteString.copyFrom(chosenName))), result0Rand),
                 persist = false)),
             List()),
         List(channel1) ->
@@ -872,7 +872,7 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
             List(
               Datum.create(
                 channel1,
-                ListParWithRandom(Seq(GPrivate(ByteString.copyFrom(chosenName))), result1Rand),
+                ListParWithRandom(Seq(GPrivate(ByteString.copyFrom(Array[Byte](42)))), result1Rand),
                 persist = false)),
             List())
       )

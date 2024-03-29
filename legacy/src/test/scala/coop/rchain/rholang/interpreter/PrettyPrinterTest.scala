@@ -107,7 +107,7 @@ class CollectPrinterSpec extends AnyFlatSpec with Matchers {
   "Set" should "Print" in {
     val set    = ESetN(Seq(BoundVarN(0), BoundVarN(1), GIntN(7)), Some(FreeVarN(0)))
     val result = PrettyPrinter(0, 2).buildString(set)
-    result shouldBe "Set(7, x1, x0...free0)"
+    result shouldBe "Set(7, x0, x1...free0)"
   }
 
   "Map" should "Print" in {

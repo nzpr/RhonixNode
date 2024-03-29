@@ -28,7 +28,7 @@ object PrettyPrinter {
   }
 }
 final case class PrettyPrinter(
-  freeShift: Int,
+  freeShift: Int, // TODO: Remove it
   boundShift: Int,
   newsShiftIndices: Vector[Int],
   freeId: String,
@@ -159,7 +159,7 @@ final case class PrettyPrinter(
 
   private def buildStringM(v: Var): Eval[String] =
     v.varInstance match {
-      case FreeVar(level)    => Eval.now(s"$freeId${freeShift + level}")
+      case FreeVar(level)    => Eval.now(s"$freeId$level")
       case BoundVar(level)   =>
         (if (isNewVar(level) && !isBuildingChannel) Eval.now("*") else Eval.now("")) |+| Eval.now(
           s"$boundId${varLevel(level)}",
