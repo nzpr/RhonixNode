@@ -355,7 +355,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
   ): M[Unit] = {
 
     def addToEnv(env: Env[Par], freeMap: Map[Int, Par], freeCount: Int): Env[Par] =
-      Range(0, freeCount).foldLeft(env)((acc, e) => acc.put(freeMap.getOrElse(e, Par())))
+      Range(0, freeCount).foldLeft(env)((acc, e) => acc.put(freeMap.getOrElse(e + env.level, Par())))
 
     def firstMatch(target: Par, cases: Seq[MatchCase])(implicit env: Env[Par]): M[Unit] = {
       def firstMatchM(
