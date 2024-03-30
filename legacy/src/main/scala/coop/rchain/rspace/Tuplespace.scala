@@ -2,9 +2,9 @@ package coop.rchain.rspace
 
 import scala.collection.SortedSet
 
-trait Tuplespace[F[_], C, P, A, K] {
+trait Tuplespace[F[_], C, P, A, K, B] {
 
-  implicit val m: Match[F, P, A]
+  implicit val m: Match[F, P, A, B]
 
   /** Searches the store for data matching all the given patterns at the given channels.
     *
@@ -35,7 +35,7 @@ trait Tuplespace[F[_], C, P, A, K] {
     continuation: K,
     persist: Boolean,
     peeks: SortedSet[Int] = SortedSet.empty,
-  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A]])]]
+  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A, B]])]]
 
   /** Searches the store for a continuation that has patterns that match the given data at the
     * given channel.
@@ -64,7 +64,7 @@ trait Tuplespace[F[_], C, P, A, K] {
     channel: C,
     data: A,
     persist: Boolean,
-  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A]])]]
+  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A, B]])]]
 
   def install(channels: Seq[C], patterns: Seq[P], continuation: K): F[Option[(K, Seq[A])]]
 }

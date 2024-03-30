@@ -7,7 +7,7 @@ import io.rhonix.rholang.normalizer.env.FreeVarScope
 case class MockFreeVarScope[F[_]: Sync]() extends FreeVarScope[F] {
   private var scopeLevel: Int = 0
 
-  override def withNewFreeVarScope[R](scopeFn: F[R]): F[R] = for {
+  override def withNewFreeVarScope[R](scopeFn: F[R], startIndex: Int = 0): F[R] = for {
     _   <- Sync[F].delay(scopeLevel += 1)
     res <- scopeFn
     _    = scopeLevel -= 1

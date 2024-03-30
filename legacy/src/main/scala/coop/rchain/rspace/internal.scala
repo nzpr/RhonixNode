@@ -51,18 +51,18 @@ object internal {
       )
   }
 
-  final case class ConsumeCandidate[C, A](
+  final case class ConsumeCandidate[C, A, B](
     channel: C,
-    datum: Datum[A],
+    datum: Datum[B],
     removedDatum: A,
     datumIndex: Int,
   )
 
-  final case class ProduceCandidate[C, P, A, K](
+  final case class ProduceCandidate[C, P, A, K, B](
     channels: Seq[C],
     continuation: WaitingContinuation[P, K],
     continuationIndex: Int,
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
   )
 
   final case class Row[P, A, K](data: Seq[Datum[A]], wks: Seq[WaitingContinuation[P, K]])

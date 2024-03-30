@@ -7,31 +7,31 @@ import coop.rchain.rspace.{internal, Checkpoint, ContResult, ISpace, Match, Resu
 
 import scala.collection.SortedSet
 
-class ISpaceStub[F[_]: Applicative, C, P, A, K] extends ISpace[F, C, P, A, K] {
+class ISpaceStub[F[_]: Applicative, C, P, A, K, B] extends ISpace[F, C, P, A, K, B] {
 
-  implicit val m: Match[F, P, A] = (_: P, _: A) => Applicative[F].pure(none)
+  implicit val m: Match[F, P, A, B] = (_: P, _: A) => Applicative[F].pure(none)
 
   override def getJoins(channel: C): F[Seq[Seq[C]]] = ???
 
   override def consume(
-      channels: Seq[C],
-      patterns: Seq[P],
-      continuation: K,
-      persist: Boolean,
-      peeks: SortedSet[Int]
-  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A]])]] = ???
+    channels: Seq[C],
+    patterns: Seq[P],
+    continuation: K,
+    persist: Boolean,
+    peeks: SortedSet[Int],
+  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A, B]])]] = ???
 
   override def install(
-      channels: Seq[C],
-      patterns: Seq[P],
-      continuation: K
+    channels: Seq[C],
+    patterns: Seq[P],
+    continuation: K,
   ): F[Option[(K, Seq[A])]] = ???
 
   override def produce(
-      channel: C,
-      data: A,
-      persist: Boolean
-  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A]])]] = ???
+    channel: C,
+    data: A,
+    persist: Boolean,
+  ): F[Option[(ContResult[C, P, K], Seq[Result[C, A, B]])]] = ???
 
   override def createCheckpoint(): F[Checkpoint] = ???
 
@@ -40,7 +40,7 @@ class ISpaceStub[F[_]: Applicative, C, P, A, K] extends ISpace[F, C, P, A, K] {
   override def getData(channel: C): F[Seq[internal.Datum[A]]] = ???
 
   override def getWaitingContinuations(
-      channels: Seq[C]
+    channels: Seq[C],
   ): F[Seq[internal.WaitingContinuation[P, K]]] = ???
 
   override def clear(): F[Unit] = ???

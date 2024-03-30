@@ -142,7 +142,7 @@ object AddressBookExample {
       */
     implicit def matchPatternEntry[F[_]](implicit
       apF: Applicative[F],
-    ): Match[F, Pattern, Entry] =
+    ): Match[F, Pattern, Entry, Entry] =
       (p: Pattern, a: Entry) =>
         p match {
           case NameMatch(last) if a.name.last == last        => apF.pure(Some(a))
@@ -186,7 +186,7 @@ object AddressBookExample {
 
     // Let's define our store
     val store = keyValueStoreManager.rSpaceStores
-    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer](store)
+    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer, Entry](store)
 
     Console.printf("\nExample One: Let's consume and then produce...\n")
 
@@ -221,7 +221,7 @@ object AddressBookExample {
 
     // Let's define our store
     val store = keyValueStoreManager.rSpaceStores
-    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer](store)
+    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer, Entry](store)
 
     Console.printf("\nExample Two: Let's produce and then consume...\n")
 
@@ -298,7 +298,7 @@ object AddressBookExample {
   }
 
   private[this] def withSpace(
-    f: ISpace[Id, Channel, Pattern, Entry, Printer] => Unit,
+    f: ISpace[Id, Channel, Pattern, Entry, Printer, Entry] => Unit,
   ) = {
 
     implicit val log: Log[Id]          = Log.log
@@ -308,7 +308,7 @@ object AddressBookExample {
 
     // Let's define our store
     val store = keyValueStoreManager.rSpaceStores
-    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer](store)
+    val space = RSpace.create[Id, Channel, Pattern, Entry, Printer, Entry](store)
     try
       f(space)
     finally

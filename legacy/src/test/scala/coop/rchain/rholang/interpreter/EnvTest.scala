@@ -17,6 +17,6 @@ class EnvSpec extends AnyFlatSpec with Matchers {
 
   "Data" should "always be inserted at the next available level index" in {
     val result: Env[Par] = Env().put(source0).put(source1).put(source2)
-    result should be(Env[Par](Map(0 -> source0, 1 -> source1, 2 -> source2), 3, 0))
+    result should be(Env[Par](Map(0 -> source0, 1 -> source1, 2 -> source2), 3))
   }
 }

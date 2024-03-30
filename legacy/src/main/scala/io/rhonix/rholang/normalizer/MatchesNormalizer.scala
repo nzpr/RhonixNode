@@ -1,6 +1,6 @@
 package io.rhonix.rholang.normalizer
 
-import cats.Apply
+import cats.effect.Sync
 import cats.syntax.all.*
 import io.rhonix.rholang.ast.rholang.Absyn.{PMatches, Proc}
 import io.rhonix.rholang.normalizer.env.*
@@ -8,7 +8,7 @@ import io.rhonix.rholang.normalizer.syntax.all.*
 import io.rhonix.rholang.types.EMatchesN
 
 object MatchesNormalizer {
-  def normalizeMatches[F[_]: Apply: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter](
+  def normalizeMatches[F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter, T: BoundVarReader](
     p: PMatches,
   ): F[EMatchesN] = {
     // The expression "target matches pattern" should have the same semantics as "match target { pattern => true ; _ => false}".

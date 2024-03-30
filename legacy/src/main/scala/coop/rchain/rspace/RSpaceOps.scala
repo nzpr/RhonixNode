@@ -17,7 +17,7 @@ import sdk.log.LogSourceMacroInstance.logSource
 import scala.collection.SortedSet
 import scala.util.Random
 
-abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
+abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, B, K](
   historyRepository: HistoryRepository[F, C, P, A, K],
   val storeRef: Ref[F, HotStore[F, C, P, A, K]],
 )(implicit
@@ -25,14 +25,14 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   serializeP: Serialize[P],
   serializeA: Serialize[A],
   serializeK: Serialize[K],
-) extends SpaceMatcher[F, C, P, A, K] {
+) extends SpaceMatcher[F, C, P, A, K, B] {
 
   override def syncF: Sync[F] = Sync[F]
 
   override def spanF: Span[F] = Span[F]
 
-  type MaybeProduceCandidate = Option[ProduceCandidate[C, P, A, K]]
-  type MaybeActionResult     = Option[(ContResult[C, P, K], Seq[Result[C, A]])]
+  type MaybeProduceCandidate = Option[ProduceCandidate[C, P, A, K, B]]
+  type MaybeActionResult     = Option[(ContResult[C, P, K], Seq[Result[C, A, B]])]
   type CandidateChannels     = Seq[C]
 
   implicit class MapOps(underlying: Map[Produce, Int]) {
@@ -150,7 +150,7 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     } yield None
 
   protected[this] def storePersistentData(
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     peeks: SortedSet[Int],
   ): F[List[Unit]] =
     dataCandidates.toList
@@ -353,7 +353,7 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     channels: Seq[C],
     wk: WaitingContinuation[P, K],
     consumeRef: Consume,
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
   ): MaybeActionResult =
     Some(
       (
@@ -371,7 +371,7 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
 
   def removeMatchedDatumAndJoin(
     channels: Seq[C],
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
   ): F[Seq[Unit]] =
     dataCandidates
       .sortBy(_.datumIndex)(Ordering[Int].reverse)
@@ -408,14 +408,14 @@ abstract class RSpaceOps[F[_]: Async: Log: Metrics: Span, C, P, A, K](
             case produceCandidate => produceCandidate.asRight[Seq[CandidateChannels]]
           }
         case _                     =>
-          none[ProduceCandidate[C, P, A, K]].asRight[Seq[CandidateChannels]].pure[F]
+          none[ProduceCandidate[C, P, A, K, B]].asRight[Seq[CandidateChannels]].pure[F]
       }
 
     groupedChannels.tailRecM(go)
   }
 
   protected def logComm(
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     channels: Seq[C],
     wk: WaitingContinuation[P, K],
     comm: COMM,

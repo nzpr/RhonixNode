@@ -37,7 +37,7 @@ class MatchNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with
         // match target { case pattern1 => caseBody1; case pattern2 => caseBody2; ... }
         val inputTerm = new PMatch(targetTerm, listCases)
 
-        implicit val (nRec, bVScope, bVW, _, fVScope, _, fVR, infoWriter, _) = createMockDSL[IO, VarSort]()
+        implicit val (nRec, bVScope, bVW, bVR, fVScope, _, fVR, infoWriter, _) = createMockDSL[IO, VarSort]()
 
         val adt = MatchNormalizer.normalizeMatch[IO, VarSort](inputTerm).unsafeRunSync()
 
@@ -77,7 +77,7 @@ class MatchNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with
 
       val initFreeVars = varsNameStr.distinct.zipWithIndex.map { case (name, index) => (name, (index, ProcSort)) }.toMap
 
-      implicit val (nRec, bVScope, bVW, _, fVScope, _, fVR, infoWriter, _) =
+      implicit val (nRec, bVScope, bVW, bVR, fVScope, _, fVR, infoWriter, _) =
         createMockDSL[IO, VarSort](initFreeVars = initFreeVars)
 
       MatchNormalizer.normalizeMatch[IO, VarSort](term).unsafeRunSync()

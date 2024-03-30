@@ -38,8 +38,8 @@ class CostAccountingSpec
     with AppendedClues {
 
   private[this] def evaluateWithCostLog(
-      initialPhlo: Long,
-      contract: String
+    initialPhlo: Long,
+    contract: String,
   ): (EvaluateResult, Chain[Cost]) = {
     implicit val logF: Log[IO]           = new Log.NOPLog[IO]
     implicit val metricsEff: Metrics[IO] = new metrics.Metrics.MetricsNOP[IO]
@@ -47,10 +47,10 @@ class CostAccountingSpec
     implicit val kvm                     = InMemoryStoreManager[IO]()
 
     val resources = for {
-      store           <- kvm.rSpaceStores
-      spaces          <- createRuntimesWithCostLog[IO](store)
+      store          <- kvm.rSpaceStores
+      spaces         <- createRuntimesWithCostLog[IO](store)
       (runtime, _, _) = spaces
-    } yield (runtime)
+    } yield runtime
 
     resources
       .flatMap { runtime =>
@@ -64,34 +64,35 @@ class CostAccountingSpec
   }
 
   private def createRuntimesWithCostLog[F[_]: Async: Parallel: Log: Metrics: Span](
-      stores: RSpaceStore[F],
-      initRegistry: Boolean = false,
-      additionalSystemProcesses: Seq[Definition[F]] = Seq.empty
+    stores: RSpaceStore[F],
+    initRegistry: Boolean = false,
+    additionalSystemProcesses: Seq[Definition[F]] = Seq.empty,
   ): F[(RhoRuntime[F], ReplayRhoRuntime[F], RhoHistoryRepository[F])] = {
     import coop.rchain.rholang.interpreter.storage._
-    implicit val m: Match[F, BindPattern, ListParWithRandom] = matchListPar[F]
+    implicit val m: Match[F, BindPattern, ListParWithRandom, MatchedParsWithRandom] = matchListPar[F]
 
     for {
-      hrstores <- RSpace
-                   .createWithReplay[F, Par, BindPattern, ListParWithRandom, TaggedContinuation](
-                     stores
-                   )
-      (space, replay) = hrstores
-      rhoRuntime <- RhoRuntime
-                     .createRhoRuntime[F](space, Par(), initRegistry, additionalSystemProcesses)
+      hrstores         <-
+        RSpace
+          .createWithReplay[F, Par, BindPattern, ListParWithRandom, TaggedContinuation, MatchedParsWithRandom](
+            stores,
+          )
+      (space, replay)   = hrstores
+      rhoRuntime       <- RhoRuntime
+                            .createRhoRuntime[F](space, Par(), initRegistry, additionalSystemProcesses)
       replayRhoRuntime <- RhoRuntime.createReplayRhoRuntime[F](
-                           replay,
-                           Par(),
-                           additionalSystemProcesses,
-                           initRegistry
-                         )
-      historyRepo <- space.historyRepo
+                            replay,
+                            Par(),
+                            additionalSystemProcesses,
+                            initRegistry,
+                          )
+      historyRepo      <- space.historyRepo
     } yield (rhoRuntime, replayRhoRuntime, historyRepo)
   }
 
   def evaluateAndReplay(
-      initialPhlo: Cost,
-      term: String
+    initialPhlo: Cost,
+    term: String,
   ): (EvaluateResult, EvaluateResult) = {
 
     implicit val logF: Log[IO]           = new Log.NOPLog[IO]
@@ -100,18 +101,17 @@ class CostAccountingSpec
     implicit val kvm                     = InMemoryStoreManager[IO]()
 
     val evaluaResult = for {
-      store                       <- kvm.rSpaceStores
-      spaces                      <- Resources.createRuntimes[IO](store)
+      store                      <- kvm.rSpaceStores
+      spaces                     <- Resources.createRuntimes[IO](store)
       (runtime, replayRuntime, _) = spaces
-      result <- {
+      result                     <- {
         implicit def rand: Blake2b512Random = Blake2b512Random(Array.empty[Byte])
         runtime.evaluate(term, initialPhlo, Map.empty, rand) >>= { playResult =>
-          runtime.createCheckpoint >>= {
-            case Checkpoint(root, log) =>
-              replayRuntime.reset(root) >> replayRuntime.rig(log) >>
-                replayRuntime.evaluate(term, initialPhlo, Map.empty, rand) >>= { replayResult =>
-                replayRuntime.checkReplayData.as((playResult, replayResult))
-              }
+          runtime.createCheckpoint >>= { case Checkpoint(root, log) =>
+            replayRuntime.reset(root) >> replayRuntime.rig(log) >>
+              replayRuntime.evaluate(term, initialPhlo, Map.empty, rand) >>= { replayResult =>
+              replayRuntime.checkReplayData.as((playResult, replayResult))
+            }
           }
         }
       }
@@ -125,8 +125,8 @@ class CostAccountingSpec
   // Every number gets decoded into a unique term, but some terms can
   // be encoded by more than one number.
   def fromLong(index: Long): String = {
-    var remainder = index
-    val numPars   = (index % 4) + 1
+    var remainder     = index
+    val numPars       = (index % 4) + 1
     remainder /= 4
     val result        = new ListBuffer[String]()
     var nonlinearSend = false;
@@ -196,7 +196,8 @@ class CostAccountingSpec
     ("@0!(0) | for (_ <<- @0) { 0 }", 406L),
     ("@0!!(0) | for (_ <<- @0) { 0 }", 343L),
     ("@0!!(0) | @0!!(0) | for (_ <<- @0) { 0 }", 444L),
-    ("""new loop in {
+    (
+      """new loop in {
          contract loop(@n) = {
            match n {
              0 => Nil
@@ -204,32 +205,38 @@ class CostAccountingSpec
            }
          } |
          loop!(10)
-       }""".stripMargin, 3868L),
+       }""".stripMargin,
+      3850L,
+    ),
     ("""42 | @0!(2) | for (x <- @0) { Nil }""", 336L),
-    ("""@1!(1) |
+    (
+      """@1!(1) |
         for(x <- @1) { Nil } |
         new x in { x!(10) | for(X <- x) { @2!(Set(X!(7)).add(*X).contains(10)) }} |
         match 42 {
           38 => Nil
           42 => @3!(42)
         }
-     """.stripMargin, 1234L),
+     """.stripMargin,
+      1228L,
+    ),
     // test that we charge for system processes
-    ("""new ret, keccak256Hash(`rho:crypto:keccak256Hash`) in {
-       |  keccak256Hash!("TEST".toByteArray(), *ret) |
-       |  for (_ <- ret) { Nil }
-       |}""".stripMargin, 782L)
+    (
+      """new ret, keccak256Hash(`rho:crypto:keccak256Hash`) in {
+        |  keccak256Hash!("TEST".toByteArray(), *ret) |
+        |  for (_ <- ret) { Nil }
+        |}""".stripMargin,
+      782L,
+    ),
     // TODO add a test making sure registry usage has deterministic cost too
   )
 
   "Total cost of evaluation" should "be equal to the sum of all costs in the log" in {
     forAll(contracts) { (contract: String, expectedTotalCost: Long) =>
-      {
-        val initialPhlo                             = 10000L
-        val (EvaluateResult(cost, err, _), costLog) = evaluateWithCostLog(initialPhlo, contract)
-        (cost, err) shouldBe ((Cost(expectedTotalCost), Vector.empty))
-        costLog.map(_.value).toList.sum shouldEqual expectedTotalCost
-      }
+      val initialPhlo                             = 10000L
+      val (EvaluateResult(cost, err, _), costLog) = evaluateWithCostLog(initialPhlo, contract)
+      (cost, err) shouldBe ((Cost(expectedTotalCost), Vector.empty))
+      costLog.map(_.value).toList.sum shouldEqual expectedTotalCost
     }
   }
 
@@ -244,7 +251,7 @@ class CostAccountingSpec
 
   // TODO: Remove ignore when bug RCHAIN-3917 is fixed.
   it should "be repeatable when generated" ignore {
-    val r = scala.util.Random
+    val r       = scala.util.Random
     // Try contract fromLong(1716417707L) = @2!!(0) | @0!!(0) | for (_ <<- @2) { 0 } | @2!(0)"
     // because the cost is nondeterministic
     val result1 = evaluateAndReplay(Cost(Integer.MAX_VALUE), fromLong(1716417707))
@@ -259,7 +266,7 @@ class CostAccountingSpec
     assert(result2._1.cost == result2._2.cost)
 
     for (i <- 1 to 10000) {
-      val long     = ((r.nextLong() % 0X144000000L) + 0X144000000L) % 0X144000000L
+      val long     = ((r.nextLong() % 0x144000000L) + 0x144000000L) % 0x144000000L
       val contract = fromLong(long)
       if (contract != "") {
         val result = evaluateAndReplay(Cost(Integer.MAX_VALUE), contract)
@@ -281,7 +288,7 @@ class CostAccountingSpec
       val actual   = subsequent._1.cost.value
       if (expected != actual) {
         assert(
-          subsequent._2.map(_.toString).map(_ + "\n") == first._2.map(_.toString).map(_ + "\n")
+          subsequent._2.map(_.toString).map(_ + "\n") == first._2.map(_.toString).map(_ + "\n"),
         ).withClue(s"Cost was not repeatable, expected $expected, got $actual.\n")
       }
     }
@@ -292,7 +299,7 @@ class CostAccountingSpec
     checkPhloLimitExceeded(
       "@1!(1)",
       parsingCost,
-      List(Cost(parsingCost, "parsing"))
+      List(Cost(parsingCost, "parsing")),
     )
   }
 
@@ -307,14 +314,14 @@ class CostAccountingSpec
     checkPhloLimitExceeded(
       "@1!(1) | @2!(2) | @3!(3)",
       parsingCost + firstStepCost,
-      List(Cost(parsingCost, "parsing"), Cost(firstStepCost, "send eval"))
+      List(Cost(parsingCost, "parsing"), Cost(firstStepCost, "send eval")),
     )
   }
 
   private def checkPhloLimitExceeded(
-      contract: String,
-      initialPhlo: Long,
-      expectedCosts: Seq[Cost]
+    contract: String,
+    initialPhlo: Long,
+    expectedCosts: Seq[Cost],
   ): Assertion = {
     val (EvaluateResult(totalCost, errors, _), costLog) = evaluateWithCostLog(initialPhlo, contract)
     withClue("We must not expect more costs than initialPhlo allows (duh!):\n") {
@@ -337,7 +344,7 @@ class CostAccountingSpec
         val (EvaluateResult(_, errors, _), costLog) =
           evaluateWithCostLog(initialPhlo, contract)
         errors shouldBe List(OutOfPhlogistonsError)
-        val costs = costLog.map(_.value).toList
+        val costs                                   = costLog.map(_.value).toList
         // The sum of all costs but last needs to be <= initialPhlo, otherwise
         // the last cost should have not been logged
         costs.init.sum should be <= initialPhlo withClue s", cost log was: $costLog"

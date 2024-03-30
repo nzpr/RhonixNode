@@ -18,17 +18,16 @@ import io.rhonix.rholang.types.ParN
 import scalapb.GeneratedMessage
 
 object PrettyPrinter {
-  def apply(): PrettyPrinter = PrettyPrinter(0, 0)
+  def apply(): PrettyPrinter = PrettyPrinter(0)
 
-  def apply(freeShift: Int, boundShift: Int): PrettyPrinter =
-    PrettyPrinter(freeShift, boundShift, Vector.empty[Int], "free", "a", 23, 128)
+  def apply(boundShift: Int): PrettyPrinter =
+    PrettyPrinter(boundShift, Vector.empty[Int], "free", "a", 23, 128)
 
   implicit class CappedOps(private val str: String) extends AnyVal {
     def cap() = Printer.OUTPUT_CAPPED.map(n => s"${str.take(n)}...").getOrElse(str)
   }
 }
 final case class PrettyPrinter(
-  freeShift: Int,
   boundShift: Int,
   newsShiftIndices: Vector[Int],
   freeId: String,
@@ -37,15 +36,6 @@ final case class PrettyPrinter(
   maxVarCount: Int,
   isBuildingChannel: Boolean = false,
 ) {
-
-  // TEMP: Gets variable index. Legacy variant is to support existing reducer logic.
-  private def varLevel(level: Int) =
-    if (Normalizer.BOUND_VAR_INDEX_REVERSED)
-      // 1. legacy reducer expects index from end
-      boundShift - level - 1
-    else
-      // 2. directly return index
-      level
 
   val indentStr = "  "
 
@@ -159,10 +149,10 @@ final case class PrettyPrinter(
 
   private def buildStringM(v: Var): Eval[String] =
     v.varInstance match {
-      case FreeVar(level)    => Eval.now(s"$freeId${freeShift + level}")
+      case FreeVar(level)    => Eval.now(s"$freeId$level")
       case BoundVar(level)   =>
         (if (isNewVar(level) && !isBuildingChannel) Eval.now("*") else Eval.now("")) |+| Eval.now(
-          s"$boundId${varLevel(level)}",
+          s"$boundId$level",
         )
       case Wildcard(_)       => Eval.now("_")
       case VarInstance.Empty => Eval.now("@Nil")
@@ -209,7 +199,6 @@ final case class PrettyPrinter(
             val bindString =
               this
                 .copy(
-                  freeShift = boundShift,
                   boundShift = 0,
                   freeId = boundId,
                   baseId = setBaseId(),
@@ -371,7 +360,6 @@ final case class PrettyPrinter(
     val closeBrace       = Eval.now(s"\n${indentStr * indent}}")
     this
       .copy(
-        freeShift = boundShift,
         boundShift = 0,
         freeId = boundId,
         baseId = setBaseId(),
@@ -393,5 +381,5 @@ final case class PrettyPrinter(
       p.bundles.isEmpty &
       p.connectives.isEmpty
 
-  private def isNewVar(level: Int): Boolean = newsShiftIndices.contains(varLevel(level))
+  private def isNewVar(level: Int): Boolean = newsShiftIndices.contains(level)
 }

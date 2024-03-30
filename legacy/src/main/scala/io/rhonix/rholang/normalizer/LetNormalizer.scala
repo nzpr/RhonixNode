@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters.*
 object LetNormalizer {
   def normalizeLet[
     F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter,
-    T: BoundVarWriter: FreeVarReader,
+    T: BoundVarWriter: BoundVarReader: FreeVarReader,
   ](p: PLet): F[ParN] =
     p.decls_ match {
 

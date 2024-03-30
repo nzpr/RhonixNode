@@ -2,7 +2,7 @@ package coop.rchain.rholang.interpreter
 
 import cats.effect.{Ref, Sync}
 import cats.syntax.all._
-import cats.{Parallel, Eval => _}
+import cats.{Eval => _, Parallel}
 import com.google.protobuf.ByteString
 import coop.rchain.crypto.hash.Blake2b512Random
 import coop.rchain.models.Expr.ExprInstance._
@@ -43,17 +43,25 @@ trait Reduce[M[_]] {
 
 }
 
+/**
+ * Case class representing matched pars with a random state.
+ *
+ * @param pars A map where the keys are de Bruijn indices of free variables from the pattern and the values are the data that the matcher associated with them.
+ * @param randomState The random state ensuring the uniqueness of this data.
+ */
+final case class MatchedParsWithRandom(pars: matcher.FreeMap, randomState: Blake2b512Random)
+
 class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
-    space: RhoTuplespace[M],
-    dispatcher: => RhoDispatch[M],
-    urnMap: Map[String, Par],
-    mergeChs: Ref[M, Set[Par]],
-    mergeableTagName: Par
+  space: RhoTuplespace[M],
+  dispatcher: => RhoDispatch[M],
+  urnMap: Map[String, Par],
+  mergeChs: Ref[M, Set[Par]],
+  mergeableTagName: Par,
 ) extends Reduce[M] {
 
   type Application =
     Option[
-      (TaggedContinuation, Seq[(Par, ListParWithRandom, ListParWithRandom, Boolean)], Boolean)
+      (TaggedContinuation, Seq[(Par, MatchedParsWithRandom, ListParWithRandom, Boolean)], Boolean),
     ]
 
   /**
@@ -64,16 +72,16 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     * @param persistent  True if the write should remain in the tuplespace indefinitely.
     */
   private def produce(
-      chan: Par,
-      data: ListParWithRandom,
-      persistent: Boolean
+    chan: Par,
+    data: ListParWithRandom,
+    persistent: Boolean,
   ): M[Unit] =
     updateMergeableChannels(chan) *>
       space.produce(chan, data, persist = persistent) >>= { produceResult =>
       continue(
         unpackOptionWithPeek(produceResult),
         produce(chan, data, persistent),
-        persistent
+        persistent,
       )
     }
 
@@ -85,10 +93,10 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     * @param body  A Par object which will be run in the envirnoment resulting from the match.
     */
   private def consume(
-      binds: Seq[(BindPattern, Par)],
-      body: ParWithRandom,
-      persistent: Boolean,
-      peek: Boolean
+    binds: Seq[(BindPattern, Par)],
+    body: ParWithRandom,
+    persistent: Boolean,
+    peek: Boolean,
   ): M[Unit] = {
     val (patterns: Seq[BindPattern], sources: Seq[Par]) = binds.unzip
 
@@ -98,12 +106,12 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         patterns.toList,
         TaggedContinuation(ParBody(body)),
         persist = persistent,
-        if (peek) SortedSet(sources.indices: _*) else SortedSet.empty[Int]
+        if (peek) SortedSet(sources.indices: _*) else SortedSet.empty[Int],
       ) >>= { consumeResult =>
       continue(
         unpackOptionWithPeek(consumeResult),
         consume(binds, body, persistent, peek),
-        persistent
+        persistent,
       )
     }
   }
@@ -112,42 +120,41 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     res match {
       case Some((continuation, dataList, _)) if persistent =>
         dispatchAndRun(continuation, dataList)(
-          repeatOp
+          repeatOp,
         )
-      case Some((continuation, dataList, peek)) if peek =>
+      case Some((continuation, dataList, peek)) if peek    =>
         dispatchAndRun(continuation, dataList)(
-          producePeeks(dataList): _*
+          producePeeks(dataList): _*,
         )
-      case Some((continuation, dataList, _)) =>
+      case Some((continuation, dataList, _))               =>
         dispatch(continuation, dataList)
-      case None => Sync[M].unit
+      case None                                            => Sync[M].unit
     }
 
   private[this] def dispatchAndRun(
-      continuation: TaggedContinuation,
-      dataList: Seq[(Par, ListParWithRandom, ListParWithRandom, Boolean)]
+    continuation: TaggedContinuation,
+    dataList: Seq[(Par, MatchedParsWithRandom, ListParWithRandom, Boolean)],
   )(ops: M[Unit]*): M[Unit] =
     // Collect errors from all parallel execution paths (pars)
     parTraverseSafe(dispatch(continuation, dataList) +: ops.toVector)(identity)
 
   private[this] def dispatch(
-      continuation: TaggedContinuation,
-      dataList: Seq[(Par, ListParWithRandom, ListParWithRandom, Boolean)]
+    continuation: TaggedContinuation,
+    dataList: Seq[(Par, MatchedParsWithRandom, ListParWithRandom, Boolean)],
   ): M[Unit] = dispatcher.dispatch(
     continuation,
-    dataList.map(_._2)
+    dataList.map(_._2),
   )
 
   private[this] def producePeeks(
-      dataList: Seq[(Par, ListParWithRandom, ListParWithRandom, Boolean)]
+    dataList: Seq[(Par, MatchedParsWithRandom, ListParWithRandom, Boolean)],
   ): Seq[M[Unit]] =
     dataList
-      .withFilter {
-        case (_, _, _, persist) => !persist
+      .withFilter { case (_, _, _, persist) =>
+        !persist
       }
-      .map {
-        case (chan, _, removedData, _) =>
-          produce(chan, removedData, persistent = false)
+      .map { case (chan, _, removedData, _) =>
+        produce(chan, removedData, persistent = false)
       }
 
   /* Collect mergeable channels */
@@ -168,9 +175,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     * particular concurrency semantics is desired, it should be achieved by modifying the `Parallel` instance, not by
     * modifying this method.
     */
-  override def eval(par: Par)(
-      implicit env: Env[Par],
-      rand: Blake2b512Random
+  override def eval(par: Par)(implicit
+    env: Env[Par],
+    rand: Blake2b512Random,
   ): M[Unit] = {
     val terms: Seq[GeneratedMessage] = Seq(
       par.sends,
@@ -184,7 +191,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           case _: EMethodBody => true
           case _              => false
         }
-      }
+      },
     ).filter(_.nonEmpty).flatten
 
     def split(id: Int): Blake2b512Random =
@@ -197,14 +204,13 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     val termSplitLimit = Short.MaxValue
     if (terms.sizeIs > termSplitLimit.toInt)
       ReduceError(
-        s"The number of terms in the Par is ${terms.size}, which exceeds the limit of ${termSplitLimit}."
+        s"The number of terms in the Par is ${terms.size}, which exceeds the limit of ${termSplitLimit}.",
       ).raiseError[M, Unit]
     else {
 
       // Collect errors from all parallel execution paths (pars)
-      parTraverseSafe(terms.zipWithIndex.toVector) {
-        case (term, index) =>
-          eval(term)(env, split(index))
+      parTraverseSafe(terms.zipWithIndex.toVector) { case (term, index) =>
+        eval(term)(env, split(index))
       }
     }
   }
@@ -224,7 +230,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       OutOfPhlogistonsError.raiseError[M, Unit]
 
     // Rethrow single error
-    case Vector(ex) =>
+    case Vector(ex)                                         =>
       ex match {
         // Rethrow ArithmeticException as ReduceError
         // TODO: quick fix for arithmetic errors in reducer to not be fatal
@@ -235,7 +241,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       }
 
     // Collect errors from parallel execution
-    case errList =>
+    case errList                                            =>
       val (interpErrs, errs) = errList.foldLeft((Vector[InterpreterError](), Vector[Throwable]())) {
         // Concat nested errors
         case ((ipErr1, err1), AggregateError(ipErr2, err2)) => (ipErr1 ++ ipErr2, err1 ++ err2)
@@ -246,7 +252,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
   }
 
   private def eval(
-      term: GeneratedMessage
+    term: GeneratedMessage,
   )(implicit env: Env[Par], rand: Blake2b512Random): M[Unit] =
     term match {
       case term: Send    => eval(term)
@@ -254,13 +260,13 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       case term: New     => eval(term)
       case term: Match   => eval(term)
       case term: Bundle  => eval(term)
-      case term: Expr =>
+      case term: Expr    =>
         term.exprInstance match {
           case e: EVarBody    => eval(e.value.v) >>= eval
           case e: EMethodBody => evalExprToPar(e) >>= eval
           case other          => BugFoundError(s"Undefined term: \n $other").raiseError[M, Unit]
         }
-      case other => BugFoundError(s"Undefined term: \n $other").raiseError[M, Unit]
+      case other         => BugFoundError(s"Undefined term: \n $other").raiseError[M, Unit]
     }
 
   /** Algorithm as follows:
@@ -275,46 +281,46 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     * @param env An execution context
     *
     */
-  private def eval(send: Send)(
-      implicit env: Env[Par],
-      rand: Blake2b512Random
+  private def eval(send: Send)(implicit
+    env: Env[Par],
+    rand: Blake2b512Random,
   ): M[Unit] =
     for {
-      _        <- charge[M](SEND_EVAL_COST)
-      evalChan <- evalExpr(send.chan)
-      subChan  <- substituteAndCharge[Par, M](evalChan, depth = 0, env)
+      _         <- charge[M](SEND_EVAL_COST)
+      evalChan  <- evalExpr(send.chan)
+      subChan   <- substituteAndCharge[Par, M](evalChan, depth = 0, env)
       unbundled <- subChan.singleBundle() match {
-                    case Some(value) =>
-                      if (!value.writeFlag)
-                        ReduceError("Trying to send on non-writeable channel.").raiseError[M, Par]
-                      else value.body.pure[M]
-                    case None => subChan.pure[M]
-                  }
+                     case Some(value) =>
+                       if (!value.writeFlag)
+                         ReduceError("Trying to send on non-writeable channel.").raiseError[M, Par]
+                       else value.body.pure[M]
+                     case None        => subChan.pure[M]
+                   }
       data      <- send.data.toList.traverse(evalExpr)
       substData <- data.traverse(substituteAndCharge[Par, M](_, depth = 0, env))
       _         <- produce(unbundled, ListParWithRandom(substData, rand), send.persistent)
     } yield ()
 
-  private def eval(receive: Receive)(
-      implicit env: Env[Par],
-      rand: Blake2b512Random
+  private def eval(receive: Receive)(implicit
+    env: Env[Par],
+    rand: Blake2b512Random,
   ): M[Unit] =
     for {
-      _ <- charge[M](RECEIVE_EVAL_COST)
-      binds <- receive.binds.toList.traverse { rb =>
-                for {
-                  q <- unbundleReceive(rb)
-                  substPatterns <- rb.patterns.toList
-                                    .traverse(substituteAndCharge[Par, M](_, depth = 1, env))
-                } yield (BindPattern(substPatterns, rb.remainder, rb.freeCount), q)
-              }
+      _         <- charge[M](RECEIVE_EVAL_COST)
+      binds     <- receive.binds.toList.traverse { rb =>
+                     for {
+                       q             <- unbundleReceive(rb)
+                       substPatterns <- rb.patterns.toList
+                                          .traverse(substituteAndCharge[Par, M](_, depth = 1, env))
+                     } yield (BindPattern(substPatterns, rb.remainder, rb.freeCount), q)
+                   }
       // TODO: Allow for the environment to be stored with the body in the Tuplespace
       substBody <- substituteNoSortAndCharge[Par, M](
-                    receive.body,
-                    depth = 0,
-                    env.shift(receive.bindCount)
-                  )
-      _ <- consume(binds, ParWithRandom(substBody, rand), receive.persistent, receive.peek)
+                     receive.body,
+                     depth = 0,
+                     env,
+                   )
+      _         <- consume(binds, ParWithRandom(substBody, rand), receive.persistent, receive.peek)
     } yield ()
 
   /**
@@ -328,49 +334,49 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     *                  an exception.
     */
   private def eval(
-      valproc: Var
+    valproc: Var,
   )(implicit env: Env[Par]): M[Par] =
     charge[M](VAR_EVAL_COST) >> {
       valproc.varInstance match {
-        case BoundVar(level) =>
+        case BoundVar(level)   =>
           env.get(level).liftTo[M](ReduceError("Unbound variable: " + level + " in " + env.envMap))
-        case Wildcard(_) =>
+        case Wildcard(_)       =>
           ReduceError("Unbound variable: attempting to evaluate a pattern").raiseError[M, Par]
-        case FreeVar(_) =>
+        case FreeVar(_)        =>
           ReduceError("Unbound variable: attempting to evaluate a pattern").raiseError[M, Par]
         case VarInstance.Empty =>
           ReduceError("Impossible var instance EMPTY").raiseError[M, Par]
       }
     }
 
-  private def eval(mat: Match)(
-      implicit env: Env[Par],
-      rand: Blake2b512Random
+  private def eval(mat: Match)(implicit
+    env: Env[Par],
+    rand: Blake2b512Random,
   ): M[Unit] = {
 
     def addToEnv(env: Env[Par], freeMap: Map[Int, Par], freeCount: Int): Env[Par] =
-      Range(0, freeCount).foldLeft(env)((acc, e) => acc.put(freeMap.getOrElse(e, Par())))
+      Range(0, freeCount).foldLeft(env)((acc, e) => acc.put(freeMap.getOrElse(e + env.level, Par())))
 
     def firstMatch(target: Par, cases: Seq[MatchCase])(implicit env: Env[Par]): M[Unit] = {
       def firstMatchM(
-          state: (Par, Seq[MatchCase])
+        state: (Par, Seq[MatchCase]),
       ): M[Either[(Par, Seq[MatchCase]), Unit]] = {
         val (target, cases) = state
         cases match {
-          case Nil => ().asRight[(Par, Seq[MatchCase])].pure[M]
+          case Nil                   => ().asRight[(Par, Seq[MatchCase])].pure[M]
           case singleCase +: caseRem =>
             for {
               pattern     <- substituteAndCharge[Par, M](singleCase.pattern, depth = 1, env)
               matchResult <- spatialMatchResult[M](target, pattern)
-              res <- matchResult match {
-                      case None =>
-                        (target, caseRem).asLeft[Unit].pure[M]
-                      case Some((freeMap, _)) =>
-                        eval(singleCase.source)(
-                          addToEnv(env, freeMap, singleCase.freeCount),
-                          implicitly
-                        ).map(_.asRight[(Par, Seq[MatchCase])])
-                    }
+              res         <- matchResult match {
+                               case None               =>
+                                 (target, caseRem).asLeft[Unit].pure[M]
+                               case Some((freeMap, _)) =>
+                                 eval(singleCase.source)(
+                                   addToEnv(env, freeMap, singleCase.freeCount),
+                                   implicitly,
+                                 ).map(_.asRight[(Par, Seq[MatchCase])])
+                             }
             } yield res
 
         }
@@ -382,8 +388,8 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       _            <- charge[M](MATCH_EVAL_COST)
       evaledTarget <- evalExpr(mat.target)
       // TODO(kyle): Make the matcher accept an environment, instead of substituting it.
-      substTarget <- substituteAndCharge[Par, M](evaledTarget, depth = 0, env)
-      _           <- firstMatch(substTarget, mat.cases)
+      substTarget  <- substituteAndCharge[Par, M](evaledTarget, depth = 0, env)
+      _            <- firstMatch(substTarget, mat.cases)
     } yield ()
   }
 
@@ -393,7 +399,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     */
   // TODO: Eliminate variable shadowing
   private def eval(
-      neu: New
+    neu: New,
   )(implicit env: Env[Par], rand: Blake2b512Random): M[Unit] = {
 
     def alloc(count: Int, urns: Seq[String]): M[Env[Par]] = {
@@ -404,7 +410,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
       def normalizerBugFound(urn: String) =
         BugFoundError(
-          s"No value set for `$urn`. This is a bug in the normalizer or on the path from it."
+          s"No value set for `$urn`. This is a bug in the normalizer or on the path from it.",
         )
 
       def addUrn(newEnv: Env[Par], urn: String): Either[InterpreterError, Env[Par]] =
@@ -439,66 +445,65 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       evalSrc <- evalExpr(rb.source)
       subst   <- substituteAndCharge[Par, M](evalSrc, depth = 0, env)
       // Check if we try to read from bundled channel
-      unbndl <- subst.singleBundle() match {
-                 case Some(value) =>
-                   if (!value.readFlag)
-                     ReduceError("Trying to read from non-readable channel.").raiseError[M, Par]
-                   else value.body.pure[M]
-                 case None => subst.pure[M]
-               }
+      unbndl  <- subst.singleBundle() match {
+                   case Some(value) =>
+                     if (!value.readFlag)
+                       ReduceError("Trying to read from non-readable channel.").raiseError[M, Par]
+                     else value.body.pure[M]
+                   case None        => subst.pure[M]
+                 }
     } yield unbndl
 
   private def eval(
-      bundle: Bundle
+    bundle: Bundle,
   )(implicit env: Env[Par], rand: Blake2b512Random): M[Unit] =
     eval(bundle.body)
 
   private[rholang] def evalExprToPar(expr: Expr)(implicit env: Env[Par]): M[Par] =
     expr.exprInstance match {
-      case EVarBody(EVar(v)) =>
+      case EVarBody(EVar(v))                                     =>
         for {
           p       <- eval(v)
           evaledP <- evalExpr(p)
         } yield evaledP
-      case EMethodBody(EMethod(method, target, arguments, _, _)) => {
+      case EMethodBody(EMethod(method, target, arguments, _, _)) =>
         for {
           _            <- charge[M](METHOD_CALL_COST)
           evaledTarget <- evalExpr(target)
           evaledArgs   <- arguments.toList.traverse(evalExpr)
-          resultPar <- methodTable
-                        .get(method)
-                        .liftTo[M](ReduceError("Unimplemented method: " + method))
-                        .flatMap(_(evaledTarget, evaledArgs))
+          resultPar    <- methodTable
+                            .get(method)
+                            .liftTo[M](ReduceError("Unimplemented method: " + method))
+                            .flatMap(_(evaledTarget, evaledArgs))
         } yield resultPar
-      }
-      case _ => evalExprToExpr(expr).map(fromExpr(_)(identity))
+      case _                                                     => evalExprToExpr(expr).map(fromExpr(_)(identity))
     }
 
   private def evalExprToExpr(expr: Expr)(implicit env: Env[Par]): M[Expr] = {
     Sync[M].defer {
       def relop(
-          p1: Par,
-          p2: Par,
-          relopb: (Boolean, Boolean) => Boolean,
-          relopi: (Long, Long) => Boolean,
-          relopbi: (BigInt, BigInt) => Boolean,
-          relops: (String, String) => Boolean
+        p1: Par,
+        p2: Par,
+        relopb: (Boolean, Boolean) => Boolean,
+        relopi: (Long, Long) => Boolean,
+        relopbi: (BigInt, BigInt) => Boolean,
+        relops: (String, String) => Boolean,
       ): M[Expr] =
         for {
-          v1 <- evalSingleExpr(p1)
-          v2 <- evalSingleExpr(p2)
+          v1     <- evalSingleExpr(p1)
+          v2     <- evalSingleExpr(p2)
           result <- (v1.exprInstance, v2.exprInstance) match {
-                     case (GBool(b1), GBool(b2)) =>
-                       charge[M](COMPARISON_COST).as(GBool(relopb(b1, b2)))
-                     case (GInt(i1), GInt(i2)) =>
-                       charge[M](COMPARISON_COST).as(GBool(relopi(i1, i2)))
-                     case (GBigInt(bi1), GBigInt(bi2)) =>
-                       charge[M](bigIntComparison(bi1, bi2)).as(GBool(relopbi(bi1, bi2)))
-                     case (GString(s1), GString(s2)) =>
-                       charge[M](COMPARISON_COST).as(GBool(relops(s1, s2)))
-                     case _ =>
-                       ReduceError("Unexpected compare: " + v1 + " vs. " + v2).raiseError[M, GBool]
-                   }
+                      case (GBool(b1), GBool(b2))       =>
+                        charge[M](COMPARISON_COST).as(GBool(relopb(b1, b2)))
+                      case (GInt(i1), GInt(i2))         =>
+                        charge[M](COMPARISON_COST).as(GBool(relopi(i1, i2)))
+                      case (GBigInt(bi1), GBigInt(bi2)) =>
+                        charge[M](bigIntComparison(bi1, bi2)).as(GBool(relopbi(bi1, bi2)))
+                      case (GString(s1), GString(s2))   =>
+                        charge[M](COMPARISON_COST).as(GBool(relops(s1, s2)))
+                      case _                            =>
+                        ReduceError("Unexpected compare: " + v1 + " vs. " + v2).raiseError[M, GBool]
+                    }
         } yield result
 
       expr.exprInstance match {
@@ -512,120 +517,120 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
         case ENegBody(ENeg(p)) =>
           for {
-            v <- evalSingleExpr(p)
+            v      <- evalSingleExpr(p)
             result <- v.exprInstance match {
-                       case GInt(hs) => Expr(GInt(-hs)).pure[M]
-                       case GBigInt(hs) =>
-                         for {
-                           r <- Sync[M].delay(-hs)
-                           _ <- charge[M](bigIntNegation(r))
-                         } yield Expr(GBigInt(r))
-                       case other => OperatorNotDefined("Negation", other.typ).raiseError[M, Expr]
-                     }
+                        case GInt(hs)    => Expr(GInt(-hs)).pure[M]
+                        case GBigInt(hs) =>
+                          for {
+                            r <- Sync[M].delay(-hs)
+                            _ <- charge[M](bigIntNegation(r))
+                          } yield Expr(GBigInt(r))
+                        case other       => OperatorNotDefined("Negation", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EMultBody(EMult(p1, p2)) =>
           for {
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GInt(lhs), GInt(rhs)) =>
-                         charge[M](MULTIPLICATION_COST).as(Expr(GInt(lhs * rhs)))
-                       case (GBigInt(lhs), GBigInt(rhs)) =>
-                         charge[M](bigIntMultiplication(lhs, rhs)).as(Expr(GBigInt(lhs * rhs)))
-                       case (_: GInt, other) =>
-                         OperatorExpectedError("*", "Int", other.typ).raiseError[M, Expr]
-                       case (_: GBigInt, other) =>
-                         OperatorExpectedError("*", "BigInt", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("*", other.typ).raiseError[M, Expr]
-                     }
+                        case (GInt(lhs), GInt(rhs))       =>
+                          charge[M](MULTIPLICATION_COST).as(Expr(GInt(lhs * rhs)))
+                        case (GBigInt(lhs), GBigInt(rhs)) =>
+                          charge[M](bigIntMultiplication(lhs, rhs)).as(Expr(GBigInt(lhs * rhs)))
+                        case (_: GInt, other)             =>
+                          OperatorExpectedError("*", "Int", other.typ).raiseError[M, Expr]
+                        case (_: GBigInt, other)          =>
+                          OperatorExpectedError("*", "BigInt", other.typ).raiseError[M, Expr]
+                        case (other, _)                   => OperatorNotDefined("*", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EDivBody(EDiv(p1, p2)) =>
           for {
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GInt(lhs), GInt(rhs)) =>
-                         charge[M](DIVISION_COST).as(Expr(GInt(lhs / rhs)))
-                       case (GBigInt(lhs), GBigInt(rhs)) =>
-                         charge[M](bigIntDivision(lhs, rhs)).as(Expr(GBigInt(lhs / rhs)))
-                       case (_: GInt, other) =>
-                         OperatorExpectedError("/", "Int", other.typ).raiseError[M, Expr]
-                       case (_: GBigInt, other) =>
-                         OperatorExpectedError("/", "BigInt", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("/", other.typ).raiseError[M, Expr]
-                     }
+                        case (GInt(lhs), GInt(rhs))       =>
+                          charge[M](DIVISION_COST).as(Expr(GInt(lhs / rhs)))
+                        case (GBigInt(lhs), GBigInt(rhs)) =>
+                          charge[M](bigIntDivision(lhs, rhs)).as(Expr(GBigInt(lhs / rhs)))
+                        case (_: GInt, other)             =>
+                          OperatorExpectedError("/", "Int", other.typ).raiseError[M, Expr]
+                        case (_: GBigInt, other)          =>
+                          OperatorExpectedError("/", "BigInt", other.typ).raiseError[M, Expr]
+                        case (other, _)                   => OperatorNotDefined("/", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EModBody(EMod(p1, p2)) =>
           for {
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GInt(lhs), GInt(rhs)) =>
-                         charge[M](MODULO_COST).as(Expr(GInt(lhs % rhs)))
-                       case (GBigInt(lhs), GBigInt(rhs)) =>
-                         charge[M](bigIntModulo(lhs, rhs)).as(Expr(GBigInt(lhs % rhs)))
-                       case (_: GInt, other) =>
-                         OperatorExpectedError("%", "Int", other.typ).raiseError[M, Expr]
-                       case (_: GBigInt, other) =>
-                         OperatorExpectedError("%", "BigInt", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("%", other.typ).raiseError[M, Expr]
-                     }
+                        case (GInt(lhs), GInt(rhs))       =>
+                          charge[M](MODULO_COST).as(Expr(GInt(lhs % rhs)))
+                        case (GBigInt(lhs), GBigInt(rhs)) =>
+                          charge[M](bigIntModulo(lhs, rhs)).as(Expr(GBigInt(lhs % rhs)))
+                        case (_: GInt, other)             =>
+                          OperatorExpectedError("%", "Int", other.typ).raiseError[M, Expr]
+                        case (_: GBigInt, other)          =>
+                          OperatorExpectedError("%", "BigInt", other.typ).raiseError[M, Expr]
+                        case (other, _)                   => OperatorNotDefined("%", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EPlusBody(EPlus(p1, p2)) =>
           for {
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GInt(lhs), GInt(rhs)) =>
-                         charge[M](SUM_COST).as(Expr(GInt(lhs + rhs)))
-                       case (GBigInt(lhs), GBigInt(rhs)) =>
-                         charge[M](bigIntSum(lhs, rhs)).as(Expr(GBigInt(lhs + rhs)))
-                       case (lhs: ESetBody, rhs) =>
-                         for {
-                           _         <- charge[M](OP_CALL_COST)
-                           resultPar <- add(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (_: GInt, other) =>
-                         OperatorExpectedError("+", "Int", other.typ).raiseError[M, Expr]
-                       case (_: GBigInt, other) =>
-                         OperatorExpectedError("+", "BigInt", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("+", other.typ).raiseError[M, Expr]
-                     }
+                        case (GInt(lhs), GInt(rhs))       =>
+                          charge[M](SUM_COST).as(Expr(GInt(lhs + rhs)))
+                        case (GBigInt(lhs), GBigInt(rhs)) =>
+                          charge[M](bigIntSum(lhs, rhs)).as(Expr(GBigInt(lhs + rhs)))
+                        case (lhs: ESetBody, rhs)         =>
+                          for {
+                            _         <- charge[M](OP_CALL_COST)
+                            resultPar <- add(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (_: GInt, other)             =>
+                          OperatorExpectedError("+", "Int", other.typ).raiseError[M, Expr]
+                        case (_: GBigInt, other)          =>
+                          OperatorExpectedError("+", "BigInt", other.typ).raiseError[M, Expr]
+                        case (other, _)                   => OperatorNotDefined("+", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EMinusBody(EMinus(p1, p2)) =>
           for {
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GInt(lhs), GInt(rhs)) =>
-                         charge[M](SUBTRACTION_COST).as(Expr(GInt(lhs - rhs)))
-                       case (GBigInt(lhs), GBigInt(rhs)) =>
-                         charge[M](bigIntSubtraction(lhs, rhs)).as(Expr(GBigInt(lhs - rhs)))
-                       case (lhs: EMapBody, rhs) =>
-                         for {
-                           _         <- charge[M](OP_CALL_COST)
-                           resultPar <- delete(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (lhs: ESetBody, rhs) =>
-                         for {
-                           _         <- charge[M](OP_CALL_COST)
-                           resultPar <- delete(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (_: GInt, other) =>
-                         OperatorExpectedError("-", "Int", other.typ).raiseError[M, Expr]
-                       case (_: GBigInt, other) =>
-                         OperatorExpectedError("-", "BigInt", other.typ).raiseError[M, Expr]
-                       case (other, _) =>
-                         OperatorNotDefined("-", other.typ).raiseError[M, Expr]
-                     }
+                        case (GInt(lhs), GInt(rhs))       =>
+                          charge[M](SUBTRACTION_COST).as(Expr(GInt(lhs - rhs)))
+                        case (GBigInt(lhs), GBigInt(rhs)) =>
+                          charge[M](bigIntSubtraction(lhs, rhs)).as(Expr(GBigInt(lhs - rhs)))
+                        case (lhs: EMapBody, rhs)         =>
+                          for {
+                            _         <- charge[M](OP_CALL_COST)
+                            resultPar <- delete(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (lhs: ESetBody, rhs)         =>
+                          for {
+                            _         <- charge[M](OP_CALL_COST)
+                            resultPar <- delete(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (_: GInt, other)             =>
+                          OperatorExpectedError("-", "Int", other.typ).raiseError[M, Expr]
+                        case (_: GBigInt, other)          =>
+                          OperatorExpectedError("-", "BigInt", other.typ).raiseError[M, Expr]
+                        case (other, _)                   =>
+                          OperatorNotDefined("-", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case ELtBody(ELt(p1, p2)) => relop(p1, p2, _ < _, _ < _, _ < _, _ < _)
@@ -638,8 +643,8 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
         case EEqBody(EEq(p1, p2)) =>
           for {
-            v1 <- evalExpr(p1)
-            v2 <- evalExpr(p2)
+            v1  <- evalExpr(p1)
+            v2  <- evalExpr(p2)
             // TODO: build an equality operator that takes in an environment.
             sv1 <- substituteAndCharge[Par, M](v1, depth = 0, env)
             sv2 <- substituteAndCharge[Par, M](v2, depth = 0, env)
@@ -673,18 +678,18 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           for {
             b1 <- evalToBool(p1)
             b2 <- if (b1) {
-                   evalToBool(p2)
-                 } else false.pure
-            _ <- charge[M](BOOLEAN_AND_COST)
+                    evalToBool(p2)
+                  } else false.pure
+            _  <- charge[M](BOOLEAN_AND_COST)
           } yield GBool(b1 && b2)
 
         case EShortOrBody(EShortOr(p1, p2)) =>
           for {
             b1 <- evalToBool(p1)
             b2 <- if (b1) {
-                   true.pure
-                 } else evalToBool(p2)
-            _ <- charge[M](BOOLEAN_OR_COST)
+                    true.pure
+                  } else evalToBool(p2)
+            _  <- charge[M](BOOLEAN_OR_COST)
           } yield GBool(b1 || b2)
 
         case EMatchesBody(EMatches(target, pattern)) =>
@@ -696,138 +701,134 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           } yield GBool(matchResult.isDefined)
 
         case EPercentPercentBody(EPercentPercent(p1, p2)) =>
-          def evalToStringPair(keyExpr: Expr, valueExpr: Expr): M[(String, String)] =
+          def evalToStringPair(keyExpr: Expr, valueExpr: Expr): M[(String, String)]      =
             (keyExpr.exprInstance, valueExpr.exprInstance) match {
               case (GString(keyString), GString(valueString)) =>
                 (keyString -> valueString).pure[M]
-              case (GString(keyString), GInt(valueInt)) =>
+              case (GString(keyString), GInt(valueInt))       =>
                 (keyString -> valueInt.toString).pure[M]
               case (GString(keyString), GBigInt(valueBigInt)) =>
                 (keyString -> valueBigInt.toString).pure[M]
-              case (GString(keyString), GBool(valueBool)) =>
+              case (GString(keyString), GBool(valueBool))     =>
                 (keyString -> valueBool.toString).pure[M]
-              case (GString(keyString), GUri(uri)) =>
+              case (GString(keyString), GUri(uri))            =>
                 (keyString -> uri).pure[M]
               // TODO: Add cases for other ground terms as well? Maybe it would be better
               // to implement cats.Show for all ground terms.
-              case (_: GString, value) =>
+              case (_: GString, value)                        =>
                 ReduceError(s"Error: interpolation doesn't support ${value.typ}")
                   .raiseError[M, (String, String)]
-              case _ =>
+              case _                                          =>
                 ReduceError("Error: interpolation Map should only contain String keys")
                   .raiseError[M, (String, String)]
             }
           @SuppressWarnings(
-            Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements")
+            Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements"),
           )
           // TODO consider replacing while loop with tailrec recursion
           def interpolate(string: String, keyValuePairs: List[(String, String)]): String = {
             val result  = new StringBuilder()
             var current = string
-            while (current.nonEmpty) {
-              keyValuePairs.find {
-                case (k, _) => current.startsWith("${" + k + "}")
+            while (current.nonEmpty)
+              keyValuePairs.find { case (k, _) =>
+                current.startsWith("${" + k + "}")
               } match {
                 case Some((k, v)) =>
                   result ++= v
                   current = current.drop(k.length + 3)
-                case None =>
+                case None         =>
                   result += current.head
                   current = current.tail
               }
-            }
             result.toString
           }
           for {
-            _  <- charge[M](OP_CALL_COST)
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            _      <- charge[M](OP_CALL_COST)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GString(lhs), EMapBody(ParMap(rhs, _, _, _))) =>
-                         if (lhs.nonEmpty || rhs.nonEmpty) {
-                           for {
-                             result <- rhs.toList
-                                        .traverse {
-                                          case (k, v) =>
+                        case (GString(lhs), EMapBody(ParMap(rhs, _, _, _))) =>
+                          if (lhs.nonEmpty || rhs.nonEmpty) {
+                            for {
+                              result <- rhs.toList
+                                          .traverse { case (k, v) =>
                                             for {
                                               keyExpr   <- evalSingleExpr(k)
                                               valueExpr <- evalSingleExpr(v)
                                               result    <- evalToStringPair(keyExpr, valueExpr)
                                             } yield result
-                                        }
-                                        .map(
-                                          keyValuePairs => GString(interpolate(lhs, keyValuePairs))
-                                        )
-                             _ <- charge[M](interpolateCost(lhs.length, rhs.size))
-                           } yield result
-                         } else GString(lhs).pure[M]
-                       case (_: GString, other) =>
-                         OperatorExpectedError("%%", "Map", other.typ).raiseError[M, GString]
-                       case (other, _) =>
-                         OperatorNotDefined("%%", other.typ).raiseError[M, GString]
-                     }
+                                          }
+                                          .map(keyValuePairs => GString(interpolate(lhs, keyValuePairs)))
+                              _      <- charge[M](interpolateCost(lhs.length, rhs.size))
+                            } yield result
+                          } else GString(lhs).pure[M]
+                        case (_: GString, other)                            =>
+                          OperatorExpectedError("%%", "Map", other.typ).raiseError[M, GString]
+                        case (other, _)                                     =>
+                          OperatorNotDefined("%%", other.typ).raiseError[M, GString]
+                      }
           } yield result
 
         case EPlusPlusBody(EPlusPlus(p1, p2)) =>
           for {
-            _  <- charge[M](OP_CALL_COST)
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            _      <- charge[M](OP_CALL_COST)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (GString(lhs), GString(rhs)) =>
-                         charge[M](stringAppendCost(lhs.length, rhs.length)) >>
-                           Expr(GString(lhs + rhs)).pure[M]
-                       case (GByteArray(lhs), GByteArray(rhs)) =>
-                         charge[M](byteArrayAppendCost(lhs)) >>
-                           Expr(GByteArray(lhs.concat(rhs))).pure[M]
-                       case (EListBody(lhs), EListBody(rhs)) =>
-                         charge[M](listAppendCost(rhs.ps.toVector)) >>
-                           Expr(
-                             EListBody(
-                               EList(
-                                 lhs.ps ++ rhs.ps,
-                                 lhs.locallyFree union rhs.locallyFree,
-                                 lhs.connectiveUsed || rhs.connectiveUsed
-                               )
-                             )
-                           ).pure[M]
-                       case (lhs: EMapBody, rhs: EMapBody) =>
-                         for {
-                           resultPar <- union(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (lhs: ESetBody, rhs: ESetBody) =>
-                         for {
-                           resultPar <- union(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (_: GString, other) =>
-                         OperatorExpectedError("++", "String", other.typ).raiseError[M, Expr]
-                       case (_: EListBody, other) =>
-                         OperatorExpectedError("++", "List", other.typ).raiseError[M, Expr]
-                       case (_: EMapBody, other) =>
-                         OperatorExpectedError("++", "Map", other.typ).raiseError[M, Expr]
-                       case (_: ESetBody, other) =>
-                         OperatorExpectedError("++", "Set", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("++", other.typ).raiseError[M, Expr]
-                     }
+                        case (GString(lhs), GString(rhs))       =>
+                          charge[M](stringAppendCost(lhs.length, rhs.length)) >>
+                            Expr(GString(lhs + rhs)).pure[M]
+                        case (GByteArray(lhs), GByteArray(rhs)) =>
+                          charge[M](byteArrayAppendCost(lhs)) >>
+                            Expr(GByteArray(lhs.concat(rhs))).pure[M]
+                        case (EListBody(lhs), EListBody(rhs))   =>
+                          charge[M](listAppendCost(rhs.ps.toVector)) >>
+                            Expr(
+                              EListBody(
+                                EList(
+                                  lhs.ps ++ rhs.ps,
+                                  BitSet(),
+                                  lhs.connectiveUsed || rhs.connectiveUsed,
+                                ),
+                              ),
+                            ).pure[M]
+                        case (lhs: EMapBody, rhs: EMapBody)     =>
+                          for {
+                            resultPar <- union(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (lhs: ESetBody, rhs: ESetBody)     =>
+                          for {
+                            resultPar <- union(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (_: GString, other)                =>
+                          OperatorExpectedError("++", "String", other.typ).raiseError[M, Expr]
+                        case (_: EListBody, other)              =>
+                          OperatorExpectedError("++", "List", other.typ).raiseError[M, Expr]
+                        case (_: EMapBody, other)               =>
+                          OperatorExpectedError("++", "Map", other.typ).raiseError[M, Expr]
+                        case (_: ESetBody, other)               =>
+                          OperatorExpectedError("++", "Set", other.typ).raiseError[M, Expr]
+                        case (other, _)                         => OperatorNotDefined("++", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EMinusMinusBody(EMinusMinus(p1, p2)) =>
           for {
-            _  <- charge[M](OP_CALL_COST)
-            v1 <- evalSingleExpr(p1)
-            v2 <- evalSingleExpr(p2)
+            _      <- charge[M](OP_CALL_COST)
+            v1     <- evalSingleExpr(p1)
+            v2     <- evalSingleExpr(p2)
             result <- (v1.exprInstance, v2.exprInstance) match {
-                       case (lhs: ESetBody, rhs: ESetBody) =>
-                         for {
-                           resultPar <- diff(lhs, List[Par](rhs))
-                           resultExp <- evalSingleExpr(resultPar)
-                         } yield resultExp
-                       case (_: ESetBody, other) =>
-                         OperatorExpectedError("--", "Set", other.typ).raiseError[M, Expr]
-                       case (other, _) => OperatorNotDefined("--", other.typ).raiseError[M, Expr]
-                     }
+                        case (lhs: ESetBody, rhs: ESetBody) =>
+                          for {
+                            resultPar <- diff(lhs, List[Par](rhs))
+                            resultExp <- evalSingleExpr(resultPar)
+                          } yield resultExp
+                        case (_: ESetBody, other)           =>
+                          OperatorExpectedError("--", "Set", other.typ).raiseError[M, Expr]
+                        case (other, _)                     => OperatorNotDefined("--", other.typ).raiseError[M, Expr]
+                      }
           } yield result
 
         case EVarBody(EVar(v)) =>
@@ -838,31 +839,27 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
         case EListBody(el) =>
           for {
-            evaledPs  <- el.ps.toList.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield updateLocallyFree(EList(updatedPs, el.locallyFree, el.connectiveUsed))
+            evaledPs <- el.ps.toList.traverse(evalExpr)
+          } yield EList(evaledPs, el.locallyFree, el.connectiveUsed)
 
         case ETupleBody(el) =>
           for {
-            evaledPs  <- el.ps.toList.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield updateLocallyFree(ETuple(updatedPs, el.locallyFree, el.connectiveUsed))
+            evaledPs <- el.ps.toList.traverse(evalExpr)
+          } yield ETuple(evaledPs, el.locallyFree, el.connectiveUsed)
 
         case ESetBody(set) =>
           for {
-            evaledPs  <- set.ps.sortedPars.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield set.copy(ps = SortedParHashSet(updatedPs))
+            evaledPs <- set.ps.sortedPars.traverse(evalExpr)
+          } yield set.copy(ps = SortedParHashSet(evaledPs))
 
         case EMapBody(map) =>
           for {
-            evaledPs <- map.ps.sortedList.traverse {
-                         case (key, value) =>
-                           for {
-                             eKey   <- evalExpr(key).map(updateLocallyFree)
-                             eValue <- evalExpr(value).map(updateLocallyFree)
-                           } yield (eKey, eValue)
-                       }
+            evaledPs <- map.ps.sortedList.traverse { case (key, value) =>
+                          for {
+                            eKey   <- evalExpr(key)
+                            eValue <- evalExpr(value)
+                          } yield (eKey, eValue)
+                        }
           } yield map.copy(ps = SortedParMap(evaledPs))
 
         case EMethodBody(EMethod(method, target, arguments, _, _)) =>
@@ -870,20 +867,20 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
             _            <- charge[M](METHOD_CALL_COST)
             evaledTarget <- evalExpr(target)
             evaledArgs   <- arguments.toList.traverse(evalExpr)
-            resultPar <- methodTable
-                          .get(method)
-                          .liftTo[M](ReduceError("Unimplemented method: " + method))
-                          .flatMap(_(evaledTarget, evaledArgs))
-            resultExpr <- evalSingleExpr(resultPar)
+            resultPar    <- methodTable
+                              .get(method)
+                              .liftTo[M](ReduceError("Unimplemented method: " + method))
+                              .flatMap(_(evaledTarget, evaledArgs))
+            resultExpr   <- evalSingleExpr(resultPar)
           } yield resultExpr
-        case _ => ReduceError("Unimplemented expression: " + expr).raiseError[M, Expr]
+        case _                                                     => ReduceError("Unimplemented expression: " + expr).raiseError[M, Expr]
       }
     }
   }
 
-  private abstract class Method() {
-    def apply(p: Par, args: Seq[Par])(
-        implicit env: Env[Par]
+  abstract private class Method() {
+    def apply(p: Par, args: Seq[Par])(implicit
+      env: Env[Par],
     ): M[Par]
   }
 
@@ -903,20 +900,20 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           nth    <- restrictToInt(nthRaw)
           v      <- evalSingleExpr(p)
           result <- v.exprInstance match {
-                     case EListBody(EList(ps, _, _, _)) =>
-                       Sync[M].fromEither(localNth(ps, nth))
-                     case ETupleBody(ETuple(ps, _, _)) =>
-                       Sync[M].fromEither(localNth(ps, nth))
-                     case GByteArray(bs) =>
-                       Sync[M].fromEither(if (0 <= nth && nth < bs.size) {
-                         val b      = bs.byteAt(nth) & 0xff // convert to unsigned
-                         val p: Par = Expr(GInt(b.toLong))
-                         p.asRight[ReduceError]
-                       } else ReduceError("Error: index out of bound: " + nth).asLeft[Par])
-                     case _ =>
-                       ReduceError("Error: nth applied to something that wasn't a list or tuple.")
-                         .raiseError[M, Par]
-                   }
+                      case EListBody(EList(ps, _, _, _)) =>
+                        Sync[M].fromEither(localNth(ps, nth))
+                      case ETupleBody(ETuple(ps, _, _))  =>
+                        Sync[M].fromEither(localNth(ps, nth))
+                      case GByteArray(bs)                =>
+                        Sync[M].fromEither(if (0 <= nth && nth < bs.size) {
+                          val b      = bs.byteAt(nth) & 0xff // convert to unsigned
+                          val p: Par = Expr(GInt(b.toLong))
+                          p.asRight[ReduceError]
+                        } else ReduceError("Error: index out of bound: " + nth).asLeft[Par])
+                      case _                             =>
+                        ReduceError("Error: nth applied to something that wasn't a list or tuple.")
+                          .raiseError[M, Par]
+                    }
         } yield result
       }
   }
@@ -961,13 +958,12 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
         case GString(str) =>
           for {
-            _ <- charge[M](toIntCost(str))
-            longVal <- Sync[M].delay(str.toLong).adaptError {
-                        case _: Throwable =>
-                          ReduceError(
-                            s"""Method toInt(): input string "$str" cannot be converted to Int"""
-                          )
-                      }
+            _       <- charge[M](toIntCost(str))
+            longVal <- Sync[M].delay(str.toLong).adaptError { case _: Throwable =>
+                         ReduceError(
+                           s"""Method toInt(): input string "$str" cannot be converted to Int""",
+                         )
+                       }
           } yield GInt(longVal)
 
         case other => MethodNotDefined("toInt", other.typ).raiseError[M, GInt]
@@ -975,9 +971,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("toInt", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("toInt", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         r        <- createGInt(baseExpr)
       } yield r
@@ -995,13 +991,12 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
         case GString(str) =>
           for {
-            _ <- charge[M](toBigIntCost(str))
-            bigInt <- Sync[M].delay(BigInt(str)).adaptError {
-                       case _: Throwable =>
-                         ReduceError(
-                           s"""Method toBigInt(): input string "$str" cannot be converted to BigInt"""
-                         )
-                     }
+            _      <- charge[M](toBigIntCost(str))
+            bigInt <- Sync[M].delay(BigInt(str)).adaptError { case _: Throwable =>
+                        ReduceError(
+                          s"""Method toBigInt(): input string "$str" cannot be converted to BigInt""",
+                        )
+                      }
           } yield GBigInt(bigInt)
 
         case other => MethodNotDefined("toBigInt", other.typ).raiseError[M, GBigInt]
@@ -1009,9 +1004,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("toBigInt", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("toBigInt", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         r        <- createGBigInt(baseExpr)
       } yield r
@@ -1026,19 +1021,19 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         p.singleExpr match {
           case Some(Expr(GString(encoded))) =>
             for {
-              _ <- charge[M](hexToBytesCost(encoded))
+              _   <- charge[M](hexToBytesCost(encoded))
               res <- Sync[M]
-                      .delay(encoded.unsafeHexToByteString)
-                      .handleErrorWith { ex =>
-                        ReduceError(
-                          s"Error: exception was thrown when decoding input string to hexadecimal: ${ex.getMessage}"
-                        ).raiseError[M, ByteString]
-                      }
-                      .map(ba => Expr(GByteArray(ba)): Par)
+                       .delay(encoded.unsafeHexToByteString)
+                       .handleErrorWith { ex =>
+                         ReduceError(
+                           s"Error: exception was thrown when decoding input string to hexadecimal: ${ex.getMessage}",
+                         ).raiseError[M, ByteString]
+                       }
+                       .map(ba => Expr(GByteArray(ba)): Par)
             } yield res
-          case Some(Expr(other)) =>
+          case Some(Expr(other))            =>
             MethodNotDefined("hexToBytes", other.typ).raiseError[M, Par]
-          case None =>
+          case None                         =>
             ReduceError("Error: Method can only be called on singular expressions.")
               .raiseError[M, Par]
         }
@@ -1054,19 +1049,19 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         p.singleExpr match {
           case Some(Expr(GByteArray(bytes))) =>
             for {
-              _ <- charge[M](bytesToHexCost(bytes.toByteArray))
+              _   <- charge[M](bytesToHexCost(bytes.toByteArray))
               res <- Sync[M]
-                      .delay(Base16.encode(bytes.toByteArray))
-                      .handleErrorWith { ex =>
-                        ReduceError(
-                          s"Error: exception was thrown when encoding input byte array to hexadecimal string: ${ex.getMessage}"
-                        ).raiseError[M, String]
-                      }
-                      .map(str => Expr(GString(str)): Par)
+                       .delay(Base16.encode(bytes.toByteArray))
+                       .handleErrorWith { ex =>
+                         ReduceError(
+                           s"Error: exception was thrown when encoding input byte array to hexadecimal string: ${ex.getMessage}",
+                         ).raiseError[M, String]
+                       }
+                       .map(str => Expr(GString(str)): Par)
             } yield res
-          case Some(Expr(other)) =>
+          case Some(Expr(other))             =>
             MethodNotDefined("bytesToHex", other.typ).raiseError[M, Par]
-          case None =>
+          case None                          =>
             ReduceError("Error: Method can only be called on singular expressions.")
               .raiseError[M, Par]
         }
@@ -1083,9 +1078,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           case Some(Expr(GString(utf8string))) =>
             charge[M](hexToBytesCost(utf8string)) >>
               (GByteArray(ByteString.copyFrom(utf8string.getBytes("UTF-8"))): Par).pure[M]
-          case Some(Expr(other)) =>
+          case Some(Expr(other))               =>
             MethodNotDefined("toUtf8Bytes", other.typ).raiseError[M, Par]
-          case None =>
+          case None                            =>
             ReduceError("Error: Method can only be called on singular expressions.")
               .raiseError[M, Par]
         }
@@ -1100,8 +1095,8 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     def union(baseExpr: Expr, otherExpr: Expr): M[Expr] =
       (baseExpr.exprInstance, otherExpr.exprInstance) match {
         case (
-            ESetBody(base @ ParSet(basePs, _, _, _)),
-            ESetBody(other @ ParSet(otherPs, _, _, _))
+              ESetBody(base @ ParSet(basePs, _, _, _)),
+              ESetBody(other @ ParSet(otherPs, _, _, _)),
             ) =>
           charge[M](unionCost(otherPs.size)) >>
             Expr(
@@ -1110,13 +1105,13 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                   basePs.union(otherPs.sortedPars.toSet),
                   base.connectiveUsed || other.connectiveUsed,
                   locallyFreeUnion(base.locallyFree, other.locallyFree),
-                  None
-                )
-              )
+                  None,
+                ),
+              ),
             ).pure[M]
         case (
-            EMapBody(base @ ParMap(baseMap, _, _, _)),
-            EMapBody(other @ ParMap(otherMap, _, _, _))
+              EMapBody(base @ ParMap(baseMap, _, _, _)),
+              EMapBody(other @ ParMap(otherMap, _, _, _)),
             ) =>
           charge[M](unionCost(otherMap.size)) >>
             Expr(
@@ -1125,9 +1120,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                   (baseMap ++ otherMap).toSeq,
                   base.connectiveUsed || other.connectiveUsed,
                   locallyFreeUnion(base.locallyFree, other.locallyFree),
-                  None
-                )
-              )
+                  None,
+                ),
+              ),
             ).pure[M]
 
         case (other, _) => MethodNotDefined("union", other.typ).raiseError[M, Expr]
@@ -1135,9 +1130,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("union", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _         <- MethodArgumentNumberMismatch("union", 1, args.length)
+                       .raiseError[M, Unit]
+                       .whenA(args.length != 1)
         baseExpr  <- evalSingleExpr(p)
         otherExpr <- evalSingleExpr(args.head)
         result    <- union(baseExpr, otherExpr)
@@ -1157,15 +1152,15 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         case (EMapBody(ParMap(basePs, _, _, _)), EMapBody(ParMap(otherPs, _, _, _))) =>
           charge[M](diffCost(otherPs.size)) >>
             Expr(EMapBody(ParMap(basePs -- otherPs.keys))).pure[M]
-        case (other, _) =>
+        case (other, _)                                                              =>
           MethodNotDefined("diff", other.typ).raiseError[M, Expr]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("diff", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _         <- MethodArgumentNumberMismatch("diff", 1, args.length)
+                       .raiseError[M, Unit]
+                       .whenA(args.length != 1)
         baseExpr  <- evalSingleExpr(p)
         otherExpr <- evalSingleExpr(args.head)
         result    <- diff(baseExpr, otherExpr)
@@ -1183,18 +1178,18 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                 basePs + par,
                 base.connectiveUsed || par.connectiveUsed,
                 base.locallyFree.map(b => b | par.locallyFree),
-                None
-              )
-            )
+                None,
+              ),
+            ),
           ).pure[M]
-        case other => MethodNotDefined("add", other.typ).raiseError[M, Expr]
+        case other                                    => MethodNotDefined("add", other.typ).raiseError[M, Expr]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("add", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _        <- MethodArgumentNumberMismatch("add", 1, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 1)
         baseExpr <- evalSingleExpr(p)
         element  <- evalExpr(args.head)
         _        <- charge[M](ADD_COST)
@@ -1213,9 +1208,9 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                 basePs - par,
                 base.connectiveUsed || par.connectiveUsed,
                 base.locallyFree.map(b => b | par.locallyFree),
-                None
-              )
-            )
+                None,
+              ),
+            ),
           ).pure[M]
         case EMapBody(base @ ParMap(basePs, _, _, _)) =>
           Expr(
@@ -1224,22 +1219,25 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                 basePs - par,
                 base.connectiveUsed || par.connectiveUsed,
                 base.locallyFree.map(b => b | par.locallyFree),
-                None
-              )
-            )
+                None,
+              ),
+            ),
           ).pure[M]
-        case other =>
+        case other                                    =>
           MethodNotDefined("delete", other.typ).raiseError[M, Expr]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("delete", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _        <- MethodArgumentNumberMismatch("delete", 1, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 1)
         baseExpr <- evalSingleExpr(p)
         element  <- evalExpr(args.head)
-        _        <- charge[M](REMOVE_COST) //TODO(mateusz.gorski): think whether deletion of an element from the collection should dependent on the collection type/size
+        _        <-
+          charge[M](
+            REMOVE_COST,
+          ) // TODO(mateusz.gorski): think whether deletion of an element from the collection should dependent on the collection type/size
         result   <- delete(baseExpr, element)
       } yield result
   }
@@ -1252,14 +1250,14 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
           (GBool(basePs.contains(par)): Expr).pure[M]
         case EMapBody(ParMap(basePs, _, _, _)) =>
           (GBool(basePs.contains(par)): Expr).pure[M]
-        case other => MethodNotDefined("contains", other.typ).raiseError[M, Expr]
+        case other                             => MethodNotDefined("contains", other.typ).raiseError[M, Expr]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("contains", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _        <- MethodArgumentNumberMismatch("contains", 1, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 1)
         baseExpr <- evalSingleExpr(p)
         element  <- evalExpr(args.head)
         _        <- charge[M](LOOKUP_COST)
@@ -1273,14 +1271,14 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       baseExpr.exprInstance match {
         case EMapBody(ParMap(basePs, _, _, _)) =>
           basePs.getOrElse(key, VectorPar()).pure[M]
-        case other => MethodNotDefined("get", other.typ).raiseError[M, Par]
+        case other                             => MethodNotDefined("get", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("get", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _        <- MethodArgumentNumberMismatch("get", 1, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 1)
         baseExpr <- evalSingleExpr(p)
         key      <- evalExpr(args.head)
         _        <- charge[M](LOOKUP_COST)
@@ -1294,14 +1292,14 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       baseExpr.exprInstance match {
         case EMapBody(ParMap(basePs, _, _, _)) =>
           basePs.getOrElse(key, default).pure[M]
-        case other => MethodNotDefined("getOrElse", other.typ).raiseError[M, Par]
+        case other                             => MethodNotDefined("getOrElse", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("getOrElse", 2, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 2)
+        _        <- MethodArgumentNumberMismatch("getOrElse", 2, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 2)
         baseExpr <- evalSingleExpr(p)
         key      <- evalExpr(args.head)
         default  <- evalExpr(args(1))
@@ -1316,14 +1314,14 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       baseExpr.exprInstance match {
         case EMapBody(ParMap(basePs, _, _, _)) =>
           (ParMap(basePs + (key -> value)): Par).pure[M]
-        case other => MethodNotDefined("set", other.typ).raiseError[M, Par]
+        case other                             => MethodNotDefined("set", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("set", 2, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 2)
+        _        <- MethodArgumentNumberMismatch("set", 2, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 2)
         baseExpr <- evalSingleExpr(p)
         key      <- evalExpr(args.head)
         value    <- evalExpr(args(1))
@@ -1338,15 +1336,15 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       baseExpr.exprInstance match {
         case EMapBody(ParMap(basePs, _, _, _)) =>
           (ParSet(basePs.keys.toSeq): Par).pure[M]
-        case other =>
+        case other                             =>
           MethodNotDefined("keys", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("keys", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("keys", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         _        <- charge[M](KEYS_METHOD_COST)
         result   <- keys(baseExpr)
@@ -1360,18 +1358,18 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         case EMapBody(ParMap(basePs, _, _, _)) =>
           val size = basePs.size
           (size, GInt(size.toLong): Par).pure[M]
-        case ESetBody(ParSet(ps, _, _, _)) =>
+        case ESetBody(ParSet(ps, _, _, _))     =>
           val size = ps.size
           (size, GInt(size.toLong): Par).pure[M]
-        case other =>
+        case other                             =>
           MethodNotDefined("size", other.typ).raiseError[M, (Int, Par)]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("size", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("size", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         result   <- size(baseExpr)
         _        <- charge[M](sizeMethodCost(result._1))
@@ -1382,21 +1380,21 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     def length(baseExpr: Expr): M[Expr] =
       baseExpr.exprInstance match {
-        case GString(string) =>
+        case GString(string)               =>
           (GInt(string.length.toLong): Expr).pure[M]
-        case GByteArray(bytes) =>
+        case GByteArray(bytes)             =>
           (GInt(bytes.size.toLong): Expr).pure[M]
         case EListBody(EList(ps, _, _, _)) =>
           (GInt(ps.length.toLong): Expr).pure[M]
-        case other =>
+        case other                         =>
           MethodNotDefined("length", other.typ).raiseError[M, Expr]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("length", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("length", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         _        <- charge[M](LENGTH_METHOD_COST)
         result   <- length(baseExpr)
@@ -1407,21 +1405,21 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     def slice(baseExpr: Expr, from: Int, until: Int): M[Par] =
       baseExpr.exprInstance match {
-        case GString(string) =>
+        case GString(string)                                              =>
           Sync[M].delay(GString(string.slice(from, until)))
         case EListBody(EList(ps, locallyFree, connectiveUsed, remainder)) =>
           Sync[M].delay(EList(ps.slice(from, until), locallyFree, connectiveUsed, remainder))
-        case GByteArray(bytes) =>
+        case GByteArray(bytes)                                            =>
           Sync[M].delay(GByteArray(bytes.substring(from, until)))
-        case other =>
+        case other                                                        =>
           MethodNotDefined("slice", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("slice", 2, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 2)
+        _          <- MethodArgumentNumberMismatch("slice", 2, args.length)
+                        .raiseError[M, Unit]
+                        .whenA(args.length != 2)
         baseExpr   <- evalSingleExpr(p)
         fromArgRaw <- evalToLong(args.head)
         fromArg    <- restrictToInt(fromArgRaw)
@@ -1437,15 +1435,15 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       baseExpr.exprInstance match {
         case EListBody(EList(ps, locallyFree, connectiveUsed, remainder)) =>
           Sync[M].delay(EList(ps.take(n), locallyFree, connectiveUsed, remainder))
-        case other =>
+        case other                                                        =>
           MethodNotDefined("take", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("take", 1, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.length != 1)
+        _        <- MethodArgumentNumberMismatch("take", 1, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.length != 1)
         baseExpr <- evalSingleExpr(p)
         nArgRaw  <- evalToLong(args.head)
         nArg     <- restrictToInt(nArgRaw)
@@ -1458,7 +1456,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
     def toList(baseExpr: Expr): M[Par] =
       baseExpr.exprInstance match {
-        case e: EListBody =>
+        case e: EListBody                  =>
           (e: Par).pure[M]
         case ESetBody(ParSet(ps, _, _, _)) =>
           charge[M](toListCost(ps.size)) >>
@@ -1466,23 +1464,22 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         case EMapBody(ParMap(ps, _, _, _)) =>
           charge[M](toListCost(ps.size)) >>
             (EList(
-              ps.toSeq.map {
-                case (k, v) =>
-                  Par().withExprs(Seq(Expr(ETupleBody(ETuple(Seq(k, v))))))
-              }
+              ps.toSeq.map { case (k, v) =>
+                Par().withExprs(Seq(Expr(ETupleBody(ETuple(Seq(k, v))))))
+              },
             ): Par).pure[M]
-        case ETupleBody(ETuple(ps, _, _)) =>
+        case ETupleBody(ETuple(ps, _, _))  =>
           charge[M](toListCost(ps.size)) >>
             (EList(ps.toList): Par).pure[M]
-        case other =>
+        case other                         =>
           MethodNotDefined("toList", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("toList", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("toList", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         result   <- toList(baseExpr)
       } yield result
@@ -1491,7 +1488,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
   private[this] val toSet: Method = new Method() {
     def toSet(baseExpr: Expr): M[Par] =
       baseExpr.exprInstance match {
-        case e: ESetBody =>
+        case e: ESetBody                                                      =>
           (e: Par).pure[M]
         case EMapBody(ParMap(basePs, connectiveUsed, locallyFree, remainder)) =>
           (ESetBody(
@@ -1499,8 +1496,8 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
               basePs.toSeq.map(t => ETupleBody(ETuple(Seq(t._1, t._2))): Par),
               connectiveUsed,
               locallyFree,
-              remainder
-            )
+              remainder,
+            ),
           ): Par).pure[M]
         case EListBody(EList(basePs, locallyFree, connectiveUsed, remainder)) =>
           (ESetBody(
@@ -1508,18 +1505,18 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
               basePs,
               connectiveUsed,
               locallyFree.get.pure[Eval],
-              remainder
-            )
+              remainder,
+            ),
           ): Par).pure[M]
-        case other =>
+        case other                                                            =>
           MethodNotDefined("toSet", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("toSet", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("toSet", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         result   <- toSet(baseExpr)
       } yield result
@@ -1527,10 +1524,10 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
 
   private[this] val toMap: Method = new Method() {
     def makeMap(
-        ps: Seq[Par],
-        connectiveUsed: Boolean,
-        locallyFree: Eval[BitSet],
-        remainder: Option[Var]
+      ps: Seq[Par],
+      connectiveUsed: Boolean,
+      locallyFree: Eval[BitSet],
+      remainder: Option[Var],
     ) = {
       val keyPairs = ps.map(RhoType.RhoTuple2.unapply)
       if (keyPairs.exists(_.isEmpty))
@@ -1541,27 +1538,27 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
             keyPairs.flatMap(_.toList),
             connectiveUsed,
             locallyFree,
-            remainder
-          )
+            remainder,
+          ),
         ): Par).pure[M]
     }
     def toMap(baseExpr: Expr): M[Par] =
       baseExpr.exprInstance match {
-        case e: EMapBody =>
+        case e: EMapBody                                                      =>
           (e: Par).pure[M]
         case ESetBody(ParSet(basePs, connectiveUsed, locallyFree, remainder)) =>
           makeMap(basePs.toSeq, connectiveUsed, locallyFree, remainder)
         case EListBody(EList(basePs, locallyFree, connectiveUsed, remainder)) =>
           makeMap(basePs, connectiveUsed, locallyFree.get.pure[Eval], remainder)
-        case other =>
+        case other                                                            =>
           MethodNotDefined("toMap", other.typ).raiseError[M, Par]
       }
 
     override def apply(p: Par, args: Seq[Par])(implicit env: Env[Par]): M[Par] =
       for {
-        _ <- MethodArgumentNumberMismatch("toMap", 0, args.length)
-              .raiseError[M, Unit]
-              .whenA(args.nonEmpty)
+        _        <- MethodArgumentNumberMismatch("toMap", 0, args.length)
+                      .raiseError[M, Unit]
+                      .whenA(args.nonEmpty)
         baseExpr <- evalSingleExpr(p)
         result   <- toMap(baseExpr)
       } yield result
@@ -1591,11 +1588,13 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       "take"        -> take,
       "toList"      -> toList,
       "toSet"       -> toSet,
-      "toMap"       -> toMap
+      "toMap"       -> toMap,
     )
 
   private def evalSingleExpr(p: Par)(implicit env: Env[Par]): M[Expr] =
-    if (p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty)
+    if (
+      p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty
+    )
       ReduceError("Error: [evalSingleExpr] parallel or non expression found where expression expected.")
         .raiseError[M, Expr]
     else
@@ -1605,83 +1604,71 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       }
 
   private def evalToLong(
-      p: Par
+    p: Par,
   )(implicit env: Env[Par]): M[Long] =
-    if (p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty)
+    if (
+      p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty
+    )
       ReduceError("Error: [evalToLong] parallel or non expression found where expression expected.")
         .raiseError[M, Long]
     else
       p.exprs match {
-        case Expr(GInt(v)) +: Nil =>
+        case Expr(GInt(v)) +: Nil           =>
           (v: Long).pure[M]
         case Expr(EVarBody(EVar(v))) +: Nil =>
           for {
             p      <- eval(v)
             intVal <- evalToLong(p)
           } yield intVal
-        case (e: Expr) +: Nil =>
+        case (e: Expr) +: Nil               =>
           for {
             evaled <- evalExprToExpr(e)
             result <- evaled.exprInstance match {
-                       case GInt(v) =>
-                         (v: Long).pure[M]
-                       case _ =>
-                         ReduceError("Error: expression didn't evaluate to integer.")
-                           .raiseError[M, Long]
-                     }
+                        case GInt(v) =>
+                          (v: Long).pure[M]
+                        case _       =>
+                          ReduceError("Error: expression didn't evaluate to integer.")
+                            .raiseError[M, Long]
+                      }
           } yield result
-        case _ =>
+        case _                              =>
           ReduceError("Error: Integer expected, or unimplemented expression.").raiseError[M, Long]
       }
 
   private def evalToBool(
-      p: Par
+    p: Par,
   )(implicit env: Env[Par]): M[Boolean] =
-    if (p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty)
+    if (
+      p.sends.nonEmpty || p.receives.nonEmpty || p.news.nonEmpty || p.matches.nonEmpty || p.unforgeables.nonEmpty || p.bundles.nonEmpty
+    )
       ReduceError("Error: [evalToBool] parallel or non expression found where expression expected.")
         .raiseError[M, Boolean]
     else
       p.exprs match {
-        case Expr(GBool(b)) +: Nil =>
+        case Expr(GBool(b)) +: Nil          =>
           (b: Boolean).pure[M]
         case Expr(EVarBody(EVar(v))) +: Nil =>
           for {
             p       <- eval(v)
             boolVal <- evalToBool(p)
           } yield boolVal
-        case (e: Expr) +: Nil =>
+        case (e: Expr) +: Nil               =>
           for {
             evaled <- evalExprToExpr(e)
             result <- evaled.exprInstance match {
-                       case GBool(b) => (b: Boolean).pure[M]
-                       case _ =>
-                         ReduceError("Error: expression didn't evaluate to boolean.")
-                           .raiseError[M, Boolean]
-                     }
+                        case GBool(b) => (b: Boolean).pure[M]
+                        case _        =>
+                          ReduceError("Error: expression didn't evaluate to boolean.")
+                            .raiseError[M, Boolean]
+                      }
           } yield result
-        case _ => ReduceError("Error: Multiple expressions given.").raiseError[M, Boolean]
+        case _                              => ReduceError("Error: Multiple expressions given.").raiseError[M, Boolean]
       }
 
   private def restrictToInt(long: Long): M[Int] =
-    Sync[M].catchNonFatal(Math.toIntExact(long)).adaptError {
-      case _: ArithmeticException => ReduceError(s"Integer overflow for value $long")
+    Sync[M].catchNonFatal(Math.toIntExact(long)).adaptError { case _: ArithmeticException =>
+      ReduceError(s"Integer overflow for value $long")
     }
-
-  private def updateLocallyFree(par: Par): Par =
-    par.copy(
-      locallyFree = par.sends.foldLeft(BitSet())((acc, send) => acc | send.locallyFree) |
-        par.receives.foldLeft(BitSet())((acc, receive) => acc | receive.locallyFree) |
-        par.news.foldLeft(BitSet())((acc, newProc) => acc | newProc.locallyFree) |
-        par.exprs.foldLeft(BitSet())((acc, expr) => acc | ExprLocallyFree.locallyFree(expr, 0)) |
-        par.matches.foldLeft(BitSet())((acc, matchProc) => acc | matchProc.locallyFree) |
-        par.bundles.foldLeft(BitSet())((acc, bundleProc) => acc | bundleProc.locallyFree)
-    )
-
-  private def updateLocallyFree(elist: EList): EList =
-    elist.copy(locallyFree = elist.ps.foldLeft(BitSet())((acc, p) => acc | p.locallyFree))
-
-  private def updateLocallyFree(elist: ETuple): ETuple =
-    elist.copy(locallyFree = elist.ps.foldLeft(BitSet())((acc, p) => acc | p.locallyFree))
 
   /**
     * Evaluate any top level expressions in @param Par .
@@ -1693,6 +1680,6 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       // that locallyFree is for use in the matcher, and the matcher uses
       // substitution, it will resolve in that case. AlwaysEqual makes sure
       // that this isn't an issue in the rest of cases.
-      result = evaledExprs.foldLeft(par.copy(exprs = Vector()))(_ ++ _)
+      result       = evaledExprs.foldLeft(par.copy(exprs = Vector()))(_ ++ _)
     } yield result
 }

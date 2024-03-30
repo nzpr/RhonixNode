@@ -14,7 +14,7 @@ object VarRefNormalizer {
   )(implicit nestingInfo: NestingReader): F[ConnVarRefN] =
     Sync[F].delay(BoundVarReader[T].findBoundVar(p.var_)).flatMap {
       // Found bounded variable
-      case Some(VarContext(index, _, kind, sourcePosition)) =>
+      case Some(VarContext(index, kind, sourcePosition)) =>
         val depth = nestingInfo.patternDepth
         // TODO: Throw an exception if VarRef is outside the pattern?
         kind match {

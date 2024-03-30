@@ -21,9 +21,9 @@ class MatchesNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks wi
       val patternTerm = new PGround(new GroundString(patternStr))
       val matchesTerm = new PMatches(targetTerm, patternTerm)
 
-      implicit val (nRec, bVScope, _, _, fVScope, _, _, infoWriter, _) = createMockDSL[IO, VarSort]()
+      implicit val (nRec, bVScope, _, bVR, fVScope, _, _, infoWriter, _) = createMockDSL[IO, VarSort]()
 
-      val adt = MatchesNormalizer.normalizeMatches[IO](matchesTerm).unsafeRunSync()
+      val adt = MatchesNormalizer.normalizeMatches[IO, VarSort](matchesTerm).unsafeRunSync()
 
       val expectedAdt = EMatchesN(
         target = mockADT(targetTerm: Proc),

@@ -8,32 +8,32 @@ import scala.util.Try
 
 package object util {
 
-  def unpackSeq[C, P, K, R](
-    v: Seq[Option[(ContResult[C, P, K], Seq[Result[C, R]])]],
-  ): Seq[Option[(K, Seq[R])]] =
+  def unpackSeq[C, P, K, R, B](
+    v: Seq[Option[(ContResult[C, P, K], Seq[Result[C, R, B]])]],
+  ): Seq[Option[(K, Seq[B])]] =
     v.map(unpackOption)
 
-  def unpackOption[C, P, K, R](
-    v: Option[(ContResult[C, P, K], Seq[Result[C, R]])],
-  ): Option[(K, Seq[R])] =
+  def unpackOption[C, P, K, R, B](
+    v: Option[(ContResult[C, P, K], Seq[Result[C, R, B]])],
+  ): Option[(K, Seq[B])] =
     v.map(unpackTuple)
 
-  def unpackTuple[C, P, K, R](
-    v: (ContResult[C, P, K], Seq[Result[C, R]]),
-  ): (K, Seq[R]) =
+  def unpackTuple[C, P, K, R, B](
+    v: (ContResult[C, P, K], Seq[Result[C, R, B]]),
+  ): (K, Seq[B]) =
     v match {
       case (ContResult(continuation, _, _, _, _), data) =>
         (continuation, data.map(_.matchedDatum))
     }
 
-  def unpackOptionWithPeek[C, P, K, R](
-    v: Option[(ContResult[C, P, K], Seq[Result[C, R]])],
-  ): Option[(K, Seq[(C, R, R, Boolean)], Boolean)] =
+  def unpackOptionWithPeek[C, P, K, R, B](
+    v: Option[(ContResult[C, P, K], Seq[Result[C, R, B]])],
+  ): Option[(K, Seq[(C, B, R, Boolean)], Boolean)] =
     v.map(unpackTupleWithPeek)
 
-  def unpackTupleWithPeek[C, P, K, R](
-    v: (ContResult[C, P, K], Seq[Result[C, R]]),
-  ): (K, Seq[(C, R, R, Boolean)], Boolean) =
+  def unpackTupleWithPeek[C, P, K, R, B](
+    v: (ContResult[C, P, K], Seq[Result[C, R, B]]),
+  ): (K, Seq[(C, B, R, Boolean)], Boolean) =
     v match {
       case (ContResult(continuation, _, _, _, peek), data) =>
         (

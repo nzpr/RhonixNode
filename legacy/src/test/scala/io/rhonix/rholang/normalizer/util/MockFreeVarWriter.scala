@@ -13,7 +13,7 @@ case class MockFreeVarWriter[F[_], T](scope: MockFreeVarScope[F]) extends FreeVa
     binding.zipWithIndex.map { case ((name, varType, pos), i) =>
       val scopeLevel = scope.getScopeLevel
       buffer.append(FreeVarWriterData(name, varType, scopeLevel))
-      VarContext(DefFreeVarIndex + i, -1, varType, pos)
+      VarContext(DefFreeVarIndex + i, varType, pos)
     }
 
   def extractData: Seq[FreeVarWriterData[T]] = buffer.toSeq
