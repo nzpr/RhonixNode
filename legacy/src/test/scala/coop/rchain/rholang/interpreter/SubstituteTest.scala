@@ -73,7 +73,7 @@ class VarSubSpec extends AnyFlatSpec with Matchers {
   }
 
   "BoundVar" should "be left unchanged" in {
-    implicit val env        = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par).shift(1)
+    implicit val env        = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par)
     val result              = maybeSubstitute[Eval](BoundVar(2)).value
     val expectedResult: Var = BoundVar(2)
     result should be(Left(expectedResult))
@@ -84,7 +84,7 @@ class SendSubSpec extends AnyFlatSpec with Matchers {
   implicit val depth: Int = 0
   "Send" should "leave variables not in evironment alone." in {
 
-    implicit val env = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par).shift(1)
+    implicit val env = Env.makeEnv(GPrivateBuilder(): Par, GPrivateBuilder(): Par)
     val result       =
       substituteSend[Eval]
         .substitute(Send(EVar(BoundVar(2)), List(Par()), false, BitSet(0)))
@@ -171,7 +171,7 @@ class NewSubSpec extends AnyFlatSpec with Matchers {
   implicit val depth: Int = 0
   "New" should "only substitute body of expression" in {
     val source: Par  = GPrivateBuilder()
-    implicit val env = new Env[Par](Map(1 -> source), level = 2, shift = 0)
+    implicit val env = new Env[Par](Map(1 -> source), level = 2)
     val target       =
       New(
         bindCount = 1,
@@ -193,7 +193,7 @@ class NewSubSpec extends AnyFlatSpec with Matchers {
   "New" should "only substitute all variables in body of express" in {
     val source0: Par           = GPrivateBuilder()
     val source1: Par           = GPrivateBuilder()
-    implicit val env: Env[Par] = new Env[Par](Map(2 -> source0, 3 -> source1), level = 4, shift = 0)
+    implicit val env: Env[Par] = new Env[Par](Map(2 -> source0, 3 -> source1), level = 4)
 
     val target = New(
       bindCount = 2,
@@ -308,7 +308,7 @@ class VarRefSubSpec extends AnyFlatSpec with Matchers {
 
   it should "be replaced at a higher depth inside a pattern" in {
     val source: Par         = GPrivateBuilder()
-    implicit val env        = Env.makeEnv(source).shift(1)
+    implicit val env        = Env.makeEnv(source)
     val target: Par         =
       Match(
         target = EVar(BoundVar(1)),

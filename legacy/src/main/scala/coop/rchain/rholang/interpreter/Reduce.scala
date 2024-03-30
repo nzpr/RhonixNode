@@ -318,7 +318,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
       substBody <- substituteNoSortAndCharge[Par, M](
                      receive.body,
                      depth = 0,
-                     env.shift(receive.bindCount),
+                     env,
                    )
       _         <- consume(binds, ParWithRandom(substBody, rand), receive.persistent, receive.peek)
     } yield ()

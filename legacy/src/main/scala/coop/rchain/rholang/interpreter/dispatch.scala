@@ -22,7 +22,7 @@ object Dispatch {
       "Duplicate indices in env during dispatching" + envMap.toString(),
     )
     val maxIdx = if (envMap.isEmpty) 0 else envMap.keys.max // Find max De Bruijn index
-    new Env[Par](envMap, level = maxIdx + 1, shift = 0)
+    new Env[Par](envMap, level = maxIdx + 1)
   }
 }
 
