@@ -26,7 +26,7 @@ trait HasLocallyFree[T] {
     *  in a top-level term is depth 1. A pattern in a depth 1 term is depth 2,
     *  etc.
     */
-  def locallyFree(source: T, depth: Int): BitSet
+//  def locallyFree(source: T, depth: Int): BitSet
 }
 
 object HasLocallyFree {
@@ -37,8 +37,8 @@ object HasLocallyFree {
       override def connectiveUsed(source: (A, B)): Boolean =
         HasLocallyFree[A].connectiveUsed(source._1) || HasLocallyFree[B].connectiveUsed(source._2)
 
-      override def locallyFree(source: (A, B), depth: Int): BitSet =
-        HasLocallyFree[A].locallyFree(source._1, depth) | HasLocallyFree[B]
-          .locallyFree(source._2, depth)
+//      override def locallyFree(source: (A, B), depth: Int): BitSet =
+//        HasLocallyFree[A].locallyFree(source._1, depth) | HasLocallyFree[B]
+//          .locallyFree(source._2, depth)
     }
 }

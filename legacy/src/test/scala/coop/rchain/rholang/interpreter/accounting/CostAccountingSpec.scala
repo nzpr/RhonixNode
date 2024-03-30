@@ -206,7 +206,7 @@ class CostAccountingSpec
          } |
          loop!(10)
        }""".stripMargin,
-      3874L,
+      3850L,
     ),
     ("""42 | @0!(2) | for (x <- @0) { Nil }""", 336L),
     (
@@ -218,7 +218,7 @@ class CostAccountingSpec
           42 => @3!(42)
         }
      """.stripMargin,
-      1234L,
+      1228L,
     ),
     // test that we charge for system processes
     (

@@ -615,7 +615,6 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
           EVar(BoundVar(0)),
           List(GInt(7L), EVar(BoundVar(1))),
           persistent = false,
-          BitSet(0, 1),
         )
       val matchTerm    = Match(
         sendTarget,
@@ -626,7 +625,6 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
               GString("result"),
               List(EVar(BoundVar(0)), EVar(BoundVar(1))),
               false,
-              BitSet(0, 1),
             ),
             freeCount = 2,
           ),
@@ -966,11 +964,11 @@ class ReduceSpec extends AnyFlatSpec with Matchers with AppendedClues with Persi
   it should "substitute before serialization" in {
     val splitRand                 = rand.splitByte(0)
     val unsubProc: Par            =
-      New(bindCount = 1, p = EVar(BoundVar(1)), locallyFree = BitSet(0))
+      New(bindCount = 1, p = EVar(BoundVar(1)))
     val subProc: Par              =
-      New(bindCount = 1, p = GPrivateBuilder("zero"), locallyFree = BitSet())
+      New(bindCount = 1, p = GPrivateBuilder("zero"))
     val serializedProcess         = subProc.toByteString
-    val toByteArrayCall: Par      = EMethod("toByteArray", unsubProc, List[Par](), BitSet(0))
+    val toByteArrayCall: Par      = EMethod("toByteArray", unsubProc, List[Par]())
     val channel: Par              = GString("result")
     def wrapWithSend(p: Par): Par = Send(channel, List[Par](p), persistent = false, p.locallyFree)
 

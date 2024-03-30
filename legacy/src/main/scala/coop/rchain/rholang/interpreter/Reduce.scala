@@ -787,7 +787,7 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
                               EListBody(
                                 EList(
                                   lhs.ps ++ rhs.ps,
-                                  lhs.locallyFree union rhs.locallyFree,
+                                  BitSet(),
                                   lhs.connectiveUsed || rhs.connectiveUsed,
                                 ),
                               ),
@@ -840,27 +840,24 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
         case EListBody(el) =>
           for {
             evaledPs <- el.ps.toList.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield updateLocallyFree(EList(updatedPs, el.locallyFree, el.connectiveUsed))
+          } yield EList(evaledPs, el.locallyFree, el.connectiveUsed)
 
         case ETupleBody(el) =>
           for {
             evaledPs <- el.ps.toList.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield updateLocallyFree(ETuple(updatedPs, el.locallyFree, el.connectiveUsed))
+          } yield ETuple(evaledPs, el.locallyFree, el.connectiveUsed)
 
         case ESetBody(set) =>
           for {
             evaledPs <- set.ps.sortedPars.traverse(evalExpr)
-            updatedPs = evaledPs.map(updateLocallyFree)
-          } yield set.copy(ps = SortedParHashSet(updatedPs))
+          } yield set.copy(ps = SortedParHashSet(evaledPs))
 
         case EMapBody(map) =>
           for {
             evaledPs <- map.ps.sortedList.traverse { case (key, value) =>
                           for {
-                            eKey   <- evalExpr(key).map(updateLocallyFree)
-                            eValue <- evalExpr(value).map(updateLocallyFree)
+                            eKey   <- evalExpr(key)
+                            eValue <- evalExpr(value)
                           } yield (eKey, eValue)
                         }
           } yield map.copy(ps = SortedParMap(evaledPs))
@@ -1672,22 +1669,6 @@ class DebruijnInterpreter[M[_]: Sync: Parallel: CostStateRef](
     Sync[M].catchNonFatal(Math.toIntExact(long)).adaptError { case _: ArithmeticException =>
       ReduceError(s"Integer overflow for value $long")
     }
-
-  private def updateLocallyFree(par: Par): Par =
-    par.copy(
-      locallyFree = par.sends.foldLeft(BitSet())((acc, send) => acc | send.locallyFree) |
-        par.receives.foldLeft(BitSet())((acc, receive) => acc | receive.locallyFree) |
-        par.news.foldLeft(BitSet())((acc, newProc) => acc | newProc.locallyFree) |
-        par.exprs.foldLeft(BitSet())((acc, expr) => acc | ExprLocallyFree.locallyFree(expr, 0)) |
-        par.matches.foldLeft(BitSet())((acc, matchProc) => acc | matchProc.locallyFree) |
-        par.bundles.foldLeft(BitSet())((acc, bundleProc) => acc | bundleProc.locallyFree),
-    )
-
-  private def updateLocallyFree(elist: EList): EList =
-    elist.copy(locallyFree = elist.ps.foldLeft(BitSet())((acc, p) => acc | p.locallyFree))
-
-  private def updateLocallyFree(elist: ETuple): ETuple =
-    elist.copy(locallyFree = elist.ps.foldLeft(BitSet())((acc, p) => acc | p.locallyFree))
 
   /**
     * Evaluate any top level expressions in @param Par .
