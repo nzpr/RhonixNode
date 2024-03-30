@@ -11,7 +11,7 @@ final case class VarMap[T](data: Map[String, VarContext[T]], nextIndex: Int) {
    *
    * @return Some(varContext) if the variable is found, None otherwise.
    */
-  def get(name: String): Option[VarContext[T]] = data.get(name).map(v => v.copy(indexRev = nextIndex - v.index - 1))
+  def get(name: String): Option[VarContext[T]] = data.get(name)
 
   /**
    * Adds a new variable to the map or update an existing one.
@@ -22,8 +22,7 @@ final case class VarMap[T](data: Map[String, VarContext[T]], nextIndex: Int) {
    * @return a new VarMap with the updated data and next index.
    */
   def put(name: String, sort: T, sourcePosition: SourcePosition): (VarMap[T], VarContext[T]) = {
-    // NOTE: Reverse index is not calculated here, it's temporary set to -1.
-    val varData  = VarContext(nextIndex, -1, sort, sourcePosition)
+    val varData  = VarContext(nextIndex, sort, sourcePosition)
     val newMap   = data.updated(name, varData)
     val newIndex = nextIndex + 1
     (VarMap(newMap, newIndex), varData)
@@ -38,7 +37,7 @@ final case class VarMap[T](data: Map[String, VarContext[T]], nextIndex: Int) {
   def create(vars: Seq[(T, SourcePosition)]): (VarMap[T], Seq[VarContext[T]]) = {
     val newNextIdx = nextIndex + vars.size
     // NOTE: Reverse index is not calculated here, it's temporary set to -1.
-    val addedVars  = vars.zipWithIndex.map { case ((t, pos), i) => VarContext(i + nextIndex, -1, t, pos) }
+    val addedVars  = vars.zipWithIndex.map { case ((t, pos), i) => VarContext(i + nextIndex, t, pos) }
     (copy(nextIndex = newNextIdx), addedVars)
   }
 }

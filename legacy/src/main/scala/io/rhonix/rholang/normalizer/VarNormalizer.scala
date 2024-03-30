@@ -5,7 +5,6 @@ import cats.syntax.all.*
 import coop.rchain.rholang.interpreter.compiler.*
 import coop.rchain.rholang.interpreter.errors.*
 import io.rhonix.rholang.ast.rholang.Absyn.*
-import io.rhonix.rholang.normalizer.Normalizer.BOUND_VAR_INDEX_REVERSED
 import io.rhonix.rholang.normalizer.env.*
 import io.rhonix.rholang.normalizer.syntax.all.*
 import io.rhonix.rholang.types.{BoundVarN, FreeVarN, VarN, WildcardN}
@@ -35,15 +34,8 @@ object VarNormalizer {
     expectedSort: T,
   )(implicit nestingInfo: NestingReader): F[VarN] = Sync[F].defer {
     BoundVarReader[T].getBoundVar(varName) match {
-      case Some(VarContext(index, indexFromEnd, `expectedSort`, _)) =>
-        Sync[F].pure {
-          // NOTE: Gets the index from latest bound variable. This is what reducer expects because every evaluation of a term
-          //       creates new Env with starting index 0.
-          // https://github.com/tgrospic/RhonixNode/blob/20ce195ad4/legacy/src/main/scala/coop/rchain/rholang/interpreter/dispatch.scala#L31
-          val idx = if (BOUND_VAR_INDEX_REVERSED) indexFromEnd else index
-          BoundVarN(idx)
-        }
-      case Some(VarContext(_, _, _, sourcePosition))                =>
+      case Some(VarContext(index, `expectedSort`, _)) => Sync[F].pure(BoundVarN(index))
+      case Some(VarContext(_, _, sourcePosition))     =>
         expectedSort match {
           case ProcSort => UnexpectedProcContext(varName, sourcePosition, pos).raiseError
           case NameSort => UnexpectedNameContext(varName, sourcePosition, pos).raiseError

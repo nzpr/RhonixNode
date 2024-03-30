@@ -93,26 +93,20 @@ class CollectPrinterSpec extends AnyFlatSpec with Matchers {
   }
 
   "List" should "Print" in {
-    val listData =
-      if (Normalizer.BOUND_VAR_INDEX_REVERSED)
-        Seq(BoundVarN(1), BoundVarN(0), GIntN(7))
-      else
-        Seq(BoundVarN(0), BoundVarN(1), GIntN(7))
-
-    val list   = EListN(listData, Some(FreeVarN(0)))
-    val result = PrettyPrinter(0, 2).buildString(list)
+    val listData = Seq(BoundVarN(0), BoundVarN(1), GIntN(7))
+    val list     = EListN(listData, Some(FreeVarN(0)))
+    val result   = PrettyPrinter(2).buildString(list)
     result shouldBe "[x0, x1, 7...free0]"
   }
 
   "Set" should "Print" in {
     val set    = ESetN(Seq(BoundVarN(0), BoundVarN(1), GIntN(7)), Some(FreeVarN(0)))
-    val result = PrettyPrinter(0, 2).buildString(set)
+    val result = PrettyPrinter(2).buildString(set)
     result shouldBe "Set(7, x0, x1...free0)"
   }
 
   "Map" should "Print" in {
-    val boundVars =
-      if (Normalizer.BOUND_VAR_INDEX_REVERSED) (BoundVarN(1), BoundVarN(0)) else (BoundVarN(0), BoundVarN(1))
+    val boundVars = (BoundVarN(0), BoundVarN(1))
 
     val map = EMapN(
       Seq(
@@ -122,7 +116,7 @@ class CollectPrinterSpec extends AnyFlatSpec with Matchers {
       Some(FreeVarN(0)),
     )
 
-    val result = PrettyPrinter(0, 2).buildString(map)
+    val result = PrettyPrinter(2).buildString(map)
     result shouldBe "{7 : \"" + "Seven" + "\", x0 : x1...free0}"
   }
 
@@ -488,7 +482,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
     // Add bound variable
     norm.boundVarWriter.putBoundVars(Seq(("x", ProcSort, SourcePosition(0, 0))))
 
-    val result = PrettyPrinter(0, 1).buildString(norm.normalize(pvar).value)
+    val result = PrettyPrinter(1).buildString(norm.normalize(pvar).value)
     result shouldBe "x0"
   }
 
@@ -513,7 +507,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
     norm.boundVarWriter.putBoundVars(Seq(("x", NameSort, SourcePosition(0, 0))))
 
     val pEval  = new PEval(new NameVar("x"))
-    val result = PrettyPrinter(0, 1).buildString(norm.normalize(pEval).value)
+    val result = PrettyPrinter(1).buildString(norm.normalize(pEval).value)
     result shouldBe "x0"
   }
 
@@ -525,7 +519,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
     val pEval  = new PEval(
       new NameQuote(new PPar(new PVar(new ProcVarVar("x")), new PVar(new ProcVarVar("x")))),
     )
-    val result = PrettyPrinter(0, 1).buildString(norm.normalize(pEval).value)
+    val result = PrettyPrinter(1).buildString(norm.normalize(pEval).value)
     result shouldBe
       """x0 |
         |x0""".stripMargin
@@ -585,7 +579,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
     sentData.add(new PGround(new GroundInt("7")))
     sentData.add(new PGround(new GroundInt("8")))
     val pSend    = new PSend(new NameVar("x"), new SendSingle(), sentData)
-    val result   = PrettyPrinter(0, 1).buildString(norm.normalize(pSend).value)
+    val result   = PrettyPrinter(1).buildString(norm.normalize(pSend).value)
     result shouldBe "@{x0}!(7, 8)"
   }
 
@@ -603,7 +597,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
     norm.boundVarWriter.putBoundVars(Seq(("x", ProcSort, SourcePosition(0, 0))))
 
     val parDoubleBound = new PPar(new PVar(new ProcVarVar("x")), new PVar(new ProcVarVar("x")))
-    val result         = PrettyPrinter(0, 1).buildString(norm.normalize(parDoubleBound).value)
+    val result         = PrettyPrinter(1).buildString(norm.normalize(parDoubleBound).value)
     result shouldBe
       """x0 |
         |x0""".stripMargin
@@ -924,7 +918,7 @@ class ProcPrinterSpec extends AnyFlatSpec with Matchers {
   "PMatches" should "display matches" in {
     val pMatches = new PMatches(new PGround(new GroundInt("1")), new PVar(new ProcVarWildcard()))
 
-    val result = PrettyPrinter(0, 1).buildString(testNormalizer.normalize(pMatches).value)
+    val result = PrettyPrinter(1).buildString(testNormalizer.normalize(pMatches).value)
 
     result shouldBe "(1 matches _)"
   }
@@ -990,7 +984,7 @@ class NamePrinterSpec extends AnyFlatSpec with Matchers {
     norm.boundVarWriter.putBoundVars(Seq(("x", NameSort, SourcePosition(0, 0))))
 
     val nvar   = new NameVar("x")
-    val result = PrettyPrinter(0, 1).buildString(norm.normalize(nvar).value)
+    val result = PrettyPrinter(1).buildString(norm.normalize(nvar).value)
     result shouldBe "x0"
   }
 
@@ -1000,7 +994,7 @@ class NamePrinterSpec extends AnyFlatSpec with Matchers {
     norm.boundVarWriter.putBoundVars(Seq(("x", NameSort, SourcePosition(0, 0))))
 
     val nqeval = new NameQuote(new PPar(new PEval(new NameVar("x")), new PEval(new NameVar("x"))))
-    val result = PrettyPrinter(0, 1).buildString(norm.normalize(nqeval).value)
+    val result = PrettyPrinter(1).buildString(norm.normalize(nqeval).value)
     result shouldBe "x0 |\nx0"
   }
 }

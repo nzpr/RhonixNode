@@ -15,7 +15,7 @@ class VarMapSpec extends AnyFlatSpec with Matchers {
 
   it should "return the correct VarContext when getting an existing variable" in {
     val varMap = VarMap(Seq(("existingVar", 1, SourcePosition(0, 0))))
-    varMap.get("existingVar") shouldBe (Some(VarContext(0, 0, 1, SourcePosition(0, 0))))
+    varMap.get("existingVar") shouldBe Some(VarContext(0, 1, SourcePosition(0, 0)))
   }
 
   it should "return all variables when calling getAll" in {
@@ -26,15 +26,15 @@ class VarMapSpec extends AnyFlatSpec with Matchers {
       ),
     )
     varMap.data.toSeq should contain theSameElementsAs Seq(
-      ("var1", VarContext(0, -1, 1, SourcePosition(0, 0))),
-      ("var2", VarContext(1, -1, 2, SourcePosition(1, 1))),
+      ("var1", VarContext(0, 1, SourcePosition(0, 0))),
+      ("var2", VarContext(1, 2, SourcePosition(1, 1))),
     )
   }
 
   it should "update the VarContext when putting an existing variable" in {
     val varMap = VarMap(Seq(("existingVar", 1, SourcePosition(0, 0))))
       .put("existingVar", 2, SourcePosition(1, 1))
-    varMap._1.get("existingVar") shouldBe (Some(VarContext(1, 0, 2, SourcePosition(1, 1))))
+    varMap._1.get("existingVar") shouldBe (Some(VarContext(1, 2, SourcePosition(1, 1))))
   }
 
   it should "increment the de Bruijn index when putting a new variable" in {
