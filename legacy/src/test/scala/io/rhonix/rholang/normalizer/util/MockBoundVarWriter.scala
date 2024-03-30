@@ -15,7 +15,7 @@ case class MockBoundVarWriter[F[_], T](scope: MockBoundVarScope[F]) extends Boun
     buffer.appendAll(bindings.map { case (name, varType, _) =>
       BoundVarWriterData(name, varType, newScopeLevel, copyScopeLevel)
     })
-    bindings.zipWithIndex.map { case ((_, t, pos), i) => VarContext(i, -1, t, pos) }
+    bindings.zipWithIndex.map { case ((_, t, pos), i) => VarContext(i, t, pos) }
   }
 
   def extractData: Seq[BoundVarWriterData[T]] = buffer.toSeq

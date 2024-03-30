@@ -11,7 +11,7 @@ final case class NestingWriterImpl[F[_]: Sync](
 ) extends NestingWriter[F] {
   override def withinPattern[R](inReceive: Boolean)(scopeFn: F[R]): F[R] =
     for {
-      incrementedDepth <- Sync[F].delay(patternInfo.current()._1 + 1)
+      incrementedDepth <- Sync[F].delay(patternInfo.current().map(_._1).getOrElse(0) + 1)
       fRes             <- patternInfo.runWithNewDataInChain(scopeFn, (incrementedDepth, inReceive))
     } yield fRes
 

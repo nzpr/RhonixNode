@@ -16,7 +16,7 @@ import sdk.log.LogSourceMacroInstance.logSource
 import scala.collection.SortedSet
 import scala.jdk.CollectionConverters.*
 
-class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
+class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K, B](
   historyRepository: HistoryRepository[F, C, P, A, K],
   storeRef: Ref[F, HotStore[F, C, P, A, K]],
 )(implicit
@@ -24,9 +24,9 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   serializeP: Serialize[P],
   serializeA: Serialize[A],
   serializeK: Serialize[K],
-  val m: Match[F, P, A],
-) extends RSpaceOps[F, C, P, A, K](historyRepository, storeRef)
-    with IReplaySpace[F, C, P, A, K] {
+  val m: Match[F, P, A, B],
+) extends RSpaceOps[F, C, P, A, B, K](historyRepository, storeRef)
+    with IReplaySpace[F, C, P, A, K, B] {
 
   override protected def logF: Log[F] = Log[F]
 
@@ -79,14 +79,14 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     channels: Seq[C],
     patterns: Seq[P],
     comms: Seq[COMM],
-  ): F[Option[(COMM, Seq[ConsumeCandidate[C, A]])]] =
+  ): F[Option[(COMM, Seq[ConsumeCandidate[C, A, B]])]] =
     getCommOrCandidate(comms, comm => runMatcherConsume(channels, patterns, comm))
 
   def runMatcherConsume(
     channels: Seq[C],
     patterns: Seq[P],
     comm: COMM,
-  ): F[Option[Seq[ConsumeCandidate[C, A]]]] =
+  ): F[Option[Seq[ConsumeCandidate[C, A, B]]]] =
     for {
       channelToIndexedDataList <- channels.traverse {
                                     c: C =>
@@ -142,7 +142,7 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     comms: Seq[COMM],
     produceRef: Produce,
     groupedChannels: Seq[Seq[C]],
-  ): F[Option[(COMM, ProduceCandidate[C, P, A, K])]] =
+  ): F[Option[(COMM, ProduceCandidate[C, P, A, K, B])]] =
     getCommOrCandidate(
       comms,
       runMatcherProduce(channel, data, persist, _, produceRef, groupedChannels),
@@ -191,7 +191,7 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   }
 
   private[this] def handleMatch(
-    pc: ProduceCandidate[C, P, A, K],
+    pc: ProduceCandidate[C, P, A, K, B],
     comms: Multiset[COMM],
   ): F[MaybeActionResult] = {
     val ProduceCandidate(
@@ -240,7 +240,7 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
   override def clear(): F[Unit] = syncF.delay(replayData.clear()) >> super.clear()
 
   override protected def logComm(
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     channels: Seq[C],
     wk: WaitingContinuation[P, K],
     comm: COMM,
@@ -292,7 +292,7 @@ class ReplayRSpace[F[_]: Async: Log: Metrics: Span, C, P, A, K](
     comms.tailRecM(go).map(_.toOption)
   }
 
-  def spawn: F[IReplaySpace[F, C, P, A, K]] = spanF.withMarks("spawn") {
+  def spawn: F[IReplaySpace[F, C, P, A, K, B]] = spanF.withMarks("spawn") {
     for {
       historyRepo   <- historyRepositoryRef.get
       nextHistory   <- historyRepo.reset(historyRepo.history.root)
@@ -309,7 +309,7 @@ object ReplayRSpace {
   /**
     * Creates [[ReplayRSpace]] from [[HistoryRepository]] and [[HotStore]].
     */
-  def apply[F[_]: Async: Log: Metrics: Span, C, P, A, K](
+  def apply[F[_]: Async: Log: Metrics: Span, C, P, A, K, B](
     historyRepository: HistoryRepository[F, C, P, A, K],
     store: HotStore[F, C, P, A, K],
   )(implicit
@@ -317,10 +317,10 @@ object ReplayRSpace {
     sp: Serialize[P],
     sa: Serialize[A],
     sk: Serialize[K],
-    m: Match[F, P, A],
-  ): F[ReplayRSpace[F, C, P, A, K]] =
+    m: Match[F, P, A, B],
+  ): F[ReplayRSpace[F, C, P, A, K, B]] =
     Ref
       .of[F, HotStore[F, C, P, A, K]](store)
-      .map(storeRef => new ReplayRSpace[F, C, P, A, K](historyRepository, storeRef))
+      .map(storeRef => new ReplayRSpace[F, C, P, A, K, B](historyRepository, storeRef))
 
 }

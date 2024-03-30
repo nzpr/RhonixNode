@@ -9,7 +9,7 @@ import coop.rchain.rspace.util.ReplayException
 import coop.rchain.shared.Log
 import sdk.log.LogSourceMacroInstance.logSource
 
-trait IReplaySpace[F[_], C, P, A, K] extends ISpace[F, C, P, A, K] {
+trait IReplaySpace[F[_], C, P, A, K, B] extends ISpace[F, C, P, A, K, B] {
 
   protected def logF: Log[F]
 

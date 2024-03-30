@@ -30,7 +30,7 @@ class ContrNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with
         // contract source (pattern1, pattern2, ... remainder) { continuation }
         val term = new PContr(source, listPatterns, remainder, continuation)
 
-        implicit val (nRec, bVScope, bVW, _, fVScope, _, fVR, infoWriter, _) = createMockDSL[IO, VarSort]()
+        implicit val (nRec, bVScope, bVW, bVR, fVScope, _, fVR, infoWriter, _) = createMockDSL[IO, VarSort]()
 
         val adt = ContractNormalizer.normalizeContract[IO, VarSort](term).unsafeRunSync()
 
@@ -82,7 +82,7 @@ class ContrNormalizerSpec extends AnyFlatSpec with ScalaCheckPropertyChecks with
 
       val initFreeVars = varsNameStr.distinct.zipWithIndex.map { case (name, index) => (name, (index, NameSort)) }.toMap
 
-      implicit val (nRec, bVScope, bVW, _, fVScope, _, fVR, infoWriter, _) =
+      implicit val (nRec, bVScope, bVW, bVR, fVScope, _, fVR, infoWriter, _) =
         createMockDSL[IO, VarSort](initFreeVars = initFreeVars)
 
       ContractNormalizer.normalizeContract[IO, VarSort](term).unsafeRunSync()

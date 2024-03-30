@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters.*
 object MatchNormalizer {
   def normalizeMatch[
     F[_]: Sync: NormalizerRec: BoundVarScope: FreeVarScope: NestingWriter,
-    T: BoundVarWriter: FreeVarReader,
+    T: BoundVarWriter: BoundVarReader: FreeVarReader,
   ](p: PMatch): F[MatchN] = {
     def normalizeCase(c: Case): F[MatchCaseN] = c match {
       case ci: CaseImpl =>

@@ -52,9 +52,9 @@ object SystemProcesses {
   type BodyRef              = Long
 
   final case class BlockData private (
-      blockNumber: Long,
-      sender: PublicKey,
-      seqNum: Long
+    blockNumber: Long,
+    sender: PublicKey,
+    seqNum: Long,
   )
 
   def byteName(b: Byte): Par = GPrivate(ByteString.copyFrom(Array[Byte](b)))
@@ -79,7 +79,7 @@ object SystemProcesses {
     val REG_OPS: Par            = byteName(17)
     val SYS_AUTHTOKEN_OPS: Par  = byteName(18)
   }
-  object BodyRefs {
+  object BodyRefs      {
     val STDOUT: Long             = 0L
     val STDOUT_ACK: Long         = 1L
     val STDERR: Long             = 2L
@@ -97,22 +97,22 @@ object SystemProcesses {
     val SYS_AUTHTOKEN_OPS: Long  = 16L
   }
   final case class ProcessContext[F[_]: Async: Span](
-      space: RhoTuplespace[F],
-      dispatcher: RhoDispatch[F],
-      blockData: Ref[F, BlockData]
+    space: RhoTuplespace[F],
+    dispatcher: RhoDispatch[F],
+    blockData: Ref[F, BlockData],
   ) {
     val systemProcesses = SystemProcesses[F](dispatcher, space)
   }
   final case class Definition[F[_]](
-      urn: String,
-      fixedChannel: Name,
-      arity: Arity,
-      bodyRef: BodyRef,
-      handler: ProcessContext[F] => Seq[ListParWithRandom] => F[Unit],
-      remainder: Remainder = None
+    urn: String,
+    fixedChannel: Name,
+    arity: Arity,
+    bodyRef: BodyRef,
+    handler: ProcessContext[F] => Seq[ListParWithRandom] => F[Unit],
+    remainder: Remainder = None,
   ) {
     def toDispatchTable(
-        context: ProcessContext[F]
+      context: ProcessContext[F],
     ): (BodyRef, Seq[ListParWithRandom] => F[Unit]) =
       bodyRef -> handler(context)
 
@@ -124,7 +124,7 @@ object SystemProcesses {
     def toProcDefs: (Name, Arity, Remainder, BodyRef) =
       (fixedChannel, arity, remainder, bodyRef)
   }
-  object BlockData {
+  object BlockData     {
     def empty: BlockData = BlockData(0, PublicKey(Base16.unsafeDecode("00")), 0)
 //    def fromBlock(template: BlockMessage) =
 //      BlockData(
@@ -136,14 +136,14 @@ object SystemProcesses {
   type Contract[F[_]] = Seq[ListParWithRandom] => F[Unit]
 
   def apply[F[_]](
-      dispatcher: Dispatch[F, ListParWithRandom, TaggedContinuation],
-      space: RhoTuplespace[F]
+    dispatcher: Dispatch[F, MatchedParsWithRandom, TaggedContinuation],
+    space: RhoTuplespace[F],
   )(implicit F: Async[F], spanF: Span[F]): SystemProcesses[F] =
     new SystemProcesses[F] {
 
       type ContWithMetaData = ContResult[Par, BindPattern, TaggedContinuation]
 
-      type Channels = Seq[Result[Par, ListParWithRandom]]
+      type Channels = Seq[Result[Par, ListParWithRandom, MatchedParsWithRandom]]
 
       private val prettyPrinter = PrettyPrinter()
 
@@ -156,17 +156,17 @@ object SystemProcesses {
         F.raiseError(new IllegalArgumentException(msg))
 
       def verifySignatureContract(
-          name: String,
-          algorithm: (Array[Byte], Array[Byte], Array[Byte]) => Boolean
+        name: String,
+        algorithm: (Array[Byte], Array[Byte], Array[Byte]) => Boolean,
       ): Contract[F] = {
         case isContractCall(
-            produce,
-            Seq(
-              RhoType.RhoByteArray(data),
-              RhoType.RhoByteArray(signature),
-              RhoType.RhoByteArray(pub),
-              ack
-            )
+              produce,
+              Seq(
+                RhoType.RhoByteArray(data),
+                RhoType.RhoByteArray(signature),
+                RhoType.RhoByteArray(pub),
+                ack,
+              ),
             ) =>
           for {
             verified <- F.fromTry(Try(algorithm(data, signature, pub)))
@@ -174,7 +174,7 @@ object SystemProcesses {
           } yield ()
         case _ =>
           illegalArgumentException(
-            s"$name expects data, signature, public key (all as byte arrays), and an acknowledgement channel"
+            s"$name expects data, signature, public key (all as byte arrays), and an acknowledgement channel",
           )
       }
 
@@ -184,9 +184,9 @@ object SystemProcesses {
             hash <- F.fromTry(Try(algorithm(input)))
             _    <- produce(Seq(RhoType.RhoByteArray(hash)), ack)
           } yield ()
-        case _ =>
+        case _                                                              =>
           illegalArgumentException(
-            s"$name expects a byte array and return channel"
+            s"$name expects a byte array and return channel",
           )
       }
 
@@ -202,36 +202,32 @@ object SystemProcesses {
           _ <- F.delay(stdErrLogger.debug(s))
         } yield ()
 
-      def stdOut: Contract[F] = {
-        case isContractCall(_, Seq(arg)) =>
-          printStdOut(prettyPrinter.buildString(arg))
+      def stdOut: Contract[F] = { case isContractCall(_, Seq(arg)) =>
+        printStdOut(prettyPrinter.buildString(arg))
       }
 
-      def stdOutAck: Contract[F] = {
-        case isContractCall(produce, Seq(arg, ack)) =>
-          for {
-            _ <- printStdOut(prettyPrinter.buildString(arg))
-            _ <- produce(Seq(Par.defaultInstance), ack)
-          } yield ()
+      def stdOutAck: Contract[F] = { case isContractCall(produce, Seq(arg, ack)) =>
+        for {
+          _ <- printStdOut(prettyPrinter.buildString(arg))
+          _ <- produce(Seq(Par.defaultInstance), ack)
+        } yield ()
       }
 
-      def stdErr: Contract[F] = {
-        case isContractCall(_, Seq(arg)) =>
-          printStdErr(prettyPrinter.buildString(arg))
+      def stdErr: Contract[F] = { case isContractCall(_, Seq(arg)) =>
+        printStdErr(prettyPrinter.buildString(arg))
       }
 
-      def stdErrAck: Contract[F] = {
-        case isContractCall(produce, Seq(arg, ack)) =>
-          for {
-            _ <- printStdErr(prettyPrinter.buildString(arg))
-            _ <- produce(Seq(Par.defaultInstance), ack)
-          } yield ()
+      def stdErrAck: Contract[F] = { case isContractCall(produce, Seq(arg, ack)) =>
+        for {
+          _ <- printStdErr(prettyPrinter.buildString(arg))
+          _ <- produce(Seq(Par.defaultInstance), ack)
+        } yield ()
       }
 
       def revAddress: Contract[F] = {
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("validate"), RhoType.RhoString(address), ack)
+              produce,
+              Seq(RhoType.RhoString("validate"), RhoType.RhoString(address), ack),
             ) =>
           val errorMessage =
             RevAddress
@@ -248,8 +244,8 @@ object SystemProcesses {
           produce(Seq(Par()), ack)
 
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("fromPublicKey"), RhoType.RhoByteArray(publicKey), ack)
+              produce,
+              Seq(RhoType.RhoString("fromPublicKey"), RhoType.RhoByteArray(publicKey), ack),
             ) =>
           val response =
             RevAddress
@@ -263,8 +259,8 @@ object SystemProcesses {
           produce(Seq(Par()), ack)
 
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("fromDeployerId"), RhoType.RhoDeployerId(id), ack)
+              produce,
+              Seq(RhoType.RhoString("fromDeployerId"), RhoType.RhoDeployerId(id), ack),
             ) =>
           val response =
             RevAddress
@@ -278,13 +274,13 @@ object SystemProcesses {
           produce(Seq(Par()), ack)
 
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("fromUnforgeable"), argument, ack)
+              produce,
+              Seq(RhoType.RhoString("fromUnforgeable"), argument, ack),
             ) =>
           val response = argument match {
             case RhoType.RhoName(gprivate) =>
               RhoType.RhoString(RevAddress.fromUnforgeable(gprivate).toBase58)
-            case _ => Par()
+            case _                         => Par()
           }
 
           produce(Seq(response), ack)
@@ -295,8 +291,8 @@ object SystemProcesses {
 
       def deployerIdOps: Contract[F] = {
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("pubKeyBytes"), RhoType.RhoDeployerId(publicKey), ack)
+              produce,
+              Seq(RhoType.RhoString("pubKeyBytes"), RhoType.RhoDeployerId(publicKey), ack),
             ) =>
           produce(Seq(RhoType.RhoByteArray(publicKey)), ack)
 
@@ -306,22 +302,22 @@ object SystemProcesses {
 
       def registryOps: Contract[F] = {
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("buildUri"), argument, ack)
+              produce,
+              Seq(RhoType.RhoString("buildUri"), argument, ack),
             ) =>
           val response = argument match {
             case RhoType.RhoByteArray(ba) =>
               val hashKeyBytes = Blake2b256.hash(ba)
               RhoType.RhoUri(Registry.buildURI(hashKeyBytes))
-            case _ => Par()
+            case _                        => Par()
           }
           produce(Seq(response), ack)
       }
 
       def sysAuthTokenOps: Contract[F] = {
         case isContractCall(
-            produce,
-            Seq(RhoType.RhoString("check"), argument, ack)
+              produce,
+              Seq(RhoType.RhoString("check"), argument, ack),
             ) =>
           val response = argument match {
             case RhoType.RhoSysAuthToken(_) => RhoType.RhoBoolean(true)
@@ -346,20 +342,20 @@ object SystemProcesses {
         hashContract("blake2b256Hash", Blake2b256.hash)
 
       def getBlockData(
-          blockData: Ref[F, BlockData]
+        blockData: Ref[F, BlockData],
       ): Contract[F] = {
         case isContractCall(produce, Seq(ack)) =>
           for {
             data <- blockData.get
-            _ <- produce(
-                  Seq(
-                    RhoType.RhoNumber(data.blockNumber),
-                    RhoType.RhoByteArray(data.sender.bytes)
-                  ),
-                  ack
-                )
+            _    <- produce(
+                      Seq(
+                        RhoType.RhoNumber(data.blockNumber),
+                        RhoType.RhoByteArray(data.sender.bytes),
+                      ),
+                      ack,
+                    )
           } yield ()
-        case _ =>
+        case _                                 =>
           illegalArgumentException("blockData expects only a return channel")
       }
     }

@@ -25,8 +25,8 @@ final case class COMM(
 ) extends Event
 
 object COMM {
-  def apply[F[_]: Sync, C, A](
-    dataCandidates: Seq[ConsumeCandidate[C, A]],
+  def apply[F[_]: Sync, C, A, B](
+    dataCandidates: Seq[ConsumeCandidate[C, A, B]],
     consumeRef: Consume,
     peeks: SortedSet[Int],
     produceCounters: Seq[Produce] => F[Map[Produce, Int]],

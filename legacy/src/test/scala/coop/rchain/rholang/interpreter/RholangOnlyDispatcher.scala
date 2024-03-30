@@ -12,12 +12,12 @@ import coop.rchain.rholang.interpreter.RhoRuntime.RhoTuplespace
 object RholangOnlyDispatcher {
 
   def apply[F[_]: Sync: Parallel: CostStateRef](
-      tuplespace: RhoTuplespace[F],
-      urnMap: Map[String, Par],
-      mergeChs: Ref[F, Set[Par]]
-  ): (Dispatch[F, ListParWithRandom, TaggedContinuation], DebruijnInterpreter[F]) = {
+    tuplespace: RhoTuplespace[F],
+    urnMap: Map[String, Par],
+    mergeChs: Ref[F, Set[Par]],
+  ): (Dispatch[F, MatchedParsWithRandom, TaggedContinuation], DebruijnInterpreter[F]) = {
 
-    lazy val dispatcher: Dispatch[F, ListParWithRandom, TaggedContinuation] =
+    lazy val dispatcher: Dispatch[F, MatchedParsWithRandom, TaggedContinuation] =
       new RholangOnlyDispatcher
 
     implicit lazy val reducer: DebruijnInterpreter[F] =
@@ -27,9 +27,9 @@ object RholangOnlyDispatcher {
   }
 
   def apply[F[_]: Sync: Parallel: CostStateRef](
-      tuplespace: RhoTuplespace[F],
-      urnMap: Map[String, Par] = Map.empty
-  ): (Dispatch[F, ListParWithRandom, TaggedContinuation], DebruijnInterpreter[F]) = {
+    tuplespace: RhoTuplespace[F],
+    urnMap: Map[String, Par] = Map.empty,
+  ): (Dispatch[F, MatchedParsWithRandom, TaggedContinuation], DebruijnInterpreter[F]) = {
     val initMergeChannelsRef = Ref.unsafe[F, Set[Par]](Set.empty)
 
     apply(tuplespace, urnMap, initMergeChannelsRef)
@@ -37,19 +37,19 @@ object RholangOnlyDispatcher {
 }
 
 class RholangOnlyDispatcher[M[_]](implicit s: Sync[M], reducer: Reduce[M])
-    extends Dispatch[M, ListParWithRandom, TaggedContinuation] {
+    extends Dispatch[M, MatchedParsWithRandom, TaggedContinuation] {
 
-  def dispatch(continuation: TaggedContinuation, dataList: Seq[ListParWithRandom]): M[Unit] =
+  def dispatch(continuation: TaggedContinuation, dataList: Seq[MatchedParsWithRandom]): M[Unit] =
     for {
       res <- continuation.taggedCont match {
-              case ParBody(parWithRand) =>
-                val env     = Dispatch.buildEnv(dataList)
-                val randoms = parWithRand.randomState +: dataList.toVector.map(_.randomState)
-                reducer.eval(parWithRand.body)(env, Blake2b512Random.merge(randoms))
-              case ScalaBodyRef(_) =>
-                s.unit
-              case Empty =>
-                s.unit
-            }
+               case ParBody(parWithRand) =>
+                 val env     = Dispatch.buildEnv(dataList)
+                 val randoms = parWithRand.randomState +: dataList.toVector.map(_.randomState)
+                 reducer.eval(parWithRand.body)(env, Blake2b512Random.merge(randoms))
+               case ScalaBodyRef(_)      =>
+                 s.unit
+               case Empty                =>
+                 s.unit
+             }
     } yield res
 }

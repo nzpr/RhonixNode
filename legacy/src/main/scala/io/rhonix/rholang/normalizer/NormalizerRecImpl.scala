@@ -67,8 +67,8 @@ final case class NormalizerRecImpl[F[_]: Sync, T >: VarSort]() extends Normalize
 
   // TODO: Temporary initialization function to use in tests until complete solution is created.
   def init: this.type = {
-    boundMapChain.push(VarMap.default[T])
-    freeMapChain.push(VarMap.default[T])
+    boundMapChain.push(VarMap.default[T]())
+    freeMapChain.push(VarMap.default[T]())
     this
   }
 }
@@ -108,7 +108,7 @@ object NormalizerRecImpl {
       /* Binary expressions (2-arity constructors) */
       /* ========================================= */
       case p: PPar            => ParNormalizer.normalizePar[F](p)
-      case p: PMatches        => MatchesNormalizer.normalizeMatches[F](p).widen
+      case p: PMatches        => MatchesNormalizer.normalizeMatches[F, T](p).widen
       case p: PConjunction    => ConjunctionNormalizer.normalizeConjunction[F](p).widen
       case p: PDisjunction    => DisjunctionNormalizer.normalizeDisjunction[F](p).widen
       case p: PMult           => binaryExp(p.proc_1, p.proc_2, EMultN.apply)

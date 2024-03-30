@@ -26,37 +26,36 @@ import coop.rchain.rholang.interpreter.RhoRuntime.RhoTuplespace
   * @param dispatcher the dispatcher
   */
 class ContractCall[F[_]: Async: Span](
-    space: RhoTuplespace[F],
-    dispatcher: Dispatch[F, ListParWithRandom, TaggedContinuation]
+  space: RhoTuplespace[F],
+  dispatcher: Dispatch[F, MatchedParsWithRandom, TaggedContinuation],
 ) {
   type Producer[M[_]] = (Seq[Par], Par) => M[Unit]
 
   // TODO: pass _cost[F] as an implicit parameter
   private def produce(
-      rand: Blake2b512Random
+    rand: Blake2b512Random,
   )(values: Seq[Par], ch: Par): F[Unit] =
     for {
       produceResult <- space.produce(
-                        ch,
-                        ListParWithRandom(values, rand),
-                        persist = false
-                      )
-      _ <- produceResult.fold(Sync[F].unit) {
-            case (cont, channels) =>
-              dispatcher.dispatch(
-                cont.continuation,
-                channels.map(_.matchedDatum)
-              )
-          }
+                         ch,
+                         ListParWithRandom(values, rand),
+                         persist = false,
+                       )
+      _             <- produceResult.fold(Sync[F].unit) { case (cont, channels) =>
+                         dispatcher.dispatch(
+                           cont.continuation,
+                           channels.map(_.matchedDatum),
+                         )
+                       }
     } yield ()
 
   def unapply(contractArgs: Seq[ListParWithRandom]): Option[(Producer[F], Seq[Par])] =
     contractArgs match {
       case Seq(
-          ListParWithRandom(
-            args,
-            rand
-          )
+            ListParWithRandom(
+              args,
+              rand,
+            ),
           ) =>
         Some((produce(rand), args))
       case _ => None

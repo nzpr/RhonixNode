@@ -16,6 +16,12 @@ trait BoundVarReader[T] {
    * @return bound variable or None .
    */
   def findBoundVar(name: String): Option[VarContext[T]]
+
+  /**
+   * Get next de Bruijn index.
+   * @return index that will be used for the creation of the next bound variable within the current scope.
+   */
+  def getNextIndex: Int
 }
 
 object BoundVarReader {
