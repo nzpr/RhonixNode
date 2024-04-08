@@ -34,7 +34,7 @@ class EvalTest extends AnyWordSpec with Matchers {
   "runtime" should {
     "convert term to Par and evalue it" in {
 //      val term = """{ "key11"|"key12":"data1", "key2":"data2"}"""
-      val term = """ new x, y in { *x + *y } """
+      val term = """ new x in { x!("qwe")} """
       val ast  = Compiler[IO].sourceToADT(term).unsafeRunSync()
       println("AST:")
       println(ast)
@@ -42,7 +42,7 @@ class EvalTest extends AnyWordSpec with Matchers {
       println(PrettyPrinter().buildString(ast))
 
       val term2    = s"""@"$outcomeCh"!($term)"""
-      val evalTerm = execute(term2).unsafeRunSync()
+      val evalTerm = execute(term).unsafeRunSync()
       println("evalTerm:")
       println(evalTerm)
 
