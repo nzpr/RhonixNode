@@ -84,6 +84,11 @@ object Dependencies {
   val kamonInfluxDbReporter = "io.kamon"    %% "kamon-influxdb"       % "2.6.0"
   val kamonJaegerReporter   = "io.kamon"    %% "kamon-jaeger"         % "2.6.0"
   val influxDbClient        = "com.influxdb" % "influxdb-client-java" % "6.10.0"
+  val zipkin: Seq[ModuleID] = Seq(
+    "io.zipkin.brave"     % "brave"                 % "5.13.2", // TODO: Is it actual version?
+    "io.zipkin.reporter2" % "zipkin-sender-okhttp3" % "2.15.2", // TODO: Is it actual version?
+    "io.zipkin.reporter2" % "zipkin-reporter"       % "2.15.2", // TODO: Is it actual version?
+  )
 
   // Logging
   val logbackClassic   = "ch.qos.logback"              % "logback-classic" % "1.4.7"
@@ -133,7 +138,7 @@ object Dependencies {
 
   val common = Seq(catsCore, catsEffect, fs2Core, jaxb, kindProjector, circeGeneric, circeParser, apacheCommonsIO)
 
-  val diagnostics = Seq(kamonBundle, kamonInfluxDbReporter, kamonJaegerReporter, influxDbClient)
+  val diagnostics = Seq(kamonBundle, kamonInfluxDbReporter, kamonJaegerReporter, influxDbClient) ++ zipkin
 
   val log = Seq(logbackClassic, typesagfeLogging)
 

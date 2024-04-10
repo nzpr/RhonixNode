@@ -1,6 +1,6 @@
 package node
 
-import cats.Eval
+import brave.propagation.TraceContext
 import cats.data.OptionT
 import cats.effect.Sync
 import cats.syntax.all.*
@@ -9,56 +9,75 @@ import node.Hashing.*
 import sdk.serialize.auto.*
 import sdk.codecs.Serialize
 import sdk.data.{BalancesDeploy, BalancesDeployBody, BalancesState}
+import sdk.diag.Span
 import sdk.primitive.ByteArray
 import sdk.syntax.all.digestSyntax
 import slick.api.*
 
 // TODO move somewhere
-final case class DbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
+final case class DbApiImpl[F[_]: Sync: Span](sApi: SlickApi[F]) {
 
-  def saveBlock(b: dproc.data.Block.WithId[ByteArray, ByteArray, BalancesDeploy]): F[Unit] =
+  def saveBlock(
+    b: dproc.data.Block.WithId[ByteArray, ByteArray, BalancesDeploy],
+    ctx: TraceContext,
+  ): F[Unit] =
     for {
-      _ <- b.m.txs.traverse(saveBalancesDeploy)
-      _ <- b.m.merge.toSeq.traverse(saveBalancesDeploy)
+      _ <- Span[F].traceF("b.m.txs.traverse(saveBalancesDeploy)", ctx.some)(s =>
+             b.m.txs.traverse(d => saveBalancesDeploy(d, s.context())),
+           )
+      _ <- Span[F].traceF("b.m.merge.toSeq.traverse(saveBalancesDeploy)", ctx.some) { s =>
+             b.m.merge.toSeq.traverse(d => saveBalancesDeploy(d, s.context()))
+           }
 
       acceptedBalanceDeploys = if (b.m.finalized.isEmpty) Set() else b.m.finalized.get.accepted
       rejectedBalanceDeploys = if (b.m.finalized.isEmpty) Set() else b.m.finalized.get.rejected
 
-      _ <- acceptedBalanceDeploys.toSeq.traverse(saveBalancesDeploy)
-      _ <- rejectedBalanceDeploys.toSeq.traverse(saveBalancesDeploy)
+      _ <- Span[F].traceF("accepted_saveBalancesDeploy", ctx.some) { s =>
+             acceptedBalanceDeploys.toSeq.traverse(d => saveBalancesDeploy(d, s.context()))
+           }
 
-      block = sdk.data.Block(
-                version = ProtocolVersion,
-                hash = b.id,
-                sigAlg = SigAlg,
-                signature = SignatureDefault,
-                finalStateHash = b.m.finalStateHash,
-                postStateHash = b.m.postStateHash,
-                validatorPk = b.m.sender,
-                shardName = ShardNameDefault,
-                justificationSet = b.m.minGenJs,
-                seqNum = SeqNumDefault,
-                offencesSet = b.m.offences,
-                bondsMap = b.m.bonds.bonds,
-                finalFringe = b.m.finalFringe,
-                execDeploySet = b.m.txs.map(_.id).toSet,
-                mergeDeploySet = b.m.merge.map(_.id),
-                dropDeploySet = Set(),
-                mergeDeploySetFinal = acceptedBalanceDeploys.map(_.id),
-                dropDeploySetFinal = rejectedBalanceDeploys.map(_.id),
-              )
+      _ <- Span[F].traceF("rejected_saveBalancesDeploy", ctx.some) { s =>
+             rejectedBalanceDeploys.toSeq.traverse(d => saveBalancesDeploy(d, s.context()))
+           }
 
-      _ <- sApi.blockInsert(block)(
-             justificationSetHash = block.justificationSet.digest,
-             offencesSetHash = calcSetHash(block.offencesSet),
-             bondsMapHash = b.m.bonds.bonds.digest,
-             finalFringeHash = calcSetHash(block.finalFringe),
-             execDeploySetHash = calcSetHash(block.execDeploySet),
-             mergeDeploySetHash = calcSetHash(block.mergeDeploySet),
-             dropDeploySetHash = ByteArray.Default,
-             mergeDeploySetFinalHash = calcSetHash(block.mergeDeploySetFinal),
-             dropDeploySetFinalHash = calcSetHash(block.dropDeploySetFinal),
-           )
+      block <- Span[F].traceF("prepareBlock", ctx.some) { _ =>
+                 Sync[F].delay {
+                   sdk.data.Block(
+                     version = ProtocolVersion,
+                     hash = b.id,
+                     sigAlg = SigAlg,
+                     signature = SignatureDefault,
+                     finalStateHash = b.m.finalStateHash,
+                     postStateHash = b.m.postStateHash,
+                     validatorPk = b.m.sender,
+                     shardName = ShardNameDefault,
+                     justificationSet = b.m.minGenJs,
+                     seqNum = SeqNumDefault,
+                     offencesSet = b.m.offences,
+                     bondsMap = b.m.bonds.bonds,
+                     finalFringe = b.m.finalFringe,
+                     execDeploySet = b.m.txs.map(_.id).toSet,
+                     mergeDeploySet = b.m.merge.map(_.id),
+                     dropDeploySet = Set(),
+                     mergeDeploySetFinal = acceptedBalanceDeploys.map(_.id),
+                     dropDeploySetFinal = rejectedBalanceDeploys.map(_.id),
+                   )
+                 }
+               }
+
+      _ <- Span[F].traceF("blockInsert", ctx.some) { s =>
+             sApi.blockInsert(block)(
+               justificationSetHash = block.justificationSet.digest,
+               offencesSetHash = calcSetHash(block.offencesSet),
+               bondsMapHash = b.m.bonds.bonds.digest,
+               finalFringeHash = calcSetHash(block.finalFringe),
+               execDeploySetHash = calcSetHash(block.execDeploySet),
+               mergeDeploySetHash = calcSetHash(block.mergeDeploySet),
+               dropDeploySetHash = ByteArray.Default,
+               mergeDeploySetFinalHash = calcSetHash(block.mergeDeploySetFinal),
+               dropDeploySetFinalHash = calcSetHash(block.dropDeploySetFinal),
+             )
+           }
     } yield ()
 
   def readBlock(id: ByteArray): F[Option[dproc.data.Block[ByteArray, ByteArray, BalancesDeploy]]] = {
@@ -96,7 +115,7 @@ final case class DbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
 
   def isBlockExist(id: ByteArray): F[Boolean] = sApi.isBlockExist(id)
 
-  def saveBalancesDeploy(d: BalancesDeploy): F[Unit] = sApi.deployInsert(
+  def saveBalancesDeploy(d: BalancesDeploy, ctx: TraceContext): F[Unit] = sApi.deployInsert(
     sdk.data.Deploy(
       sig = d.id,
       deployerPk = DeployerPkDefault,
@@ -106,6 +125,7 @@ final case class DbApiImpl[F[_]: Sync](sApi: SlickApi[F]) {
       phloLimit = PhloLimitDefault,
       nonce = d.body.vabn,
     ),
+    ctx,
   )
 
   def readBalancesDeploy(id: ByteArray): F[Option[BalancesDeploy]] =

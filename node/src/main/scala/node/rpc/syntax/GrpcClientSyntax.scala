@@ -1,5 +1,6 @@
 package node.rpc.syntax
 
+import brave.propagation.TraceContext
 import cats.effect.Async
 import cats.syntax.all.*
 import cats.{Eval, Monad}
@@ -11,6 +12,7 @@ import sdk.api.{BlockEndpoint, BlockHashEndpoint, LatestBlocksEndpoint}
 import sdk.codecs.Serialize
 import sdk.comm.Peer
 import sdk.data.{BalancesDeploy, HostWithPort}
+import sdk.diag.Span
 import sdk.primitive.ByteArray
 import sdk.serialize.auto.*
 
@@ -63,16 +65,17 @@ final class GrpcClientOps[F[_]](private val client: GrpcClient[F]) extends AnyVa
       reportTo,
     )
 
-  def broadcastBlockHash(hash: ByteArray, resolver: HostWithPort)(implicit
+  def broadcastBlockHash(hash: ByteArray, resolver: HostWithPort, ctx: TraceContext)(implicit
     F: Async[F],
     c: GrpcChannelsManager[F],
     peerManager: PeerTable[F, (String, Int), Peer],
+    span: Span[F],
   ): F[Unit] =
     for {
       peers <- peerManager.all.map(_.values.filterNot(_.isSelf).toList)
       _     <- peers.traverse { peer =>
                  val socket = HostWithPort(peer.host, peer.port)
-                 reportBlockHash(hash, resolver, socket)
+               span.traceF("reportBlockHash", ctx.some)(_ => reportBlockHash(hash, resolver, socket))
                }
     } yield ()
 }

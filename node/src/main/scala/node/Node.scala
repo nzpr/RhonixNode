@@ -2,13 +2,14 @@ package node
 
 import cats.Parallel
 import cats.effect.Async
+import cats.effect.kernel.Sync
 import cats.syntax.all.*
 import fs2.Stream
 import node.rpc.syntax.all.grpcClientSyntax
 import node.rpc.{GrpcChannelsManager, GrpcClient}
 import sdk.crypto.ECDSA
 import sdk.data.{BalancesState, HostWithPort}
-import sdk.diag.Metrics
+import sdk.diag.{Metrics, Span, Zipkin}
 import sdk.log.Logger.*
 import sdk.primitive.ByteArray
 import secp256k1.Secp256k1
@@ -30,7 +31,12 @@ object Node {
       _ <- logInfoF(s"Creating genesis block.")
       g <- Genesis.mkGenesisBlock[F](id, genesisPoS, genesisBalances, setup.balancesShard)
       _ <- logDebugF(s"Genesis block created with hash ${g.id}.")
-      _ <- DbApiImpl(setup.database).saveBlock(g)
+      _ <- Zipkin.apply[F].use { span =>
+             span.traceF("Node saveBlock") { s =>
+               implicit val sp: Span[F] = span
+               DbApiImpl(setup.database).saveBlock(g, s.context())
+             }
+           }
       _ <- logDebugF(s"Genesis block saved.")
       _ <- setup.dProc.acceptMsg(g.id)
       _ <- logInfoF(s"Genesis complete.")

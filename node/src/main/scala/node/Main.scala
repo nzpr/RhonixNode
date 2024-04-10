@@ -5,18 +5,19 @@ import cats.effect.kernel.Ref.Make
 import cats.effect.std.{Env, Random}
 import cats.syntax.all.*
 import node.Hashing.*
-import sdk.serialize.auto.*
 import sdk.codecs.Base16
 import sdk.data.{BalancesDeploy, BalancesDeployBody, BalancesState, HostWithPort}
 import sdk.error.FatalError
 import sdk.log.Logger.*
 import sdk.primitive.ByteArray
 import sdk.reflect.ClassesAsConfig
+import sdk.serialize.auto.*
 import sdk.syntax.all.*
 import slick.SlickPgDatabase
 import weaver.data.{Bonds, FinalData}
 
 import java.net.InetAddress
+import scala.concurrent.duration.DurationInt
 
 object Main extends IOApp {
   private val DbUrlKey      = "gorki_db_url"
@@ -77,6 +78,8 @@ object Main extends IOApp {
       case _                              =>
         val mainStreamF = for {
           _               <- logInfoF[IO](s"Node version: ${NodeBuildInfo()}")
+          // A trick to ensure that zipkin in a virtual docker network starts early and is ready for external connections
+          _               <- cats.effect.Temporal[IO].sleep(5.seconds)
           c               <- configWithEnv[IO]
           bootstrpOpt     <- Env[IO].get(BootstrapAddr)
           (dbCfg, nodeId)  = c

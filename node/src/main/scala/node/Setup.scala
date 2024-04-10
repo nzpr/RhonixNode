@@ -18,8 +18,6 @@ import node.comm.PeerTable
 import node.lmdb.LmdbStoreManager
 import node.rpc.syntax.all.grpcClientSyntax
 import node.rpc.{GrpcChannelsManager, GrpcClient, GrpcServer}
-import sdk.serialize.auto.*
-import node.Hashing.*
 import node.state.StateManager
 import org.http4s.HttpRoutes
 import org.http4s.server.Server
@@ -27,13 +25,14 @@ import sdk.api.ExternalApi
 import sdk.api.data.Balance
 import sdk.comm.Peer
 import sdk.data.{BalancesDeploy, HostWithPort}
-import sdk.diag.Metrics
+import sdk.diag.{Metrics, Span, Zipkin}
 import sdk.hashing.Blake2b
 import sdk.history.History
 import sdk.log.Logger.*
 import sdk.merging.MergeLogicForPayments.mergeRejectNegativeOverflow
 import sdk.merging.Relation
 import sdk.primitive.ByteArray
+import sdk.serialize.auto.*
 import sdk.store.{HistoryWithValues, InMemoryKeyValueStoreManager, KeyValueStoreManager, KeyValueTypedStore}
 import sdk.syntax.all.*
 import slick.SlickDb
@@ -73,7 +72,7 @@ final case class Setup[F[_]](
 )
 
 object Setup {
-  private def database[F[_]: Async](dbDef: Resource[F, DatabaseDef]): Resource[F, SlickApi[F]] =
+  private def database[F[_]: Async: Parallel](dbDef: Resource[F, DatabaseDef]): Resource[F, SlickApi[F]] =
     dbDef.evalMap(x => SlickDb(x, PostgresProfile, new PostgresDialect).flatMap(SlickApi[F]))
 
   private def kvDiskStoreManager[F[_]: Async](dataDir: Path): Resource[F, KeyValueStoreManager[F]] =
@@ -101,65 +100,71 @@ object Setup {
     web.server(allRoutes, port, host, devMode)
   }
 
-  private def dProc[F[_]: Async: Parallel: Metrics](
+  private def dProc[F[_]: Async: Parallel: Metrics: Span](
     id: ByteArray,
     state: StateManager[F],
     balancesShard: BalancesStateBuilderWithReader[F],
     genesisPoS: FinalData[ByteArray],
     database: SlickApi[F],
     deploysPooled: F[Set[BalancesDeploy]],
-  ): Resource[F, DProc[F, ByteArray, BalancesDeploy]] = Resource.eval(Sync[F].defer {
-    val exeEngine = new ExeEngine[F, ByteArray, ByteArray, BalancesDeploy] {
-      def execute(
-        base: Set[ByteArray],
-        fringe: Set[ByteArray],
-        toFinalize: Set[BalancesDeploy],
-        toMerge: Set[BalancesDeploy],
-        txs: Set[BalancesDeploy],
-      ): F[((ByteArray, Seq[BalancesDeploy]), (ByteArray, Seq[BalancesDeploy]))] =
-        for {
-          baseState <- state.fringeMappingRef.get.map(_.getOrElse(base, History.EmptyRootHash))
+  ): Resource[F, DProc[F, ByteArray, BalancesDeploy]] =
+    Resource.eval(Sync[F].defer {
+      val exeEngine = new ExeEngine[F, ByteArray, ByteArray, BalancesDeploy] {
+        def execute(
+          base: Set[ByteArray],
+          fringe: Set[ByteArray],
+          toFinalize: Set[BalancesDeploy],
+          toMerge: Set[BalancesDeploy],
+          txs: Set[BalancesDeploy],
+        ): F[((ByteArray, Seq[BalancesDeploy]), (ByteArray, Seq[BalancesDeploy]))] =
+          for {
+            baseState <- state.fringeMappingRef.get.map(_.getOrElse(base, History.EmptyRootHash))
 
-          r <- mergeRejectNegativeOverflow(
-                 balancesShard.readBalance,
-                 baseState,
-                 toFinalize,
-                 toMerge ++ txs,
-               )
+            r <- mergeRejectNegativeOverflow(
+                   balancesShard.readBalance,
+                   baseState,
+                   toFinalize,
+                   toMerge ++ txs,
+                 )
 
-          ((newFinState, finRj), (newMergeState, provRj)) = r
+            ((newFinState, finRj), (newMergeState, provRj)) = r
 
-          r <- balancesShard.buildState(baseState, newFinState, newMergeState)
+            r <- balancesShard.buildState(baseState, newFinState, newMergeState)
 
-          (finalHash, postHash) = r
+            (finalHash, postHash) = r
 
-          _ <- state.fringeMappingRef.update(_ + (fringe -> finalHash)).unlessA(fringe.isEmpty)
-        } yield ((finalHash.bytes, finRj), (postHash.bytes, provRj))
+            _ <- state.fringeMappingRef.update(_ + (fringe -> finalHash)).unlessA(fringe.isEmpty)
+          } yield ((finalHash.bytes, finRj), (postHash.bytes, provRj))
 
-      // data read from the final state associated with the final fringe
-      def consensusData(fringe: Set[ByteArray]): F[FinalData[ByteArray]] =
-        genesisPoS.pure[F] // TODO for now PoS is static defined in genesis
-    }
+        // data read from the final state associated with the final fringe
+        def consensusData(fringe: Set[ByteArray]): F[FinalData[ByteArray]] =
+          genesisPoS.pure[F] // TODO for now PoS is static defined in genesis
+      }
 
-    val dbApiImpl = DbApiImpl(database)
-    val saveBlock = dbApiImpl.saveBlock _
-    val readBlock = dbApiImpl.readBlock(_: ByteArray).flatMap(_.liftTo[F](new Exception("Block not found")))
+      val dbApiImpl = DbApiImpl(database)
 
-    DProc
-      .apply[F, ByteArray, ByteArray, BalancesDeploy](
-        state.weaverStRef,
-        state.propStRef,
-        state.procStRef,
-        state.bufferStRef,
-        deploysPooled,
-        id.some,
-        exeEngine,
-        Relation.notRelated[F, BalancesDeploy],
-        b => Sync[F].delay(ByteArray(Blake2b.hash256(b.digest.bytes))),
-        saveBlock,
-        readBlock,
-      )
-  })
+      val saveBlock = (b: dproc.data.Block.WithId[ByteArray, ByteArray, BalancesDeploy]) =>
+        Span[F].traceF("saveBlock_dProc") { s =>
+          dbApiImpl.saveBlock(b, s.context())
+        }
+
+      val readBlock = dbApiImpl.readBlock(_: ByteArray).flatMap(_.liftTo[F](new Exception("Block not found")))
+
+      DProc
+        .apply[F, ByteArray, ByteArray, BalancesDeploy](
+          state.weaverStRef,
+          state.propStRef,
+          state.procStRef,
+          state.bufferStRef,
+          deploysPooled,
+          id.some,
+          exeEngine,
+          Relation.notRelated[F, BalancesDeploy],
+          b => Sync[F].delay(ByteArray(Blake2b.hash256(b.digest.bytes))),
+          saveBlock,
+          readBlock,
+        )
+    })
 
   private def deployPool[F[_]: Sync: Make]: Resource[F, KeyValueTypedStore[F, ByteArray, BalancesDeploy]] =
     Resource.eval(Ref[F].of(Map.empty[ByteArray, BalancesDeploy]).map { st =>
@@ -219,25 +224,36 @@ object Setup {
       implicit val g: GrpcChannelsManager[F] = grpcChManager
       Resource.eval(BlockResolver.apply[F])
     }
+    span              <- Zipkin.apply[F]
     // resolve received hash to block and send to validation
-    hashCallback       = (h: ByteArray, s: HostWithPort) =>
+    hashCallback       = (h: ByteArray, s: HostWithPort) => {
+                           implicit val sp: Span[F] = span
                            DbApiImpl(database)
                              .isBlockExist(h)
                              .ifM(false.pure, blockResolver.in(h, s).as(true))
-    blockReqCallback   = (h: ByteArray) => DbApiImpl(database).readBlock(h).map(_.map(b => Block.WithId(h, b)))
+                         }
+    blockReqCallback   = (h: ByteArray) => {
+                           implicit val sp: Span[F] = span
+                           DbApiImpl(database).readBlock(h).map(_.map(b => Block.WithId(h, b)))
+                         }
     grpcSrv           <- GrpcServer.apply[F](nCfg.gRpcPort + idx, hashCallback, blockReqCallback, _ => latestM.map(_.toSeq))
     // peerTable
     peerTable         <- { implicit val db: SlickApi[F] = database; Resource.eval(PeerTable(cCfg)) }
     // core logic
     dProc             <- {
       implicit val m: Metrics[F] = metrics
+      implicit val sp: Span[F]   = span
       val deploysWithDummy       = (dPool.toMap.map(_.values.toSet), dummyDeploys).mapN(_ ++ _)
       dProc(id, nodeState, balancesShard, genesisPoS, database, deploysWithDummy)
     }
-    _                 <- Resource.eval(logDebugF(s"Node setup complete."))
+
+    _ <- Resource.eval(logDebugF(s"Node setup complete."))
   } yield {
     val pullBlocksFromNetwork = blockResolver.out
-      .evalTap(DbApiImpl(database).saveBlock)
+      .evalTap { b =>
+        implicit val sp: Span[F] = span
+        span.traceF("saveBlock")(s => DbApiImpl(database).saveBlock(b, s.context()))
+      }
       .map(_.id)
       .evalTap(dProc.acceptMsg)
 
@@ -245,7 +261,12 @@ object Setup {
       implicit val chm: GrpcChannelsManager[F]           = grpcChManager
       implicit val pt: PeerTable[F, (String, Int), Peer] = peerTable
       dProc.output
-        .evalMap(h => GrpcClient[F].broadcastBlockHash(h, HostWithPort(selfFQDN, nCfg.gRpcPort + idx)))
+        .evalMap { h =>
+          span.traceF("broadcastBlockHash") { s =>
+            implicit val sss = span
+            GrpcClient[F].broadcastBlockHash(h, HostWithPort(selfFQDN, nCfg.gRpcPort + idx), s.context())
+          }
+        }
     }
 
     val nodeStream = dProc.dProcStream concurrently pullBlocksFromNetwork concurrently broadcastOutput

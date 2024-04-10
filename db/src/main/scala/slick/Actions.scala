@@ -1,7 +1,9 @@
 package slick
 
+import brave.propagation.TraceContext
 import cats.syntax.all.*
 import sdk.comm.Peer
+import sdk.diag.Span
 import sdk.error.FatalError
 import sdk.primitive.ByteArray
 import sdk.syntax.all.*
@@ -14,7 +16,7 @@ import slick.tables.*
 import scala.concurrent.ExecutionContext
 
 final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
-  private val queries: Queries       = Queries(profile)
+  val queries: Queries               = Queries(profile)
   import profile.api.*
   implicit val _ec: ExecutionContext = ec
 
@@ -65,7 +67,7 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
       })
 
   /** Insert a new record in table if there is no such entry. Returned id */
-  def deployInsertIfNot(d: api.data.Deploy): DBIOAction[Long, NoStream, All] = {
+  def deployInsertIfNot(d: api.data.Deploy, ctx: TraceContext): DBIOAction[Long, NoStream, All] = {
 
     /** Insert a new record in table. Returned id. */
     def deployInsert(deploy: TableDeploys.Deploy): DBIOAction[Long, NoStream, Write] =
@@ -92,8 +94,13 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
 
   /** Block */
 
+  def blockInsert(block: TableBlocks.Block): DBIOAction[Long, NoStream, Write] =
+    (queries.blocksCompiled returning qBlocks.map(_.id)) += block
+
   /** Insert a new Block in table if there is no such entry. Returned id */
-  def blockInsertIfNot(b: api.data.Block): DBIOAction[Long, NoStream, All] = {
+  def blockInsertIfNot[F[_]](
+    b: api.data.Block,
+  ) /*(implicit span: Span[F], ctx: TraceContext)*/: Seq[DBIOAction[Long, NoStream, All]] = {
 
     def insertBlockSet(setData: api.data.SetData): DBIOAction[Option[Long], NoStream, All] =
       blockSetInsertIfNot(setData.hash, setData.data).map(_.some)
@@ -101,23 +108,24 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
     def insertDeploySet(setData: api.data.SetData): DBIOAction[Option[Long], NoStream, All] =
       deploySetInsertIfNot(setData.hash, setData.data).map(_.some)
 
-    def blockInsert(block: TableBlocks.Block): DBIOAction[Long, NoStream, Write] =
-      (queries.blocksCompiled returning qBlocks.map(_.id)) += block
-
-    val actions = for {
+    /*val actions = for {
       validatorId <- validatorInsertIfNot(b.validatorPk)
       shardId     <- shardInsertIfNot(b.shardName)
 
-      justificationSetId <- insertBlockSet(b.justificationSet)
-      offencesSet        <- insertBlockSet(b.offencesSet)
-      bondsMapId         <- bondsMapInsertIfNot(b.bondsMap.hash, b.bondsMap.data)
-      finalFringe        <- insertBlockSet(b.finalFringe)
-      deploySetId        <- insertDeploySet(b.execDeploySet)
+      justificationSetId <- insertBlockSet(b.justificationSet).map(_.get)
+      offencesSet        <- span.trace("insertBlockSet(b.offencesSet)", ctx.some)(_ => insertBlockSet(b.offencesSet))
+      bondsMapId         <- span.trace("bondsMapInsertIfNot(b.bondsMap.hash, b.bondsMap.data)", ctx.some)(_ =>
+                              bondsMapInsertIfNot(b.bondsMap.hash, b.bondsMap.data),
+                            )
+      finalFringe        <- span.trace("insertBlockSet(b.finalFringe)", ctx.some)(_ => insertBlockSet(b.finalFringe))
+      deploySetId        <- span.trace("insertDeploySet(b.execDeploySet)", ctx.some)(_ => insertDeploySet(b.execDeploySet))
 
-      mergeSetId      <- insertDeploySet(b.mergeDeploySet)
-      dropSetId       <- insertDeploySet(b.dropDeploySet)
-      mergeSetFinalId <- insertDeploySet(b.mergeDeploySetFinal)
-      dropSetFinalId  <- insertDeploySet(b.dropDeploySetFinal)
+      mergeSetId      <- span.trace("insertDeploySet(b.mergeDeploySet)", ctx.some)(_ => insertDeploySet(b.mergeDeploySet))
+      dropSetId       <- span.trace("insertDeploySet(b.dropDeploySet)", ctx.some)(_ => insertDeploySet(b.dropDeploySet))
+      mergeSetFinalId <-
+        span.trace("insertDeploySet(b.mergeDeploySetFinal)", ctx.some)(_ => insertDeploySet(b.mergeDeploySetFinal))
+      dropSetFinalId  <-
+        span.trace("insertDeploySet(b.dropDeploySetFinal)", ctx.some)(_ => insertDeploySet(b.dropDeploySetFinal))
 
       newBlock = TableBlocks.Block(
                    id = 0L,
@@ -141,10 +149,26 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
                    dropDeploySetFinalId = dropSetFinalId,
                  )
 
-      blockId <- insertIfNot(b.hash, queries.blockIdByHash, newBlock, blockInsert)
+      blockId <- span.trace("insertIfNot(b.hash, queries.blockIdByHash, newBlock, blockInsert)", ctx.some)(_ =>
+                   insertIfNot(b.hash, queries.blockIdByHash, newBlock, blockInsert),
+                 )
     } yield blockId
 
-    actions.transactionally
+    actions.transactionally*/
+
+    Seq(
+      validatorInsertIfNot(b.validatorPk),
+      shardInsertIfNot(b.shardName),
+      insertBlockSet(b.justificationSet).map(_.get),
+      insertBlockSet(b.offencesSet).map(_.get),
+      bondsMapInsertIfNot(b.bondsMap.hash, b.bondsMap.data),
+      insertBlockSet(b.finalFringe).map(_.get),
+      insertDeploySet(b.execDeploySet).map(_.get),
+      insertDeploySet(b.mergeDeploySet).map(_.get),
+      insertDeploySet(b.dropDeploySet).map(_.get),
+      insertDeploySet(b.mergeDeploySetFinal).map(_.get),
+      insertDeploySet(b.dropDeploySetFinal).map(_.get),
+    )
   }
 
   /** Get deploy by unique sig. Returned (TableDeploys.Deploy, shard.name, deployer.pubKey) */
@@ -384,7 +408,7 @@ final case class Actions(profile: JdbcProfile, ec: ExecutionContext) {
   def removePeer(url: String): DBIOAction[Int, NoStream, Write] = queries.peerIdByPk(url).delete
 
   /** Insert a new record in table if there is no such entry. Returned id */
-  private def insertIfNot[A, B](
+  def insertIfNot[A, B](
     unique: A,
     getIdByUnique: CompiledFunction[
       Rep[A] => Query[Rep[Long], Long, Seq],

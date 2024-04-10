@@ -6,15 +6,11 @@ import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
 import node.{ConfigManager, Setup}
 import sdk.comm.Peer
-import sdk.data.BalancesState
-import sdk.hashing.Blake2b
-import sdk.primitive.ByteArray
-import slick.{SlickDb, SlickPgDatabase}
 import slick.api.SlickApi
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile
 import slick.migration.api.PostgresDialect
-import weaver.data.{Bonds, FinalData}
+import slick.{SlickDb, SlickPgDatabase}
 
 import java.nio.file.Path
 
@@ -97,8 +93,8 @@ object NetworkSim extends IOApp {
             // set empty peers so nodes do not broadcast blocks through grpc servers.
             // Simulation uses shared memory for this.
             db.evalMap { d =>
-              import io.circe.generic.auto.*
               import ConfigManager.*
+              import io.circe.generic.auto.*
 
               val peersCfg =
                 node.comm.Config.Default.copy(peers = peers.updated(idx, peers(idx).copy(isSelf = true)).values.toList)

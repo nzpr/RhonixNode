@@ -1,5 +1,6 @@
 package slick
 
+import cats.Parallel
 import cats.effect.kernel.Async
 import cats.syntax.all.*
 import io.circe.syntax.*
@@ -20,7 +21,7 @@ final case class SlickDb private (private val db: Database, profile: JdbcProfile
 }
 
 object SlickDb {
-  def apply[F[_]: Async](
+  def apply[F[_]: Async: Parallel](
     db: Database,
     profile: JdbcProfile,
     dialect: Dialect[?],

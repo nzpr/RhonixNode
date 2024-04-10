@@ -20,6 +20,8 @@ x-node: &default-node
     - ./logback.xml:/var/lib/gorki/logback.xml
   networks:
     - sim-net
+  depends_on:
+    - zipkin
 
 
 x-db: &default-db
@@ -30,6 +32,15 @@ x-db: &default-db
     - sim-net
 
 services:
+  zipkin:
+    image: openzipkin/zipkin
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx2g"
+    ports:
+      - "9411:9411"
+    networks:
+      - sim-net
+
   db0:
     <<: *default-db
     ports:

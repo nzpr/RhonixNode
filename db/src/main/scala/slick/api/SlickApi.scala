@@ -1,22 +1,26 @@
 package slick.api
 
+import brave.propagation.TraceContext
+import cats.Parallel
 import cats.effect.Async
 import cats.syntax.all.*
 import sdk.comm.Peer
+import sdk.diag.Span
 import sdk.primitive.ByteArray
 import slick.syntax.all.*
+import slick.tables.TableBlocks
 import slick.{Actions, SlickDb}
 
 import scala.concurrent.ExecutionContext
 
 object SlickApi {
-  def apply[F[_]: Async](db: SlickDb): F[SlickApi[F]] =
+  def apply[F[_]: Async: Parallel](db: SlickDb): F[SlickApi[F]] =
     Async[F].executionContext.map(ec => new SlickApi(db, ec))
 
   def apply[F[_]](implicit s: SlickApi[F]): SlickApi[F] = s
 }
 
-class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
+class SlickApi[F[_]: Async: Parallel](db: SlickDb, ec: ExecutionContext) {
   implicit val slickDb: SlickDb = db
 
   val actions: Actions = Actions(db.profile, ec)
@@ -27,10 +31,11 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
 
   def peers: F[Seq[Peer]] = actions.peers.run
 
-  def deployInsert(d: sdk.data.Deploy): F[Unit] =
+  def deployInsert(d: sdk.data.Deploy, ctx: TraceContext): F[Unit] =
     actions
       .deployInsertIfNot(
         data.Deploy(d.sig.bytes, d.deployerPk.bytes, d.shardName, d.program, d.phloPrice, d.phloLimit, d.nonce),
+        ctx,
       )
       .run
       .void
@@ -74,31 +79,76 @@ class SlickApi[F[_]: Async](db: SlickDb, ec: ExecutionContext) {
     dropDeploySetHash: ByteArray,
     mergeDeploySetFinalHash: ByteArray,
     dropDeploySetFinalHash: ByteArray,
-  ): F[Unit] = actions
-    .blockInsertIfNot(
-      data.Block(
-        version = b.version,
-        hash = b.hash.bytes,
-        sigAlg = b.sigAlg,
-        signature = b.signature.bytes,
-        finalStateHash = b.finalStateHash.bytes,
-        postStateHash = b.postStateHash.bytes,
-        validatorPk = b.validatorPk.bytes,
-        shardName = b.shardName,
-        justificationSet = data.SetData(justificationSetHash.bytes, b.justificationSet.toSeq.map(_.bytes)),
-        seqNum = b.seqNum,
-        offencesSet = data.SetData(offencesSetHash.bytes, b.offencesSet.toSeq.map(_.bytes)),
-        bondsMap = data.BondsMapData(bondsMapHash.bytes, b.bondsMap.toSeq.map(x => (x._1.bytes, x._2))),
-        finalFringe = data.SetData(finalFringeHash.bytes, b.finalFringe.toSeq.map(_.bytes)),
-        execDeploySet = data.SetData(execDeploySetHash.bytes, b.execDeploySet.toSeq.map(_.bytes)),
-        mergeDeploySet = data.SetData(mergeDeploySetHash.bytes, b.mergeDeploySet.toSeq.map(_.bytes)),
-        dropDeploySet = data.SetData(dropDeploySetHash.bytes, b.dropDeploySet.toSeq.map(_.bytes)),
-        mergeDeploySetFinal = data.SetData(mergeDeploySetFinalHash.bytes, b.mergeDeploySetFinal.toSeq.map(_.bytes)),
-        dropDeploySetFinal = data.SetData(dropDeploySetFinalHash.bytes, b.dropDeploySetFinal.toSeq.map(_.bytes)),
-      ),
-    )
-    .run
-    .void
+  ) /*(implicit span: Span[F], ctx: TraceContext)*/: F[Unit] = {
+    val parallelActions = actions
+      .blockInsertIfNot(
+        data.Block(
+          version = b.version,
+          hash = b.hash.bytes,
+          sigAlg = b.sigAlg,
+          signature = b.signature.bytes,
+          finalStateHash = b.finalStateHash.bytes,
+          postStateHash = b.postStateHash.bytes,
+          validatorPk = b.validatorPk.bytes,
+          shardName = b.shardName,
+          justificationSet = data.SetData(justificationSetHash.bytes, b.justificationSet.toSeq.map(_.bytes)),
+          seqNum = b.seqNum,
+          offencesSet = data.SetData(offencesSetHash.bytes, b.offencesSet.toSeq.map(_.bytes)),
+          bondsMap = data.BondsMapData(bondsMapHash.bytes, b.bondsMap.toSeq.map(x => (x._1.bytes, x._2))),
+          finalFringe = data.SetData(finalFringeHash.bytes, b.finalFringe.toSeq.map(_.bytes)),
+          execDeploySet = data.SetData(execDeploySetHash.bytes, b.execDeploySet.toSeq.map(_.bytes)),
+          mergeDeploySet = data.SetData(mergeDeploySetHash.bytes, b.mergeDeploySet.toSeq.map(_.bytes)),
+          dropDeploySet = data.SetData(dropDeploySetHash.bytes, b.dropDeploySet.toSeq.map(_.bytes)),
+          mergeDeploySetFinal = data.SetData(mergeDeploySetFinalHash.bytes, b.mergeDeploySetFinal.toSeq.map(_.bytes)),
+          dropDeploySetFinal = data.SetData(dropDeploySetFinalHash.bytes, b.dropDeploySetFinal.toSeq.map(_.bytes)),
+        ),
+      )
+
+    import actions.profile.api.*
+
+    parallelActions.parTraverse(_.transactionally.run).flatMap {
+      case Seq(
+            validatorId,
+            shardId,
+            justificationSetId,
+            offencesSet,
+            bondsMapId,
+            finalFringe,
+            deploySetId,
+            mergeSetId,
+            dropSetId,
+            mergeSetFinalId,
+            dropSetFinalId,
+          ) =>
+        val newBlock = TableBlocks.Block(
+          id = 0L,
+          version = b.version,
+          hash = b.hash.bytes,
+          sigAlg = b.sigAlg,
+          signature = b.signature.bytes,
+          finalStateHash = b.finalStateHash.bytes,
+          postStateHash = b.postStateHash.bytes,
+          validatorId = validatorId,
+          shardId = shardId,
+          justificationSetId = justificationSetId.some,
+          seqNum = b.seqNum,
+          offencesSetId = offencesSet.some,
+          bondsMapId = bondsMapId,
+          finalFringeId = finalFringe.some,
+          execDeploySetId = deploySetId.some,
+          mergeDeploySetId = mergeSetId.some,
+          dropDeploySetId = dropSetId.some,
+          mergeDeploySetFinalId = mergeSetFinalId.some,
+          dropDeploySetFinalId = dropSetFinalId.some,
+        )
+        actions
+          .insertIfNot(b.hash.bytes, actions.queries.blockIdByHash, newBlock, actions.blockInsert)
+          .transactionally
+          .run
+          .void
+      case _ => ().pure
+    }
+  }
 
   def blockGet(hash: ByteArray): F[Option[sdk.data.Block]] = actions
     .blockGetData(hash.bytes)
